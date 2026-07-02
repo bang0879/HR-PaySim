@@ -1,0 +1,9 @@
+﻿{
+  "name": "hr-paysim-planning",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/hr-paysim/*.test.ts"
+  }
+}

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HR PaySim Quick Input</title>
+    <link rel="stylesheet" href="./quick-input.css" />
+  </head>
+  <body>
+    <main class="paysim-shell">
+      <section class="entry-panel">
+        <p class="module-label">HR Prism 진단 이후 심화 모듈</p>
+        <h1>HR PaySim</h1>
+        <p class="entry-copy">
+          보상 쪽은 한 단계 더 시뮬레이션해볼 수 있습니다. 지금 구조에서 어떤 조정안이 비용과 설명 가능성을 어떻게 바꾸는지 보시겠어요?
+        </p>
+      </section>
+
+      <section class="intro-panel">
+        <h2>HR PaySim은 보상 거버넌스 시뮬레이터입니다</h2>
+        <p>
+          HR PaySim은 연봉 정답을 계산하는 도구가 아니라, 보상 의사결정의 비용과 설명 가능성을 비교하는 시뮬레이터입니다.
+        </p>
+        <ul>
+          <li>급여 계산기가 아닙니다.</li>
+          <li>보상 의사결정의 설명 가능성을 시뮬레이션합니다.</li>
+          <li>하나의 정답이 아니라 선택지별 trade-off를 비교합니다.</li>
+        </ul>
+      </section>
+
+      <form class="quick-input-form" novalidate>
+        <div class="form-status">
+          <strong>Quick Mode 입력</strong>
+          <span>aggregate 입력 기반</span>
+        </div>
+        <p class="section-intro">
+          개인별 급여 자료를 넣지 않아도 됩니다. 팀, 레벨, 밴드 단위의 aggregate 입력으로 충분합니다.
+        </p>
+        <p class="privacy-notice">
+          HR PaySim v1.0은 직원 이름, 이메일, 주민등록번호, 개인별 원시 급여를 저장하지 않는 방향으로 설계됩니다.
+        </p>
+
+        <section class="section-card">
+          <div class="section-heading">
+            <h2>회사 기본 정보</h2>
+            <p>회사 규모와 보상 운영 기반을 구간 값으로 입력합니다.</p>
+          </div>
+          <div class="field-grid">
+            <label class="field">
+              <span>회사 규모 구간 <b>*</b></span>
+              <select name="company_size_band" required>
+                <option value="">선택</option>
+                <option value="1-10">1-10명</option>
+                <option value="11-30">11-30명</option>
+                <option value="31-50">31-50명</option>
+                <option value="51-100">51-100명</option>
+                <option value="101-300">101-300명</option>
+                <option value="301-500">301-500명</option>
+                <option value="501+">501명 이상</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>투자 단계 <b>*</b></span>
+              <select name="funding_stage" required>
+                <option value="">선택</option>
+                <option value="bootstrapped">부트스트랩</option>
+                <option value="pre_seed">Pre-seed</option>
+                <option value="seed">Seed</option>
+                <option value="series_a">Series A</option>
+                <option value="series_b">Series B</option>
+                <option value="series_c_plus">Series C+</option>
+                <option value="profitable">흑자 운영</option>
+                <option value="unknown">모름</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>현재 AI 도구 활용 수준 <b>*</b></span>
+              <select name="current_ai_tooling_level" required>
+                <option value="">선택</option>
+                <option value="none">없음</option>
+                <option value="ad_hoc">개별 사용</option>
+                <option value="team_level">팀 단위 사용</option>
+                <option value="company_standard">회사 표준 도구</option>
+                <option value="unknown">모름</option>
+              </select>
+            </label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_hr_owner" />HR 담당자가 있습니다</label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_level_system" />레벨 체계가 있습니다</label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_salary_band" />급여 밴드가 있습니다</label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_performance_review" />성과 리뷰가 있습니다</label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_variable_pay" />변동 보상이 있습니다</label>
+            <label class="field field-checkbox"><input type="checkbox" name="has_equity_plan" />스톡옵션/지분 보상 제도가 있습니다</label>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <div class="section-heading">
+            <h2>현재 보상 구조</h2>
+            <p>개인별 급여가 아니라 총액, 레벨, 기능 단위의 집계값만 입력합니다.</p>
+          </div>
+          <div class="field-grid">
+            <label class="field"><span>총 인원 <b>*</b></span><input name="total_headcount" type="number" min="0" required /></label>
+            <label class="field"><span>월 기본급 총액 <b>*</b></span><input name="total_monthly_base_pay" type="number" min="0" required /></label>
+            <label class="field"><span>월 고정수당 총액 <b>*</b></span><input name="total_monthly_fixed_allowance" type="number" min="0" required /></label>
+            <label class="field"><span>예상 변동 보상 총액</span><input name="total_expected_variable_pay" type="number" min="0" /></label>
+            <label class="field field-wide">
+              <span>레벨/기능별 집계 메모</span>
+              <textarea name="grouped_input_notes" placeholder="예: L2 평균 62000000, L3 평균 82000000 / engineering 32명"></textarea>
+              <small>직원명, 연락처, 개인별 원시 급여는 입력하지 마세요.</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <div class="section-heading">
+            <h2>채용 계획</h2>
+            <p>6개월/12개월 예정 채용을 레벨 또는 역할 그룹 단위로 입력합니다.</p>
+          </div>
+          <div class="field-grid">
+            <label class="field field-wide"><span>6개월 채용 계획 <b>*</b></span><textarea name="planned_hires_6m" required placeholder="예: L2: 4, L3: 2"></textarea></label>
+            <label class="field field-wide"><span>12개월 채용 계획 <b>*</b></span><textarea name="planned_hires_12m" required placeholder="예: L2: 8, L3: 4"></textarea></label>
+            <label class="field field-wide"><span>레벨별 예상 평균 연봉 <b>*</b></span><textarea name="average_expected_salary_by_level" required placeholder="예: L2: 70000000, L3: 93000000"></textarea></label>
+            <label class="field field-checkbox"><input type="checkbox" name="hiring_freeze_toggle" />선택 채용 지연 가정을 검토 중입니다</label>
+            <label class="field"><span>선택 입력: 현금 잔고</span><input name="optional_cash_balance" type="number" min="0" /></label>
+            <label class="field"><span>선택 입력: runway 개월 수</span><input name="optional_runway_months" type="number" min="0" /></label>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <div class="section-heading">
+            <h2>예외 보상 신호</h2>
+            <p>예외 인상, 카운터오퍼, 신규 입사자 프리미엄 같은 거버넌스 신호를 입력합니다.</p>
+          </div>
+          <div class="field-grid">
+            <label class="field"><span>최근 인상 예산</span><input name="recent_raise_budget" type="number" min="0" /></label>
+            <label class="field">
+              <span>예외 인상 빈도 <b>*</b></span>
+              <select name="exception_raise_frequency" required>
+                <option value="">선택</option>
+                <option value="none">없음</option>
+                <option value="rare">드묾</option>
+                <option value="occasional">가끔 있음</option>
+                <option value="frequent">자주 있음</option>
+                <option value="unknown">모름</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>카운터오퍼 빈도 <b>*</b></span>
+              <select name="counteroffer_frequency" required>
+                <option value="">선택</option>
+                <option value="none">없음</option>
+                <option value="rare">드묾</option>
+                <option value="occasional">가끔 있음</option>
+                <option value="frequent">자주 있음</option>
+                <option value="unknown">모름</option>
+              </select>
+            </label>
+            <label class="field field-checkbox"><input type="checkbox" name="new_hire_premium_exists" />신규 입사자 프리미엄이 있습니다</label>
+            <label class="field"><span>보상 역전 사례 수</span><input name="pay_inversion_case_count" type="number" min="0" /></label>
+            <label class="field"><span>밴드 밖 사례 수</span><input name="out_of_band_case_count" type="number" min="0" /></label>
+          </div>
+        </section>
+
+        <details class="section-card advanced-section">
+          <summary>
+            <span>Advanced: AI tooling 가정 입력</span>
+            <small>Advanced 입력입니다. 기본 보상 시나리오에는 필요하지 않습니다.</small>
+          </summary>
+          <p class="advanced-helper">
+            이 섹션은 AI가 사람을 대체한다는 계산이 아닙니다. 채용 지연, capacity 연장, 조율 부담을 보는 선택 입력입니다.
+          </p>
+          <div class="field-grid">
+            <label class="field"><span>월 AI 도구 예산</span><input name="planned_ai_tool_budget_monthly" type="number" min="0" /></label>
+            <label class="field"><span>연 AI 도구 예산</span><input name="planned_ai_tool_budget_annual" type="number" min="0" /></label>
+            <label class="field"><span>채용 지연 개월 수</span><input name="hiring_delay_months" type="number" min="0" /></label>
+            <label class="field field-wide"><span>영향을 받는 역할/기능 그룹</span><textarea name="affected_roles_or_functions" placeholder="예: engineering, operations"></textarea></label>
+            <label class="field"><span>Senior 조율 역할 대상 수</span><input name="orchestrator_target_count" type="number" min="0" /></label>
+            <label class="field"><span>프리미엄 풀 배분율</span><input name="premium_pool_allocation_rate" type="number" min="0" /></label>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <button type="submit">거버넌스 스냅샷 보기</button>
+          <p>정확한 숫자가 모두 없어도 괜찮습니다. HR PaySim은 먼저 aggregate 입력으로 방향성을 확인합니다.</p>
+        </div>
+        <div class="validation-summary" aria-live="polite"></div>
+      </form>
+    </main>
+    <script type="module" src="./quick-input.js"></script>
+  </body>
+</html>

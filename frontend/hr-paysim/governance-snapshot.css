@@ -1,0 +1,254 @@
+:root {
+  color-scheme: light;
+  --page: #f6f7f5;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #20251f;
+  --muted: #667066;
+  --line: #d9dfd7;
+  --accent: #2f6f4f;
+  --accent-strong: #184b34;
+  --danger: #a43d35;
+  --warning: #8a5a12;
+  --shadow: 0 18px 55px rgba(38, 47, 39, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family:
+    Inter,
+    Pretendard,
+    "Noto Sans KR",
+    system-ui,
+    sans-serif;
+  line-height: 1.5;
+}
+
+.paysim-shell {
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+
+.snapshot-hero,
+.governance-snapshot,
+.snapshot-card,
+.snapshot-baseline,
+.snapshot-risk-flags,
+.snapshot-note {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.snapshot-hero {
+  padding: 28px;
+}
+
+.module-label {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 760px;
+  margin-bottom: 10px;
+  font-size: clamp(32px, 6vw, 52px);
+  line-height: 1.05;
+}
+
+h2 {
+  margin-bottom: 8px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.snapshot-hero p,
+.snapshot-header p {
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.governance-snapshot {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 22px;
+}
+
+.snapshot-interpretation {
+  margin-bottom: 0;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.snapshot-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  box-shadow: none;
+}
+
+.metric-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.metric-value {
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.metric-band {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.snapshot-card p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.snapshot-baseline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+  box-shadow: none;
+}
+
+.snapshot-baseline div {
+  display: grid;
+  gap: 3px;
+}
+
+.snapshot-baseline strong {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.snapshot-baseline span {
+  font-weight: 900;
+}
+
+.snapshot-note {
+  background: #fffaf0;
+  border-color: #d8c69f;
+  color: var(--warning);
+  padding: 14px 16px;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.snapshot-risk-flags {
+  padding: 16px;
+  box-shadow: none;
+}
+
+.snapshot-risk-flags ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.snapshot-risk-flags li {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.snapshot-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+button,
+.secondary-action {
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 900;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+button {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .snapshot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .paysim-shell {
+    width: min(100vw - 20px, 1120px);
+    padding-top: 12px;
+  }
+
+  .snapshot-hero,
+  .governance-snapshot {
+    padding: 18px;
+  }
+
+  .snapshot-grid,
+  .snapshot-baseline {
+    grid-template-columns: 1fr;
+  }
+
+  .snapshot-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
