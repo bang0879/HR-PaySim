@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createAggregateLogPayload, type AggregateConsentState } from "../../lib/hr-paysim/consent.ts";
+import { getInterpretation } from "../../lib/hr-paysim/copy.ts";
 import { createPrototypeMemoPreviewText } from "../../lib/hr-paysim/memo.ts";
+import { PAY_SIM_STEPS } from "../../routes/hr-paysim/stepRegistry.ts";
 import {
   allScenarioMeta,
   bandLabel,
@@ -18,16 +20,7 @@ import {
   type ScenarioMeta,
 } from "../../lib/hr-paysim/prototypeViewModel.ts";
 
-const steps = [
-  { title: "시작", subtitle: "모드 선택", route: "/hr-paysim/entry" },
-  { title: "입력", subtitle: "데이터 입력", route: "/hr-paysim/intake" },
-  { title: "확인", subtitle: "입력 내용 확인", route: "/hr-paysim/aggregate-review" },
-  { title: "진단", subtitle: "보상 진단 & 해석", route: "/hr-paysim/diagnosis" },
-  { title: "시나리오", subtitle: "추천 시나리오", route: "/hr-paysim/recommendations" },
-  { title: "AI 확인", subtitle: "AI 관련 추가 확인", route: "/hr-paysim/ai-check" },
-  { title: "비교", subtitle: "의사결정 비교", route: "/hr-paysim/comparison" },
-  { title: "메모", subtitle: "의사결정 메모", route: "/hr-paysim/memo-preview" },
-];
+const steps = PAY_SIM_STEPS;
 
 const modes: Record<PrototypeMode, { label: string; shortLabel: string; description: string; button: string; icon: string }> = {
   hrPrism: {
@@ -57,7 +50,8 @@ const controlTexts = [
   "시작 방법을 선택하면 입력 단계로 이동합니다.",
   "집계 수준의 회사 보상 정보를 입력합니다.",
   "입력한 내용이 진단에 충분한지 확인합니다.",
-  "현재 보상 거버넌스 상태와 다음 질문을 확인합니다.",
+  "현재 보상 거버넌스 상태를 계산값으로 확인합니다.",
+  "진단 신호가 의미하는 결정 질문을 해석합니다.",
   "먼저 비교할 만한 시나리오를 선택합니다.",
   "AI 도구 맥락이 보상 의사결정에 주는 영향을 점검합니다.",
   "얻는 것과 감수할 것을 같은 표에서 비교합니다.",
@@ -68,23 +62,41 @@ const routeIndex = new Map(steps.map((step, index) => [step.route, index]));
 
 type MemoCopyStatus = "idle" | "copied" | "fallback";
 
+const PROTOTYPE_SESSION_STORAGE_KEY = "hr-paysim-prototype-session-v1";
+
+interface PrototypeStoredSession {
+  currentStep: number;
+  highestUnlocked: number;
+  mode: PrototypeMode;
+  form: PrototypeFormState;
+  selectedScenarioKey: PrototypeScenarioKey;
+  staleSteps: number[];
+  memoSaved: boolean;
+  consent: AggregateConsentState;
+}
+
 export function PrototypePaySimApp() {
   const shellRef = useRef<HTMLDivElement>(null);
-  const [currentStep, setCurrentStep] = useState(() => guardedStepFromPath(window.location.pathname, 0));
-  const [highestUnlocked, setHighestUnlocked] = useState(() => guardedStepFromPath(window.location.pathname, 0));
-  const [mode, setMode] = useState<PrototypeMode>("hrPrism");
-  const [form, setForm] = useState<PrototypeFormState>(prototypeSampleForm);
-  const [selectedScenarioKey, setSelectedScenarioKey] = useState<PrototypeScenarioKey>("band");
-  const [staleSteps, setStaleSteps] = useState<number[]>([]);
-  const [memoSaved, setMemoSaved] = useState(false);
+  const initialSessionRef = useRef<PrototypeStoredSession | null | undefined>(undefined);
+  if (initialSessionRef.current === undefined) initialSessionRef.current = loadPrototypeStoredSession();
+  const initialSession = initialSessionRef.current;
+  const initialRouteStep = guardedStepFromPath(window.location.pathname, initialSession?.highestUnlocked ?? 0);
+  const [currentStep, setCurrentStep] = useState(initialRouteStep);
+  const [highestUnlocked, setHighestUnlocked] = useState(() => Math.max(initialRouteStep, initialSession?.highestUnlocked ?? 0));
+  const [mode, setMode] = useState<PrototypeMode>(initialSession?.mode ?? "hrPrism");
+  const [form, setForm] = useState<PrototypeFormState>(initialSession?.form ?? prototypeSampleForm);
+  const [selectedScenarioKey, setSelectedScenarioKey] = useState<PrototypeScenarioKey>(initialSession?.selectedScenarioKey ?? "band");
+  const [staleSteps, setStaleSteps] = useState<number[]>(initialSession?.staleSteps ?? []);
+  const [memoSaved, setMemoSaved] = useState(initialSession?.memoSaved ?? false);
   const [memoCopyStatus, setMemoCopyStatus] = useState<MemoCopyStatus>("idle");
-  const [consent, setConsent] = useState<AggregateConsentState>({
-    consentForAggregateAnalysis: false,
-    allowCompanyName: false,
-    companyName: "",
-  });
+  const [consent, setConsent] = useState<AggregateConsentState>(
+    initialSession?.consent ?? {
+      consentForAggregateAnalysis: false,
+      allowCompanyName: false,
+      companyName: "",
+    },
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
   const presentation = useMemo(
     () => createPrototypePresentation({ form, mode, selectedScenarioKey }),
     [form, mode, selectedScenarioKey],
@@ -110,7 +122,7 @@ export function PrototypePaySimApp() {
     [aggregatePayload, consent, currentStep, fieldErrors, form, memoCopyStatus, memoSaved, mode, presentation, selectedScenarioKey],
   );
   const stepperHtml = useMemo(() => renderStepper(currentStep, highestUnlocked, staleSteps), [currentStep, highestUnlocked, staleSteps]);
-  const activeTop = currentStep <= 2 ? 0 : currentStep === 3 ? 1 : currentStep <= 5 ? 2 : currentStep === 6 ? 3 : 4;
+  const activeTop = currentStep <= 2 ? 0 : currentStep === 3 ? 1 : currentStep === 4 ? 2 : currentStep <= 6 ? 3 : currentStep === 7 ? 4 : 5;
   const inputWarning = currentStep === 1 ? Object.values(fieldErrors).find(Boolean) ?? "" : "";
   const nextDisabled = currentStep === 1 && Boolean(inputWarning);
 
@@ -153,6 +165,24 @@ export function PrototypePaySimApp() {
     };
   }, [highestUnlocked]);
 
+  useEffect(() => {
+    const storedForm: PrototypeFormState = { ...form, notes: "" };
+    const storedConsent: AggregateConsentState = {
+      ...consent,
+      companyName: consent.allowCompanyName ? consent.companyName : "",
+    };
+    const payload: PrototypeStoredSession = {
+      currentStep,
+      highestUnlocked,
+      mode,
+      form: storedForm,
+      selectedScenarioKey,
+      staleSteps,
+      memoSaved,
+      consent: storedConsent,
+    };
+    window.sessionStorage.setItem(PROTOTYPE_SESSION_STORAGE_KEY, JSON.stringify(payload));
+  }, [consent, currentStep, form, highestUnlocked, memoSaved, mode, selectedScenarioKey, staleSteps]);
   function goToStep(step: number, push = true) {
     const bounded = Math.max(0, Math.min(steps.length - 1, step));
     if (bounded > highestUnlocked) return;
@@ -195,6 +225,7 @@ export function PrototypePaySimApp() {
     setMemoCopyStatus("idle");
     setConsent({ consentForAggregateAnalysis: false, allowCompanyName: false, companyName: "" });
     setFieldErrors({});
+    window.sessionStorage.removeItem(PROTOTYPE_SESSION_STORAGE_KEY);
     window.history.replaceState(null, "", steps[0].route);
   }
 
@@ -222,8 +253,8 @@ export function PrototypePaySimApp() {
     if (scenarioButton) {
       setSelectedScenarioKey((scenarioButton.dataset.scenario as PrototypeScenarioKey) ?? "band");
       setMemoCopyStatus("idle");
-      setHighestUnlocked((current) => Math.max(current, 6));
-      setStaleSteps((current) => current.filter((step) => step !== 6 && step !== 7));
+      setHighestUnlocked((current) => Math.max(current, 7));
+      setStaleSteps((current) => current.filter((step) => step !== 7 && step !== 8));
       return;
     }
 
@@ -238,8 +269,8 @@ export function PrototypePaySimApp() {
     if (action === "back") goToStep(currentStep - 1);
     if (action === "reset") reset();
     if (action === "mark-stale") {
-      setHighestUnlocked((current) => Math.max(current, 6));
-      markStaleFrom(4);
+      setHighestUnlocked((current) => Math.max(current, 7));
+      markStaleFrom(5);
     }
   }
 
@@ -306,7 +337,7 @@ export function PrototypePaySimApp() {
             </div>
           </div>
           <nav className="topnav" aria-label="주요 화면">
-            {["대시보드", "진단", "시나리오", "비교", "메모"].map((label, index) => (
+            {["대시보드", "진단", "해석", "시나리오", "비교", "메모"].map((label, index) => (
               <button className={`topnav-pill ${index === activeTop ? "is-active" : ""}`} type="button" key={label}>{label}</button>
             ))}
           </nav>
@@ -326,7 +357,7 @@ export function PrototypePaySimApp() {
         </header>
 
         <div className="app-body">
-          <aside className="flow-rail" aria-label="8단계 진행 상태">
+          <aside className="flow-rail" aria-label="9단계 진행 상태">
             <nav className="stepper" id="stepper" dangerouslySetInnerHTML={{ __html: stepperHtml }} />
             <div className="status-legend" aria-label="상태 안내">
               <strong>상태 안내</strong>
@@ -342,7 +373,7 @@ export function PrototypePaySimApp() {
             <footer className="flow-controls">
               <button className="secondary-button" type="button" data-action="back" disabled={currentStep === 0}>← 이전 단계</button>
               <div className="control-copy" id="controlCopy">
-                {inputWarning || (memoSaved && currentStep === 7 ? "메모 초안이 브라우저 세션에 저장된 상태로 표시되었습니다." : controlTexts[currentStep])}
+                {inputWarning || (memoSaved && currentStep === steps.length - 1 ? "메모 초안이 브라우저 세션에 저장된 상태로 표시되었습니다." : controlTexts[currentStep])}
               </div>
               <button className="primary-button" type="button" data-action="next" disabled={nextDisabled}>
                 {currentStep === steps.length - 1 ? (memoSaved ? "저장됨 ✓" : "메모 초안 저장 ↓") : `${nextLabel(currentStep)} →`}
@@ -355,14 +386,73 @@ export function PrototypePaySimApp() {
   );
 }
 
+function loadPrototypeStoredSession(): PrototypeStoredSession | null {
+  try {
+    const raw = window.sessionStorage.getItem(PROTOTYPE_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PrototypeStoredSession>;
+    const highestUnlocked = clampStepIndex(parsed.highestUnlocked);
+    return {
+      currentStep: clampStepIndex(parsed.currentStep),
+      highestUnlocked,
+      mode: isPrototypeMode(parsed.mode) ? parsed.mode : "hrPrism",
+      form: sanitizeStoredForm(parsed.form),
+      selectedScenarioKey: isPrototypeScenarioKey(parsed.selectedScenarioKey) ? parsed.selectedScenarioKey : "band",
+      staleSteps: normalizeStoredSteps(parsed.staleSteps, highestUnlocked),
+      memoSaved: Boolean(parsed.memoSaved),
+      consent: normalizeStoredConsent(parsed.consent),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeStoredForm(value: unknown): PrototypeFormState {
+  if (!value || typeof value !== "object") return prototypeSampleForm;
+  return { ...prototypeSampleForm, ...(value as Partial<PrototypeFormState>), notes: "" };
+}
+
+function normalizeStoredConsent(value: unknown): AggregateConsentState {
+  if (!value || typeof value !== "object") {
+    return { consentForAggregateAnalysis: false, allowCompanyName: false, companyName: "" };
+  }
+  const consent = value as Partial<AggregateConsentState>;
+  const allowCompanyName = Boolean(consent.allowCompanyName);
+  return {
+    consentForAggregateAnalysis: Boolean(consent.consentForAggregateAnalysis),
+    allowCompanyName,
+    companyName: allowCompanyName ? consent.companyName ?? "" : "",
+  };
+}
+
+function normalizeStoredSteps(value: unknown, highestUnlocked: number): number[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(Number).filter((step) => Number.isInteger(step) && step >= 0 && step <= highestUnlocked && step < steps.length);
+}
+
+function clampStepIndex(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric)) return 0;
+  return Math.max(0, Math.min(steps.length - 1, numeric));
+}
+
+function isPrototypeMode(value: unknown): value is PrototypeMode {
+  return value === "hrPrism" || value === "direct" || value === "sample";
+}
+
+function isPrototypeScenarioKey(value: unknown): value is PrototypeScenarioKey {
+  return value === "current" || value === "inversion" || value === "band" || value === "forecast" || value === "ai" || value === "senior";
+}
 function guardedStepFromPath(pathname: string, highestUnlocked: number): number {
   const matched = routeIndex.get(pathname) ?? 0;
   return Math.min(matched, highestUnlocked);
 }
 
 function nextLabel(currentStep: number): string {
-  if (currentStep === 5) return "비교로 이동";
-  if (currentStep === 6) return "메모 미리보기 열기";
+  if (currentStep === 4) return "시나리오 보기";
+  if (currentStep === 5) return "AI 확인으로 이동";
+  if (currentStep === 6) return "비교로 이동";
+  if (currentStep === 7) return "메모 미리보기 열기";
   return "다음으로";
 }
 
@@ -389,8 +479,8 @@ function screenHeader(stepIndex: number): string {
 
 function headerActions(stepIndex: number): string {
   if (stepIndex === 3 || stepIndex === 4) return `<button class="outline-button" type="button" data-action="mark-stale">↻ 데이터 변경됨</button><button class="outline-button" type="button" data-step="1">입력으로 돌아가기</button>`;
-  if (stepIndex === 5) return `<button class="outline-button" type="button">AI 도구 맥락 보기</button>`;
-  if (stepIndex === 6) return `<button class="outline-button" type="button" data-action="next-inline">메모 미리보기</button>`;
+  if (stepIndex === 6) return `<button class="outline-button" type="button">AI 도구 맥락 보기</button>`;
+  if (stepIndex === 7) return `<button class="outline-button" type="button" data-action="next-inline">메모 미리보기</button>`;
   return "";
 }
 
@@ -412,9 +502,10 @@ function renderScreen(
   if (stepIndex === 1) return renderIntake(props.form, props.fieldErrors);
   if (stepIndex === 2) return renderSummary(props.mode, props.presentation);
   if (stepIndex === 3) return renderDiagnosis(props.presentation);
-  if (stepIndex === 4) return renderScenarios(props.presentation, props.selectedScenarioKey);
-  if (stepIndex === 5) return renderAiCheck(props.presentation);
-  if (stepIndex === 6) return renderComparison(props.presentation);
+  if (stepIndex === 4) return renderInterpretation(props.presentation);
+  if (stepIndex === 5) return renderScenarios(props.presentation, props.selectedScenarioKey);
+  if (stepIndex === 6) return renderAiCheck(props.presentation);
+  if (stepIndex === 7) return renderComparison(props.presentation);
   return renderMemo(props.presentation, props.memoSaved, props.memoCopyStatus, props.consent, props.aggregatePayload);
 }
 
@@ -435,9 +526,19 @@ function renderDiagnosis(presentation: PrototypePresentation): string {
   const preview = recommendationMetas(presentation).slice(0, 4);
   const selected = presentation.selectedScenario;
   const selectedRow = presentation.comparison.rows.find((row) => row.scenarioId === selected.id) ?? presentation.comparison.rows[0];
-  return `<p class="screen-intro">입력 데이터를 바탕으로 현재 보상 거버넌스 상태를 진단하고, 핵심 이슈와 다음 질문을 제안합니다.</p><div class="content-with-aside"><section class="main-stack"><article class="panel snapshot-card"><h3>현재 보상 거버넌스 스냅샷</h3><div class="metric-row">${heroMetric(presentation)}${metricCard("CED (예외 누적 수준)", String(presentation.diagnosis.cedScore), "/100", bandLabel(presentation.diagnosis.cedScore, false), "입력값에서 재계산", gaugeMini(presentation.diagnosis.cedScore))}${riskMetric(presentation)}${payrollMetric(presentation)}</div><p class="source-line">진단 기준: HR PaySim 내부 보상 거버넌스 규칙</p></article><article class="panel scenario-preview"><h3>추천 시나리오 미리보기 <small>(상위 추천)</small></h3><div class="preview-grid">${preview.map((scenario, index) => previewCard(`${index + 1}순위`, scenario.icon, scenario.title, scenario.reasons[0] ?? "", previewValueForScenario(presentation, scenario), "영향")).join("")}<article class="mini-preview muted"><span>${icon("list")}</span><strong>다른 안도 보기</strong><p>AI 도구 + 채용 속도 조정 등 다른 시나리오도 확인할 수 있습니다.</p><button class="outline-button" type="button" data-action="next-inline">전체 보기</button></article></div></article><article class="panel comparison-preview"><h3>의사결정 비교 미리보기 <small>(계산값)</small></h3><div class="tiny-table"><span>안</span><span>연간 비용 영향</span><span>CEI 변화</span><span>CED 변화</span><span>얻는 것</span><span>감수할 것</span><strong>${selected.title}</strong><span>${formatWonEok(selectedRow?.annualCostImpact ?? 0)}</span><span class="delta ${selectedRow?.explainabilityChange && selectedRow.explainabilityChange > 0 ? "down" : "up"}">${signedNumber(selectedRow?.explainabilityChange ?? 0)}</span><span class="delta ${selectedRow?.exceptionDebtChange && selectedRow.exceptionDebtChange < 0 ? "down" : "up"}">${signedNumber(selectedRow?.exceptionDebtChange ?? 0)}</span><span>${selected.gain[0]}</span><span>${selected.tradeoff[0]}</span></div></article></section><aside class="aside-stack"><article class="side-card expert-card"><h3>${icon("spark")}전문가 해석</h3>${insight("chat", presentation.memo.currentIssue)}${insight("alert", `급여 역전 위험은 ${severityLabel(presentation.diagnosis.payInversionSeverity)} 수준입니다.`)}${insight("team", `채용 계획은 현재 인원의 ${formatPercent(presentation.diagnosis.payrollIncreaseRate)}입니다.`)}</article><article class="side-card decision-question"><span class="question-dot">?</span><h3>다음으로 답해야 할 질문</h3><h2>어떤 보상 의사결정안을 먼저 비교해봐야 할까요?</h2><p>지금 진단 결과를 기준으로 가장 영향이 큰 의사결정안부터 비교해볼 수 있습니다.</p><button class="primary-button full" type="button" data-action="next-inline">추천 시나리오 보기 →</button></article></aside></div>`;
+  return `<p class="screen-intro">입력 데이터를 바탕으로 현재 보상 거버넌스 상태를 먼저 진단합니다. 다음 단계에서 이 신호가 어떤 의사결정 질문으로 이어지는지 해석합니다.</p><div class="content-with-aside"><section class="main-stack"><article class="panel snapshot-card"><h3>현재 보상 거버넌스 스냅샷</h3><div class="metric-row">${heroMetric(presentation)}${metricCard("CED (예외 누적 수준)", String(presentation.diagnosis.cedScore), "/100", bandLabel(presentation.diagnosis.cedScore, false), "입력값에서 재계산", gaugeMini(presentation.diagnosis.cedScore))}${riskMetric(presentation)}${payrollMetric(presentation)}</div><p class="source-line">진단 기준: HR PaySim 내부 보상 거버넌스 규칙</p></article><article class="panel scenario-preview"><h3>추천 시나리오 미리보기 <small>(상위 추천)</small></h3><div class="preview-grid">${preview.map((scenario, index) => previewCard(`${index + 1}순위`, scenario.icon, scenario.title, scenario.reasons[0] ?? "", previewValueForScenario(presentation, scenario), "영향")).join("")}<article class="mini-preview muted"><span>${icon("list")}</span><strong>다른 안도 보기</strong><p>AI 도구 + 채용 속도 조정 등 다른 시나리오도 확인할 수 있습니다.</p><button class="outline-button" type="button" data-action="next-inline">해석 먼저 보기</button></article></div></article><article class="panel comparison-preview"><h3>의사결정 비교 미리보기 <small>(계산값)</small></h3><div class="tiny-table"><span>안</span><span>연간 비용 영향</span><span>CEI 변화</span><span>CED 변화</span><span>얻는 것</span><span>감수할 것</span><strong>${selected.title}</strong><span>${formatWonEok(selectedRow?.annualCostImpact ?? 0)}</span><span class="delta ${selectedRow?.explainabilityChange && selectedRow.explainabilityChange > 0 ? "down" : "up"}">${signedNumber(selectedRow?.explainabilityChange ?? 0)}</span><span class="delta ${selectedRow?.exceptionDebtChange && selectedRow.exceptionDebtChange < 0 ? "down" : "up"}">${signedNumber(selectedRow?.exceptionDebtChange ?? 0)}</span><span>${selected.gain[0]}</span><span>${selected.tradeoff[0]}</span></div></article></section><aside class="aside-stack"><article class="side-card expert-card"><h3>${icon("spark")}전문가 해석</h3>${insight("chat", presentation.memo.currentIssue)}${insight("alert", `급여 역전 위험은 ${severityLabel(presentation.diagnosis.payInversionSeverity)} 수준입니다.`)}${insight("team", `채용 계획은 현재 인원의 ${formatPercent(presentation.diagnosis.payrollIncreaseRate)}입니다.`)}</article><article class="side-card decision-question"><span class="question-dot">?</span><h3>다음으로 답해야 할 질문</h3><h2>이 진단 신호가 어떤 의사결정 질문으로 이어질까요?</h2><p>다음 해석 단계에서 얻는 것과 감수할 것을 먼저 정리한 뒤 추천 시나리오로 넘어갑니다.</p><button class="primary-button full" type="button" data-action="next-inline">전문가 해석 보기 →</button></article></aside></div>`;
 }
 
+function renderInterpretation(presentation: PrototypePresentation): string {
+  const interpretation = getInterpretation({
+    ceiBand: presentation.diagnosis.ceiBand,
+    cedBand: presentation.diagnosis.cedBand,
+    payInversionSeverity: presentation.diagnosis.payInversionSeverity,
+    payrollIncreaseRate: presentation.diagnosis.payrollIncreaseRate,
+  });
+  const caution = interpretation.caution ? memoRow("warning", "주의", [interpretation.caution]) : "";
+  return `<div class="content-with-aside"><section class="main-stack"><div class="info-banner large">${icon("spark")}<div><h2>${interpretation.headline}</h2><p>${interpretation.body}</p></div></div><article class="memo-preview panel">${memoRow("chat", "핵심 해석", [presentation.memo.currentIssue])}${memoRow("list", "해석 근거", interpretation.supportingPoints)}${memoRow("scale", "얻는 것과 감수할 것", ["얻는 것은 내부 설명 가능성과 기준 정리입니다.", "감수할 것은 정책 정리와 커뮤니케이션 부담입니다."])}${caution}</article></section><aside class="aside-stack"><article class="side-card"><h3>${icon("target")}다음 결정 질문</h3><h2>어떤 보상 의사결정안을 먼저 비교할까요?</h2><p>해석 결과를 기준으로 현 상태 유지, 급여 역전 해소, 밴드 재설계, AI 도구 검토를 비교합니다.</p><button class="primary-button full" type="button" data-action="next-inline">추천 시나리오 보기 →</button></article><article class="side-card blue-tint"><h3>해석 기준</h3>${checkRow("CEI", `${presentation.diagnosis.ceiScore}/100 · ${bandLabel(presentation.diagnosis.ceiScore)}`)}${checkRow("CED", `${presentation.diagnosis.cedScore}/100 · ${bandLabel(presentation.diagnosis.cedScore, false)}`)}${checkRow("보상 역전", severityLabel(presentation.diagnosis.payInversionSeverity))}${checkRow("채용 압력", formatPercent(presentation.diagnosis.payrollIncreaseRate))}</article></aside></div>`;
+}
 function renderScenarios(presentation: PrototypePresentation, selectedKey: PrototypeScenarioKey): string {
   const recommended = recommendationMetas(presentation);
   const optional = allScenarioMeta().filter((scenario) => !recommended.some((item) => item.key === scenario.key));
@@ -453,7 +554,7 @@ function renderComparison(presentation: PrototypePresentation): string {
   const current = scenarioMetaForId("baseline_current_state");
   const band = scenarioMetaForId("redesign_salary_bands");
   const ai = scenarioMetaForId("ai_tooling_check");
-  return `<div class="content-with-aside"><section class="main-stack"><div class="info-banner">${icon("info")}<div><h2>가장 비용이 낮은 안이 항상 가장 좋은 안은 아닙니다.</h2><p>선택한 보상 의사결정들을 기준 시나리오와 비교하여, 얻는 것과 감수할 것을 함께 확인합니다.</p></div><button class="outline-button" type="button" data-action="next-inline">메모 미리보기</button></div><article class="matrix-card"><div class="comparison-matrix"><div class="matrix-head empty"></div><div class="matrix-head">기준선<br /><small>(Baseline)</small></div><div class="matrix-head">${icon(current.icon)}${current.title}</div><div class="matrix-head">${icon(band.icon)}${band.title}</div><div class="matrix-head">${icon(ai.icon)}${ai.title}</div>${matrixRows(presentation)}</div></article><article class="gain-loss-card"><div class="gain-loss-row"><strong>${icon("thumb")}얻는 것</strong><ul>${current.gain.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${band.gain.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${ai.gain.map((item) => `<li>${item}</li>`).join("")}</ul></div><div class="gain-loss-row"><strong>${icon("alert")}감수할 것</strong><ul>${current.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${band.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${ai.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul></div></article></section><aside class="aside-stack"><article class="side-card"><h3>대표 관점 해석</h3>${methodRow("coin", "비용 관점", "현재 상태 유지는 추가 조정 비용이 낮고, AI 도구 안은 실행 가정 검증이 필요합니다.")}${methodRow("shield", "리스크 관점", "연봉 밴드 재설계가 보상 구조 안정화와 역전 리스크 완화에 가장 효과적입니다.")}${methodRow("team", "실행 관점", "비용, 설명 가능성, 실행 부담을 함께 봐야 합니다.")}</article><article class="side-card callout"><h3>추천 다음 결정</h3><p>비교 결과를 바탕으로, 조직이 더 중요하게 보는 관점을 기준으로 최종 안을 선택하세요.</p><button class="primary-button full" type="button" data-action="next-inline">선택한 안으로 메모 작성 →</button><button class="secondary-button full" type="button" data-step="4">추천 시나리오로 돌아가기</button></article></aside></div>`;
+  return `<div class="content-with-aside"><section class="main-stack"><div class="info-banner">${icon("info")}<div><h2>가장 비용이 낮은 안이 항상 가장 좋은 안은 아닙니다.</h2><p>선택한 보상 의사결정들을 기준 시나리오와 비교하여, 얻는 것과 감수할 것을 함께 확인합니다.</p></div><button class="outline-button" type="button" data-action="next-inline">메모 미리보기</button></div><article class="matrix-card"><div class="comparison-matrix"><div class="matrix-head empty"></div><div class="matrix-head">기준선<br /><small>(Baseline)</small></div><div class="matrix-head">${icon(current.icon)}${current.title}</div><div class="matrix-head">${icon(band.icon)}${band.title}</div><div class="matrix-head">${icon(ai.icon)}${ai.title}</div>${matrixRows(presentation)}</div></article><article class="gain-loss-card"><div class="gain-loss-row"><strong>${icon("thumb")}얻는 것</strong><ul>${current.gain.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${band.gain.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${ai.gain.map((item) => `<li>${item}</li>`).join("")}</ul></div><div class="gain-loss-row"><strong>${icon("alert")}감수할 것</strong><ul>${current.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${band.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul><ul>${ai.tradeoff.map((item) => `<li>${item}</li>`).join("")}</ul></div></article></section><aside class="aside-stack"><article class="side-card"><h3>대표 관점 해석</h3>${methodRow("coin", "비용 관점", "현재 상태 유지는 추가 조정 비용이 낮고, AI 도구 안은 실행 가정 검증이 필요합니다.")}${methodRow("shield", "리스크 관점", "연봉 밴드 재설계가 보상 구조 안정화와 역전 리스크 완화에 가장 효과적입니다.")}${methodRow("team", "실행 관점", "비용, 설명 가능성, 실행 부담을 함께 봐야 합니다.")}</article><article class="side-card callout"><h3>추천 다음 결정</h3><p>비교 결과를 바탕으로, 조직이 더 중요하게 보는 관점을 기준으로 최종 안을 선택하세요.</p><button class="primary-button full" type="button" data-action="next-inline">선택한 안으로 메모 작성 →</button><button class="secondary-button full" type="button" data-step="5">추천 시나리오로 돌아가기</button></article></aside></div>`;
 }
 
 function renderMemo(

@@ -19,3 +19,6 @@ Revisit this decision if any of the following becomes true:
 - Auth, API routes, server actions, or server-side aggregate logging become v1.0 requirements.
 - HR Prism exposes a shared component system that HR PaySim must import directly.
 
+## 2026-07-06 Reaffirmation
+
+External feedback mentioned Next.js App Router, but that instruction was corrected as a mistaken direction. This repository now keeps the Vite + React runtime because the app shell, TypeScript setup, tests, and production build are already working. Revisit Next.js only if HR Prism and HR PaySim must share one deployed app, server routes, auth, or a shared App Router layout.

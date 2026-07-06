@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --page: #e9edf3;
   --app: #ffffff;
   --surface: #ffffff;
@@ -126,7 +126,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .step-button {
   position: relative;
   width: 100%;
-  min-height: 58px;
+  min-height: 68px;
   display: grid;
   grid-template-columns: 34px 22px 1fr;
   align-items: center;

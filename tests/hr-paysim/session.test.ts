@@ -9,6 +9,7 @@ import {
   updateInputDraft,
   updateScenarioAssumptions,
 } from "../../src/lib/hr-paysim/session.ts";
+import { PAY_SIM_STEPS } from "../../src/routes/hr-paysim/stepRegistry.ts";
 
 test("createInitialSession starts at entry with no completed steps", () => {
   const session = createInitialSession();
@@ -68,4 +69,20 @@ test("loadSession falls back to a clean session on invalid JSON", () => {
     removeItem: () => undefined,
   };
   assert.equal(loadSession(storage).currentStep, "entry");
+});
+
+test("PAY_SIM_STEPS preserves the 9-step flow with interpretation separated", () => {
+  assert.deepEqual(PAY_SIM_STEPS.map((step) => step.id), [
+    "entry",
+    "intake",
+    "aggregate_review",
+    "diagnosis",
+    "interpretation",
+    "recommendations",
+    "ai_check",
+    "comparison",
+    "memo_preview",
+  ]);
+  assert.equal(PAY_SIM_STEPS[4]?.route, "/hr-paysim/interpretation");
+  assert.equal(PAY_SIM_STEPS.length, 9);
 });
