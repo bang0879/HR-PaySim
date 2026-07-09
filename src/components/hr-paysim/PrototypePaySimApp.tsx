@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { createAggregateLogPayload, type AggregateConsentState } from "../../lib/hr-paysim/consent.ts";
 import { getInterpretation } from "../../lib/hr-paysim/copy.ts";
 import { createPrototypeMemoPreviewText } from "../../lib/hr-paysim/memo.ts";
@@ -342,6 +342,7 @@ export function PrototypePaySimApp() {
             ))}
           </nav>
           <div className="topbar-actions">
+            <a className="outline-button route-link" href="/hr-paysim/roster">Roster 진단</a>
             <label className="search-box">
               <span aria-hidden="true">⌕</span>
               <input type="search" placeholder="검색 (⌘K)" aria-label="검색" />
