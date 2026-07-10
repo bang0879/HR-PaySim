@@ -12,6 +12,14 @@ The July HR Prism sprint must capture PaySim follow-up signals before HR PaySim 
 
 The goal is not to turn HR Prism into PaySim. The goal is to identify whether a founder has compensation explainability risk worth a facilitated PaySim deep-dive.
 
+## Probe / PaySim UX Boundary
+
+HR Prism probes may surface founder concern or intuition, but HR Prism must not run the PaySim Relationship Review Beat itself.
+
+The probe patch must not introduce quiz or prediction mechanics such as asking who earns more, revealing whether the founder guessed correctly, or using surprise-led copy. HR Prism should only classify whether a PaySim follow-up is useful.
+
+The facilitated PaySim session may later surface the founder's natural explanation criteria, but the reveal is roster evidence, not a right/wrong answer.
+
 ## Insert Location
 
 Insert the probes after the HR Prism section that discusses one of:

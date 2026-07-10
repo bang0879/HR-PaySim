@@ -86,6 +86,123 @@ Use loyalty tax / early-member drift as the follow-up hook:
 
 > 장기 근속자가 최근 입사자와 비교하는 순간, 오래 남은 것이 손해였다는 신호로 읽힐 수 있습니다.
 
+## Relationship Review Beat Contract
+
+The synthetic demo and facilitated walkthrough should use the Relationship Review Beat as the core interaction.
+
+Sequence:
+
+1. **Context**: Show the finding's relationship or distribution without asking the founder to guess a hidden answer.
+2. **Intuition Surfacing**: Ask which explanation basis the founder would naturally reach for.
+3. **Evidence Reveal**: Show the roster-based row relationship, salary gap, seniority or distribution basis, and why the relationship may be hard to defend.
+4. **Founder Explanation**: Capture structured reason code(s), not raw free text.
+5. **Classification**: Use labels specific to the finding type.
+6. **Memo Capture**: Add the relationship evidence, classification, reason code, and safe note to the memo preview.
+
+Forbidden mechanics:
+
+- binary "who gets paid more" prediction,
+- right/wrong reveal,
+- "most founders do not know" copy,
+- surprise for its own sake,
+- raw quote capture unless explicit quote consent exists.
+
+Allowed intuition prompt pattern:
+
+> 이 관계를 설명한다면 어떤 기준을 먼저 확인하시겠습니까?
+
+## Finding Classification Contract
+
+Relationship findings use this classification set:
+
+```ts
+export type RelationshipFindingType =
+  | "pay_inversion"
+  | "loyalty_tax"
+  | "level_fiction_band_overlap";
+
+export type RelationshipFindingClassification =
+  | "explained"
+  | "explainable_but_undocumented"
+  | "fragile"
+  | "unanswered";
+```
+
+Labels:
+
+- `explained`: the founder has a defensible, documented reason that can be stated without revealing sensitive personal detail.
+- `explainable_but_undocumented`: the reason may be legitimate, but the roster/memo evidence lacks documentation or shared language.
+- `fragile`: the reason exists but would be weak, inconsistent, too person-specific, or likely to create another comparison problem.
+- `unanswered`: Kyle and the founder cannot yet explain the relationship with available context.
+
+Distribution findings use this classification set:
+
+```ts
+export type DistributionFindingType = "shadow_band";
+
+export type DistributionFindingClassification =
+  | "intentional_but_unnamed"
+  | "emerged_unintentionally"
+  | "needs_role_language"
+  | "not_actionable_yet";
+```
+
+Labels:
+
+- `intentional_but_unnamed`: the distribution reflects a real internal principle, but the company has not named it as a band, level, or role language.
+- `emerged_unintentionally`: the distribution appears to have formed through ad hoc decisions rather than a deliberate structure.
+- `needs_role_language`: the distribution may be useful, but the company needs role, level, or scope language before action.
+- `not_actionable_yet`: the pattern is visible but too low-confidence, too sparse, or too context-dependent for a decision.
+
+## Founder Explanation Capture Contract
+
+Founder explanation capture should prefer structured reason codes:
+
+```ts
+export type FounderExplanationReasonCode =
+  | "performance_difference"
+  | "role_scope_difference"
+  | "critical_skill_premium"
+  | "counteroffer"
+  | "new_hire_market_pressure"
+  | "founder_exception"
+  | "promotion_timing"
+  | "data_quality_issue"
+  | "unknown";
+```
+
+Rules:
+
+- Store reason code(s) first.
+- Store a memo-safe note only when needed to make the memo useful.
+- A memo-safe note must be a sanitized paraphrase or selected template, not a raw quote.
+- Do not store names, emails, company names, employee IDs, exact identifying context, or direct quotes without explicit quote consent.
+- Do not persist sensitive raw founder explanation free text in `sessionStorage`.
+- If the founder gives a sensitive explanation, Kyle may translate it into a reason code and omit the note.
+
+## Memo Capture Behavior
+
+The founder memo preview should include:
+
+- finding type,
+- reviewed relationship or distribution,
+- key de-identified row evidence,
+- classification label,
+- structured reason code(s),
+- memo-safe note when available,
+- next decision question.
+
+The memo preview should not include:
+
+- employee names,
+- emails,
+- company names,
+- raw roster paste,
+- sensitive raw founder explanation,
+- direct quote without quote consent,
+- market-correct salary claims,
+- predicted attrition, productivity, replacement, or legal/tax claims.
+
 ## Synthetic Roster Table
 
 This is the representative de-identified sample excerpt from the 42-person company.

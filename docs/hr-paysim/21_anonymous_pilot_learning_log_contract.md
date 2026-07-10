@@ -34,6 +34,51 @@ The log object may only be created after learning-log consent exists.
 
 Direct quotes require separate quote consent. Without quote consent, store only paraphrased reactions or no quote-like content.
 
+## Relationship Review Capture Boundary
+
+Relationship Review Beat capture is product state for the memo, not an anonymous learning log.
+
+The app may later capture structured explanation state for the current memo without creating a learning-log object. That product state must use reason codes first and must avoid sensitive raw free text.
+
+Allowed product-state fields for a future Relationship Review implementation:
+
+```ts
+export interface FounderExplanationCapture {
+  findingId: string;
+  findingType: "shadow_band" | "pay_inversion" | "level_fiction_band_overlap" | "loyalty_tax";
+  classification:
+    | "explained"
+    | "explainable_but_undocumented"
+    | "fragile"
+    | "unanswered"
+    | "intentional_but_unnamed"
+    | "emerged_unintentionally"
+    | "needs_role_language"
+    | "not_actionable_yet";
+  reasonCodes: Array<
+    | "performance_difference"
+    | "role_scope_difference"
+    | "critical_skill_premium"
+    | "counteroffer"
+    | "new_hire_market_pressure"
+    | "founder_exception"
+    | "promotion_timing"
+    | "data_quality_issue"
+    | "unknown"
+  >;
+  memoSafeNote?: string;
+}
+```
+
+Rules:
+
+- `memoSafeNote` is optional.
+- `memoSafeNote` must be sanitized, paraphrased, and safe to show in the founder memo.
+- Do not store raw explanation free text in `sessionStorage`.
+- Do not store names, emails, company names, direct identifiers, or raw quotes.
+- Direct quotes still require separate quote consent and belong only in the consented learning-log process, not default memo state.
+- Declining learning-log consent must not block the memo preview.
+
 ## Required Manual Record Shape
 
 ```ts

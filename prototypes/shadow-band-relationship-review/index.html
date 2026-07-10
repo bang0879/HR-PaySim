@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HR PaySim | 보상 구간 검토</title>
+    <link rel="stylesheet" href="../hr-paysim-redesign/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell relationship-prototype shadow-band-prototype">
+      <aside class="utility-rail" aria-label="앱 도구">
+        <div class="utility-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="img">
+            <path d="M7 20.5c0-7.3 4.1-12 9-12s9 4.7 9 12c0 2.2-1.7 3.9-3.8 3.9-2 0-3.4-1.3-4.3-3.2-.4-.8-1.4-.8-1.8 0-.9 1.9-2.3 3.2-4.3 3.2C8.7 24.4 7 22.7 7 20.5Z" fill="currentColor" />
+          </svg>
+        </div>
+        <button class="utility-button" type="button" aria-label="이동"><span aria-hidden="true">→</span></button>
+        <button class="utility-button is-active" type="button" aria-label="보상 구간"><span aria-hidden="true">◎</span></button>
+        <button class="utility-button" type="button" aria-label="메모"><span aria-hidden="true">□</span></button>
+        <button class="utility-button help" type="button" aria-label="도움말"><span aria-hidden="true">?</span></button>
+      </aside>
+
+      <section class="product-shell">
+        <header class="topbar">
+          <div class="brand-lockup">
+            <button class="menu-button" type="button" aria-label="메뉴"><span aria-hidden="true">☰</span></button>
+            <div>
+              <strong>HR PaySim</strong>
+              <span>보상 구간 검토</span>
+            </div>
+          </div>
+          <nav class="topnav" aria-label="검토 화면">
+            <button class="topnav-pill is-active" type="button">분포</button>
+            <button class="topnav-pill" type="button">설명</button>
+            <button class="topnav-pill" type="button">메모</button>
+          </nav>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" data-action="reset" aria-label="초기화">↻</button>
+            <button class="account-button" type="button" aria-label="샘플 화면">
+              <span class="avatar">S</span>
+              <span class="account-copy">샘플 화면<br /><small>저장 없음</small></span>
+            </button>
+          </div>
+        </header>
+
+        <div class="app-body">
+          <aside class="flow-rail" aria-label="검토 진행 상태">
+            <nav class="stepper" id="stepper"></nav>
+            <div class="status-legend" aria-label="안전 원칙">
+              <strong>안전 원칙</strong>
+              <span><i class="dot current"></i>분포만 검토</span>
+              <span><i class="dot locked"></i>개인 이름 없음</span>
+              <span><i class="dot locked"></i>원문 설명 저장 없음</span>
+            </div>
+          </aside>
+
+          <main class="workspace">
+            <section class="screen" id="screen" aria-live="polite">
+              <div class="screen-header">
+                <div>
+                  <h1>제도 없이 생긴 보상 구간을 먼저 봅니다</h1>
+                  <p>제도가 없다고 구조가 없는 것은 아닙니다. 공식 밴드가 없더라도 실제 지급 결과 안에 반복되는 보상 구간이 생겼는지 확인합니다.</p>
+                </div>
+                <div class="screen-actions">
+                  <button class="outline-button" type="button" data-step="judgment">구간 설명하기</button>
+                  <button class="primary-button" type="button" data-step="memo">메모 보기</button>
+                </div>
+              </div>
+
+              <div class="relationship-layout">
+                <section class="review-stack">
+                  <article class="panel review-panel" id="distribution">
+                    <div class="review-heading">
+                      <span class="round-icon" aria-hidden="true" data-icon="target"></span>
+                      <div>
+                        <small>1. 왜 이 분포를 먼저 봅니까?</small>
+                        <h2>Product Engineer 보상이 두 개의 구간으로 몰려 보입니다</h2>
+                        <p>공식 보상 밴드는 없지만, 실제 지급 결과는 6천만원대 후반과 9천만원대 중반으로 나뉘어 보입니다. 이 구간이 의도한 기준인지, 우연히 생긴 구조인지 정리할 필요가 있습니다.</p>
+                      </div>
+                    </div>
+
+                    <div class="distribution-strip" aria-label="보상 구간 요약">
+                      <div class="band-card lower-band">
+                        <span class="band-label">낮은 구간</span>
+                        <strong>6,700-7,200만원</strong>
+                        <em>Product Engineer 4명</em>
+                      </div>
+                      <div class="band-gap-card">
+                        <span>구간 사이 빈 공간</span>
+                        <strong>약 1,800만원</strong>
+                        <em>중간 값이 거의 없음</em>
+                      </div>
+                      <div class="band-card upper-band">
+                        <span class="band-label">높은 구간</span>
+                        <strong>9,000-9,700만원</strong>
+                        <em>Product Engineer 3명</em>
+                      </div>
+                    </div>
+
+                    <div class="band-axis" aria-label="보상 분포 축">
+                      <span class="axis-dot low-one"></span>
+                      <span class="axis-dot low-two"></span>
+                      <span class="axis-dot low-three"></span>
+                      <span class="axis-dot low-four"></span>
+                      <span class="axis-gap">공백</span>
+                      <span class="axis-dot high-one"></span>
+                      <span class="axis-dot high-two"></span>
+                      <span class="axis-dot high-three"></span>
+                    </div>
+
+                    <div class="soft-note evidence-note"><span data-icon="info"></span><span>이 화면은 개인별 연봉의 적정성을 판단하지 않습니다. 이름 없는 보상 구간이 실제로 생겼는지, 앞으로 기준으로 부를 필요가 있는지를 확인합니다.</span></div>
+                  </article>
+
+                  <article class="panel review-panel" id="judgment">
+                    <div class="review-heading compact">
+                      <span class="round-icon" aria-hidden="true" data-icon="layers"></span>
+                      <div>
+                        <small>2. 이 구간은 어떻게 생겼다고 보십니까?</small>
+                        <h2>이 분포에 가장 가까운 설명을 하나만 선택해주세요.</h2>
+                        <p>이 화면은 구간에 이름을 붙이기 위한 기준 정리 화면입니다. 대표님이 이 구간을 다음 보상 기준으로 어떻게 다룰지 선택합니다.</p>
+                      </div>
+                    </div>
+                    <div class="primary-option-grid" id="primaryOptions"></div>
+                  </article>
+
+                  <article class="panel review-panel outcome-panel">
+                    <div class="review-heading compact">
+                      <span class="round-icon" aria-hidden="true" data-icon="shield"></span>
+                      <div>
+                        <small>참고. 구간이 보이지 않을 때도 결과가 있습니다</small>
+                        <h2>보상 구간이 없다는 것은 검토 실패가 아닙니다</h2>
+                        <p>공식 밴드가 없어도 분포가 고르게 퍼져 있을 수 있고, 데이터가 부족해서 아직 판단하기 어려울 수도 있습니다.</p>
+                      </div>
+                    </div>
+                    <div class="outcome-grid">
+                      <div><strong>뚜렷한 구간은 보이지 않습니다</strong><span>현재 입력 기준으로 이름 붙일 만한 반복 구간이 보이지 않습니다.</span></div>
+                      <div><strong>데이터가 아직 부족합니다</strong><span>역할, 기본연봉, 입사 시점이 충분히 정리되어야 분포를 볼 수 있습니다.</span></div>
+                      <div><strong>구간 이름이 필요합니다</strong><span>이미 운영되는 구조라면 다음 보상 리뷰 전에 언어로 정리해야 합니다.</span></div>
+                    </div>
+                  </article>
+                </section>
+
+                <aside class="aside-stack review-aside">
+                  <article class="side-card blue-tint">
+                    <h3><span data-icon="shield"></span>분포는 제도보다 먼저 생길 수 있습니다</h3>
+                    <p>공식 밴드가 없어도 채용, 인상, 역할 변화가 누적되면 실제 보상 구간이 생길 수 있습니다. PaySim은 이름 없는 구조를 먼저 보여줍니다.</p>
+                  </article>
+
+                  <article class="memo-preview panel memo-snippet" id="memo">
+                    <header class="memo-card-title">
+                      <small>3. 다음 기준으로 어떻게 남깁니까?</small>
+                      <h2>보상 구간 메모</h2>
+                    </header>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="info"></span>
+                      <h3>현재 분포</h3>
+                      <ul><li>Product Engineer 보상이 6천만원대 후반과 9천만원대 중반, 두 구간으로 몰려 보입니다.</li></ul>
+                    </section>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="chat"></span>
+                      <h3>대표가 선택한 설명</h3>
+                      <ul id="memoJudgment"></ul>
+                    </section>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="question"></span>
+                      <h3>다음 기준</h3>
+                      <ul id="memoDecision"></ul>
+                    </section>
+                  </article>
+                </aside>
+              </div>
+            </section>
+            <footer class="flow-controls">
+              <button class="secondary-button" type="button" data-action="reset">초기화</button>
+              <div class="control-copy" id="controlCopy">가장 가까운 설명을 선택하면 오른쪽 메모가 바뀝니다.</div>
+              <button class="primary-button" type="button" data-step="judgment">구간 설명하기</button>
+            </footer>
+          </main>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -9,6 +9,8 @@
 - Safe de-identified roster paste/template intake.
 - Client-side normalization into de-identified rows only.
 - Relationship-first findings: `shadow_band`, `pay_inversion`, `level_fiction_band_overlap`, and `loyalty_tax`.
+- Relationship Review Beat as the core facilitated interaction: context, intuition surfacing, evidence reveal, founder explanation, classification, and memo capture.
+- Founder explanation capture uses structured reason codes first, with memo-safe notes only when sanitized.
 - `shadow_band` as the lead synthetic-demo finding when present.
 - Founder-facing Korean interpretation grounded in comparison relationships.
 - Decision options with `얻는 것`, `감수할 것`, `언제 맞는가`, correction floor impact, communication risk impact, and spread risk impact.
@@ -51,6 +53,9 @@
 - No `Total Work Cost` metric.
 - No predicted productivity loss.
 - No predicted replacement cost.
+- No prediction/quiz beat as the default UX.
+- No founder right/wrong reveal.
+- No shaming or surprise-led copy such as "most founders do not know."
 - No `estimatedDoNothingCost`.
 - No individual employee named reporting.
 - No full SaaS, pricing, payment, or cold-funnel work.
@@ -72,6 +77,8 @@
 - URL stores only the current step.
 - Session storage may contain only normalized de-identified rows and app state needed to continue the local flow.
 - Raw pasted roster text must never persist in `sessionStorage`.
+- Sensitive raw founder explanation free text must never persist in `sessionStorage`.
+- Memo notes must exclude names, emails, company names, direct identifiers, and raw quotes without explicit quote consent.
 - If PII-like column headers are detected, strip the offending columns, show a warning, and require explicit confirmation before proceeding.
 - If PII-like values appear inside required fields or row values, block the affected row or the paste if safe stripping is not possible.
 - Manager and team labels must be converted to opaque labels.

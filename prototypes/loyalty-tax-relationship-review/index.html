@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HR PaySim | 장기 근속 보상 검토</title>
+    <link rel="stylesheet" href="../hr-paysim-redesign/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell relationship-prototype loyalty-tax-prototype">
+      <aside class="utility-rail" aria-label="앱 도구">
+        <div class="utility-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="img">
+            <path d="M7 20.5c0-7.3 4.1-12 9-12s9 4.7 9 12c0 2.2-1.7 3.9-3.8 3.9-2 0-3.4-1.3-4.3-3.2-.4-.8-1.4-.8-1.8 0-.9 1.9-2.3 3.2-4.3 3.2C8.7 24.4 7 22.7 7 20.5Z" fill="currentColor" />
+          </svg>
+        </div>
+        <button class="utility-button" type="button" aria-label="이동"><span aria-hidden="true">→</span></button>
+        <button class="utility-button is-active" type="button" aria-label="보상 패턴"><span aria-hidden="true">◎</span></button>
+        <button class="utility-button" type="button" aria-label="메모"><span aria-hidden="true">□</span></button>
+        <button class="utility-button help" type="button" aria-label="도움말"><span aria-hidden="true">?</span></button>
+      </aside>
+
+      <section class="product-shell">
+        <header class="topbar">
+          <div class="brand-lockup">
+            <button class="menu-button" type="button" aria-label="메뉴"><span aria-hidden="true">☰</span></button>
+            <div>
+              <strong>HR PaySim</strong>
+              <span>장기 근속 보상 검토</span>
+            </div>
+          </div>
+          <nav class="topnav" aria-label="검토 화면">
+            <button class="topnav-pill is-active" type="button">패턴</button>
+            <button class="topnav-pill" type="button">이유</button>
+            <button class="topnav-pill" type="button">메모</button>
+          </nav>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" data-action="reset" aria-label="초기화">↻</button>
+            <button class="account-button" type="button" aria-label="샘플 화면">
+              <span class="avatar">S</span>
+              <span class="account-copy">샘플 화면<br /><small>저장 없음</small></span>
+            </button>
+          </div>
+        </header>
+
+        <div class="app-body">
+          <aside class="flow-rail" aria-label="검토 진행 상태">
+            <nav class="stepper" id="stepper"></nav>
+            <div class="status-legend" aria-label="안전 원칙">
+              <strong>안전 원칙</strong>
+              <span><i class="dot current"></i>집단 패턴만 검토</span>
+              <span><i class="dot locked"></i>개인 이름 없음</span>
+              <span><i class="dot locked"></i>원문 설명 저장 없음</span>
+            </div>
+          </aside>
+
+          <main class="workspace">
+            <section class="screen" id="screen" aria-live="polite">
+              <div class="screen-header">
+                <div>
+                  <h1>오래 함께한 구성원의 보상 위치를 먼저 봅니다</h1>
+                  <p>특정 한 명의 연봉이 낮다는 뜻이 아닙니다. 오래 함께한 구성원들이 최근 입사자와 비교했을 때 어떤 보상 위치에 놓이는지 확인합니다.</p>
+                </div>
+                <div class="screen-actions">
+                  <button class="outline-button" type="button" data-step="judgment">이유 선택하기</button>
+                  <button class="primary-button" type="button" data-step="memo">메모 보기</button>
+                </div>
+              </div>
+
+              <div class="relationship-layout">
+                <section class="review-stack">
+                  <article class="panel review-panel" id="pattern">
+                    <div class="review-heading">
+                      <span class="round-icon" aria-hidden="true" data-icon="target"></span>
+                      <div>
+                        <small>1. 왜 이 패턴을 먼저 봅니까?</small>
+                        <h2>오래 함께한 Product Engineer들이 최근 입사자보다 낮은 보상 위치에 모여 있습니다</h2>
+                        <p>아래 비교는 대표 예시입니다. 핵심은 한 사람의 연봉이 아니라, 오래 함께한 구성원 집단이 최근 입사자 대비 어떤 위치에 놓였는지입니다.</p>
+                      </div>
+                    </div>
+
+                    <div class="pattern-strip" aria-label="대표 비교 요약">
+                      <div class="pattern-card tenured-card">
+                        <span class="pattern-label">오래 함께한 구성원 예시</span>
+                        <strong>5년 넘게 함께함</strong>
+                        <em>현재 연봉 7,100만원</em>
+                        <small>개인 이름 미표시</small>
+                      </div>
+                      <div class="pattern-gap-card">
+                        <span>최근 입사자 대비</span>
+                        <strong>2,200만원 낮음</strong>
+                        <em>대표 비교 1개</em>
+                      </div>
+                      <div class="pattern-card recent-card">
+                        <span class="pattern-label">최근 입사자 예시</span>
+                        <strong>최근 경력직 입사</strong>
+                        <em>현재 연봉 9,300만원</em>
+                        <small>개인 이름 미표시</small>
+                      </div>
+                    </div>
+
+                    <div class="cohort-summary" aria-label="전체 패턴 요약">
+                      <div>
+                        <strong>오래 함께한 구성원 5명</strong>
+                        <span>대부분 7천만원대 초반에 위치합니다.</span>
+                      </div>
+                      <div>
+                        <strong>최근 입사자 3명</strong>
+                        <span>대부분 9천만원대 초반에 위치합니다.</span>
+                      </div>
+                      <div>
+                        <strong>확인할 질문</strong>
+                        <span>이 차이가 시장 때문인지, 인상 반영 지연 때문인지 정리해야 합니다.</span>
+                      </div>
+                    </div>
+
+                    <div class="soft-note evidence-note"><span data-icon="info"></span><span>이 화면은 특정 한 명의 보상을 문제 삼지 않습니다. 장기 근속자 보상 리뷰 기준이 필요한 패턴인지 확인합니다.</span></div>
+                  </article>
+
+                  <article class="panel review-panel" id="judgment">
+                    <div class="review-heading compact">
+                      <span class="round-icon" aria-hidden="true" data-icon="layers"></span>
+                      <div>
+                        <small>2. 이 차이는 어떻게 생겼다고 보십니까?</small>
+                        <h2>이 패턴에 가장 가까운 이유를 하나만 선택해주세요.</h2>
+                        <p>이번 prototype에서는 하위 선택지를 두지 않습니다. 집단 패턴을 대표가 어떻게 해석하는지만 확인합니다.</p>
+                      </div>
+                    </div>
+                    <div class="primary-option-grid" id="primaryOptions"></div>
+                  </article>
+
+                  <article class="panel review-panel outcome-panel">
+                    <div class="review-heading compact">
+                      <span class="round-icon" aria-hidden="true" data-icon="shield"></span>
+                      <div>
+                        <small>참고. 패턴이 약할 때도 결과가 있습니다</small>
+                        <h2>장기 근속 패턴이 없다는 것은 검토 실패가 아닙니다</h2>
+                        <p>최근 입사자와 오래 함께한 구성원의 보상 위치가 비슷하거나, 역할/성과 차이가 이미 설명되어 있거나, 데이터가 부족할 수 있습니다.</p>
+                      </div>
+                    </div>
+                    <div class="outcome-grid">
+                      <div><strong>장기 근속 패턴은 약합니다</strong><span>현재 입력 기준으로 오래 함께한 구성원이 일관되게 낮은 위치에 있지는 않습니다.</span></div>
+                      <div><strong>역할 차이가 더 큽니다</strong><span>근속보다 역할 범위나 책임 차이가 먼저 설명되어야 할 수 있습니다.</span></div>
+                      <div><strong>인상 이력이 필요합니다</strong><span>최근 연봉 조정 내역이 없으면 패턴 해석이 어렵습니다.</span></div>
+                    </div>
+                  </article>
+                </section>
+
+                <aside class="aside-stack review-aside">
+                  <article class="side-card blue-tint">
+                    <h3><span data-icon="shield"></span>패턴은 개인보다 먼저 봅니다</h3>
+                    <p>대표 비교는 이해를 돕기 위한 예시입니다. 메모에는 개인 결론이 아니라 장기 근속자 보상 리뷰 기준 후보가 남습니다.</p>
+                  </article>
+
+                  <article class="memo-preview panel memo-snippet" id="memo">
+                    <header class="memo-card-title">
+                      <small>3. 다음 기준으로 어떻게 남깁니까?</small>
+                      <h2>장기 근속자 보상 리뷰 메모</h2>
+                    </header>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="info"></span>
+                      <h3>현재 패턴</h3>
+                      <ul><li>오래 함께한 Product Engineer들이 최근 입사자보다 낮은 보상 위치에 모여 있습니다.</li></ul>
+                    </section>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="chat"></span>
+                      <h3>대표가 선택한 이유</h3>
+                      <ul id="memoJudgment"></ul>
+                    </section>
+                    <section class="memo-row prototype-memo-row">
+                      <span class="round-icon" aria-hidden="true" data-icon="question"></span>
+                      <h3>다음 기준</h3>
+                      <ul id="memoDecision"></ul>
+                    </section>
+                  </article>
+                </aside>
+              </div>
+            </section>
+            <footer class="flow-controls">
+              <button class="secondary-button" type="button" data-action="reset">초기화</button>
+              <div class="control-copy" id="controlCopy">가장 가까운 이유를 선택하면 오른쪽 메모가 바뀝니다.</div>
+              <button class="primary-button" type="button" data-step="judgment">이유 선택하기</button>
+            </footer>
+          </main>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

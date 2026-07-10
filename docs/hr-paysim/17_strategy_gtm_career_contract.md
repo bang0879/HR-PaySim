@@ -60,6 +60,41 @@ HR PaySim operationalizes this construct from minimal de-identified roster data.
 
 CEI/CED may remain as legacy or internal references only. They must not appear as founder-facing v1 hero outputs.
 
+## Core Facilitated UX
+
+The core facilitated interaction is the **Relationship Review Beat**, not a prediction or quiz beat.
+
+Use this beat when Kyle and the founder inspect a compensation relationship or distribution:
+
+1. **Context**: Present the compensation relationship or distribution being reviewed.
+2. **Intuition Surfacing**: Ask the founder which criteria they would naturally use to explain it. This surfaces judgment, but does not ask the founder to guess a hidden answer.
+3. **Evidence Reveal**: Show the actual roster-based relationship.
+4. **Founder Explanation**: Capture the structured reason the founder believes may explain the relationship.
+5. **Classification**: Classify the finding using the labels for that finding type.
+6. **Memo Capture**: Reflect the classification and explanation basis in the founder memo preview.
+
+This beat should feel like a structured review conversation:
+
+> Before we decide what to do, what explanation would you expect to use for this relationship?
+
+It must not feel like:
+
+> Guess who earns more.
+
+## Prediction / Quiz Boundary
+
+Prediction is not core HR PaySim UX.
+
+Do not use these patterns in the default facilitated experience:
+
+- "Who gets paid more?" binary prediction.
+- Correct/incorrect reveal.
+- Copy that frames the founder as having guessed wrong.
+- "Most founders do not know" or equivalent shaming copy.
+- Surprise as the main purpose of the flow.
+
+The allowed sub-mechanism is **founder intuition surfacing**. It may ask which criteria the founder expects to matter, such as tenure, scope, performance, counteroffer, market pressure, or promotion timing. It must not score the founder's guess.
+
 ## Relationship To HR Prism
 
 HR Prism is the initial trust-building diagnostic.
