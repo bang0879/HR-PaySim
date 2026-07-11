@@ -124,18 +124,43 @@ function parseTag(tagSource: string):
 }
 
 function pushVisibleAttributes(values: string[], tagSource: string): void {
-  const attributePattern = /\b([A-Za-z][\w:-]*)\s*=\s*/g;
-  for (const match of tagSource.matchAll(attributePattern)) {
-    const name = match[1] ?? "";
-    if (!visibleAttributeNames.has(name)) continue;
-    const valueStart = (match.index ?? 0) + match[0].length;
+  const elementName = tagSource.match(/^\s*[A-Za-z][\w.-]*/)?.[0] ?? "";
+  let cursor = elementName.length;
+
+  while (cursor < tagSource.length) {
+    while (/\s/.test(tagSource[cursor] ?? "")) cursor += 1;
+    if (cursor >= tagSource.length || tagSource[cursor] === "/") break;
+    if (tagSource[cursor] === "{") {
+      const spreadEnd = findBalancedBraceEnd(tagSource, cursor);
+      if (spreadEnd < 0) break;
+      cursor = spreadEnd + 1;
+      continue;
+    }
+
+    const nameStart = cursor;
+    while (cursor < tagSource.length && !/[\s=/>]/.test(tagSource[cursor] ?? "")) cursor += 1;
+    const name = tagSource.slice(nameStart, cursor);
+    while (/\s/.test(tagSource[cursor] ?? "")) cursor += 1;
+    if (tagSource[cursor] !== "=") continue;
+    cursor += 1;
+    while (/\s/.test(tagSource[cursor] ?? "")) cursor += 1;
+
+    const valueStart = cursor;
     const first = tagSource[valueStart] ?? "";
     if (first === "\"" || first === "'") {
       const end = findQuotedEnd(tagSource, valueStart, first);
-      if (end >= 0) values.push(tagSource.slice(valueStart + 1, end));
+      if (end < 0) break;
+      if (visibleAttributeNames.has(name)) values.push(tagSource.slice(valueStart + 1, end));
+      cursor = end + 1;
     } else if (first === "{") {
       const end = findBalancedBraceEnd(tagSource, valueStart);
-      if (end >= 0) pushQuotedLiterals(values, tagSource.slice(valueStart + 1, end));
+      if (end < 0) break;
+      if (visibleAttributeNames.has(name)) {
+        pushQuotedLiterals(values, tagSource.slice(valueStart + 1, end));
+      }
+      cursor = end + 1;
+    } else {
+      while (cursor < tagSource.length && !/\s/.test(tagSource[cursor] ?? "")) cursor += 1;
     }
   }
 }

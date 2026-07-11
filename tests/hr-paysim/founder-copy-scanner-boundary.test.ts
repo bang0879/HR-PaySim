@@ -5,7 +5,17 @@ import { findForbiddenRenderedCopy } from "../../scripts/check-forbidden-copy.ts
 test("copy scanning ignores internal JSX handlers and non-visible data attributes", () => {
   const source = `
     export function Button() {
-      return <button data-step="theme" onClick={() => setStep("memo")}>안내</button>;
+      return (
+        <button
+          data-step="theme"
+          onClick={() => {
+            const label = "memo";
+            setStep(label);
+          }}
+        >
+          안내
+        </button>
+      );
     }
   `;
 

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { sampleRosterPaste } from "../../lib/hr-paysim/rosterFixtures.ts";
 import { createRosterDiagnosticViewModel } from "../../lib/hr-paysim/rosterDiagnosticViewModel.ts";
 
@@ -62,16 +62,16 @@ export function RosterDiagnosticApp({ mode }: RosterDiagnosticAppProps) {
         <main className="roster-workspace">
           <section className="roster-hero" aria-labelledby="roster-title">
             <div>
-              <p className="eyebrow">Relationship evidence first</p>
+              <p className="eyebrow">직원 간 연봉 비교부터 확인</p>
               <h1 id="roster-title">직원이 서로 비교했을 때 설명하기 어려운 보상 관계를 찾습니다.</h1>
               <p>
-                최소 roster만 붙여넣고, 식별 가능성이 있는 컬럼과 값은 계산 전에 차단합니다. 결과는 점수보다 관계 증거와 founder memo 재료를 먼저 보여줍니다.
+                최소 roster만 붙여넣고, 식별 가능성이 있는 컬럼과 값은 계산 전에 차단합니다. 결과는 점수보다 직원 간 연봉 비교와 대표님이 검토할 자료를 먼저 보여줍니다.
               </p>
             </div>
             <div className="roster-status-card" data-status={viewModel.status}>
               <span>{viewModel.statusTitle}</span>
               <strong>{viewModel.summary.findingCount}</strong>
-              <small>detected findings</small>
+              <small>확인된 연봉 차이</small>
             </div>
           </section>
 
@@ -81,7 +81,7 @@ export function RosterDiagnosticApp({ mode }: RosterDiagnosticAppProps) {
                 <header className="roster-panel-head">
                   <div>
                     <h2>Roster paste</h2>
-                    <p>허용 컬럼만 normalized row로 변환합니다. raw paste는 저장하지 않습니다.</p>
+                    <p>허용된 항목만 계산에 사용하며, 붙여넣은 원문은 저장하지 않습니다.</p>
                   </div>
                   <button className="secondary-button" type="button" onClick={loadSample}>샘플 불러오기</button>
                 </header>
@@ -108,8 +108,8 @@ export function RosterDiagnosticApp({ mode }: RosterDiagnosticAppProps) {
             <section className="panel roster-panel roster-findings-panel" aria-labelledby="finding-title">
               <header className="roster-panel-head">
                 <div>
-                  <h2 id="finding-title">Finding evidence</h2>
-                  <p>자동 lead ranking 없이 role group별 관계 신호를 모두 보여줍니다.</p>
+                  <h2 id="finding-title">확인된 연봉 차이</h2>
+                  <p>자동 우선순위 없이 역할별 연봉 차이를 모두 보여줍니다.</p>
                 </div>
                 <span className="count-pill">{viewModel.summary.roleGroupCount} groups</span>
               </header>
@@ -126,7 +126,7 @@ export function RosterDiagnosticApp({ mode }: RosterDiagnosticAppProps) {
                       <dl className="finding-metrics">
                         <div><dt>headline</dt><dd>{finding.headlineLabel}</dd></div>
                         <div><dt>floor</dt><dd>{finding.correctionFloorLabel}</dd></div>
-                        <div><dt>exposure</dt><dd>{finding.exposurePayrollLabel}</dd></div>
+                        <div><dt>전체 연봉 합계 맥락</dt><dd>{finding.exposurePayrollLabel}</dd></div>
                       </dl>
                       <ul>
                         {finding.evidence.slice(0, 2).map((item) => <li key={item}>{item}</li>)}
@@ -136,7 +136,7 @@ export function RosterDiagnosticApp({ mode }: RosterDiagnosticAppProps) {
                 </div>
               ) : (
                 <div className="empty-findings">
-                  <strong>{viewModel.status === "needs_pii_confirmation" ? "PII 확인 후 finding을 계산합니다." : "아직 계산할 finding이 없습니다."}</strong>
+                  <strong>{viewModel.status === "needs_pii_confirmation" ? "개인정보 항목 확인 후 연봉 차이를 계산합니다." : "아직 계산할 연봉 차이가 없습니다."}</strong>
                   <p>{viewModel.statusCopy}</p>
                 </div>
               )}
@@ -192,7 +192,7 @@ function PreviewPanel({ viewModel }: { viewModel: ReturnType<typeof createRoster
           ))}
         </div>
       ) : (
-        <p className="empty-copy">normalized row가 생기면 여기에서 먼저 확인합니다.</p>
+        <p className="empty-copy">계산에 사용할 행이 생기면 여기에서 먼저 확인합니다.</p>
       )}
     </section>
   );
