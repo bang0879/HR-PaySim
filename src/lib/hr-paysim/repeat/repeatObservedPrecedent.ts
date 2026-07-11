@@ -1,30 +1,45 @@
 import { buildMaterialTenurePairs } from "../detectors/tenurePairs.ts";
 import type { NormalizedRosterRow } from "../domain.ts";
+import {
+  findObservedPrecedentCandidates,
+  isObservedPrecedentReason,
+} from "./selectObservedPrecedent.ts";
 import type {
+  ObservedPrecedentCandidate,
   ObservedPrecedentSelection,
   PrecedentRepeatResult,
 } from "./types.ts";
+
+const CANDIDATE_KEYS = [
+  "additionalAmountKRW",
+  "observedSalaryKRW",
+  "referenceRowIds",
+  "referenceSalaryKRW",
+  "roleGroup",
+  "sourceRowId",
+] as const;
 
 export function repeatObservedPrecedent(
   themeId: string,
   rows: NormalizedRosterRow[],
   selection: ObservedPrecedentSelection,
 ): PrecedentRepeatResult {
-  const roleRows = rows.filter((row) => row.roleGroup === selection.candidate.roleGroup);
-  const sourceRow = roleRows.find((row) => row.rowId === selection.candidate.sourceRowId);
-  if (!sourceRow) {
-    throw new Error(`OBSERVED_PRECEDENT_SOURCE_NOT_FOUND:${selection.candidate.sourceRowId}`);
+  if (!isObservedPrecedentReason(selection?.reason)) {
+    throw new Error("OBSERVED_PRECEDENT_REASON_INVALID");
   }
+  const candidate = resolveCanonicalCandidate(rows, selection?.candidate);
+  const roleRows = rows.filter((row) => row.roleGroup === candidate.roleGroup);
+  const sourceRow = roleRows.find((row) => row.rowId === candidate.sourceRowId)!;
 
   const syntheticRow = syntheticCandidate(
     sourceRow,
     `synthetic_repeat_${sourceRow.rowId}`,
-    selection.candidate.observedSalaryKRW,
+    candidate.observedSalaryKRW,
   );
   const baselineRow = syntheticCandidate(
     sourceRow,
     `synthetic_baseline_${sourceRow.rowId}`,
-    selection.candidate.referenceSalaryKRW,
+    candidate.referenceSalaryKRW,
   );
   const currentPairs = buildMaterialTenurePairs(
     roleRows,
@@ -46,6 +61,56 @@ export function repeatObservedPrecedent(
     conclusionKey: "product_engineer_observed_hiring_repeat",
     nonClaimKey: "observed_precedent_not_policy",
   };
+}
+
+function resolveCanonicalCandidate(
+  rows: NormalizedRosterRow[],
+  supplied: unknown,
+): ObservedPrecedentCandidate {
+  if (!isRecord(supplied) || !hasExactCandidateKeys(supplied)) {
+    throw new Error("OBSERVED_PRECEDENT_SELECTION_INVALID");
+  }
+  const sourceRowId = supplied.sourceRowId;
+  if (typeof sourceRowId !== "string") {
+    throw new Error("OBSERVED_PRECEDENT_SELECTION_INVALID");
+  }
+  const sourceRow = rows.find((row) => row.rowId === sourceRowId);
+  if (!sourceRow) {
+    throw new Error("OBSERVED_PRECEDENT_SELECTION_INVALID");
+  }
+  const canonical = findObservedPrecedentCandidates(rows, sourceRow.roleGroup)
+    .find((candidate) => candidate.sourceRowId === sourceRowId);
+  if (!canonical || !matchesCanonicalCandidate(supplied, canonical)) {
+    throw new Error("OBSERVED_PRECEDENT_SELECTION_INVALID");
+  }
+  return canonical;
+}
+
+function matchesCanonicalCandidate(
+  supplied: Record<string, unknown>,
+  canonical: ObservedPrecedentCandidate,
+): boolean {
+  return supplied.sourceRowId === canonical.sourceRowId
+    && supplied.roleGroup === canonical.roleGroup
+    && arraysEqual(supplied.referenceRowIds, canonical.referenceRowIds)
+    && supplied.referenceSalaryKRW === canonical.referenceSalaryKRW
+    && supplied.observedSalaryKRW === canonical.observedSalaryKRW
+    && supplied.additionalAmountKRW === canonical.additionalAmountKRW;
+}
+
+function hasExactCandidateKeys(candidate: Record<string, unknown>): boolean {
+  const keys = Object.keys(candidate).sort(compareCodeUnits);
+  return arraysEqual(keys, CANDIDATE_KEYS);
+}
+
+function arraysEqual(value: unknown, expected: readonly string[]): boolean {
+  return Array.isArray(value)
+    && value.length === expected.length
+    && value.every((item, index) => item === expected[index]);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function candidatePairs(

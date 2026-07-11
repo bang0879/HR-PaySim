@@ -5,6 +5,11 @@ import type {
 } from "./types.ts";
 
 const RECENT_TENURE_MONTHS = 24;
+const OBSERVED_PRECEDENT_REASONS = new Set<ObservedPrecedentSelection["reason"]>([
+  "documented_hiring_exception",
+  "documented_counteroffer",
+  "facilitator_selected_other",
+]);
 
 export function findObservedPrecedentCandidates(
   rows: NormalizedRosterRow[],
@@ -40,9 +45,19 @@ export function selectObservedPrecedent(
   sourceRowId: string,
   reason: ObservedPrecedentSelection["reason"],
 ): ObservedPrecedentSelection {
+  if (!isObservedPrecedentReason(reason)) {
+    throw new Error("OBSERVED_PRECEDENT_REASON_INVALID");
+  }
   const candidate = candidates.find((item) => item.sourceRowId === sourceRowId);
   if (!candidate) throw new Error(`OBSERVED_PRECEDENT_NOT_FOUND:${sourceRowId}`);
   return { candidate, reason };
+}
+
+export function isObservedPrecedentReason(
+  value: unknown,
+): value is ObservedPrecedentSelection["reason"] {
+  return typeof value === "string"
+    && OBSERVED_PRECEDENT_REASONS.has(value as ObservedPrecedentSelection["reason"]);
 }
 
 function hasObservedPremiumFlag(row: NormalizedRosterRow): boolean {
