@@ -26,7 +26,16 @@ export function validateInterpretationClaim(
   context: ClaimValidationContext,
 ): string[] {
   const errors: string[] = [];
-  const statementIds = new Set(claim.statements.map((statement) => statement.id));
+  const statementIds = new Set<string>();
+  const duplicateStatementIds = new Set<string>();
+
+  for (const statement of claim.statements) {
+    if (statementIds.has(statement.id) && !duplicateStatementIds.has(statement.id)) {
+      errors.push(`DUPLICATE_STATEMENT_ID:${statement.id}`);
+      duplicateStatementIds.add(statement.id);
+    }
+    statementIds.add(statement.id);
+  }
 
   for (const statementId of claim.founderQuestion.supportingStatementIds) {
     if (!statementIds.has(statementId)) {
@@ -82,7 +91,7 @@ function validateSources(
 
   for (const source of externalSources) {
     for (const field of externalFields) {
-      if (source[field].trim().length === 0) {
+      if (!isNonEmptyString(source[field])) {
         errors.push(`EXTERNAL_FIELD_REQUIRED:${statement.id}:${field}`);
       }
     }
@@ -109,9 +118,13 @@ function validateSources(
 
   for (const source of practitionerSources) {
     for (const field of practitionerFields) {
-      if (source[field].trim().length === 0) {
+      if (!isNonEmptyString(source[field])) {
         errors.push(`PRACTITIONER_FIELD_REQUIRED:${statement.id}:${field}`);
       }
     }
   }
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
