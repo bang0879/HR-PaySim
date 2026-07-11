@@ -1,0 +1,169 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { INTERPRETATION_CLAIM_REGISTRY } from "../../src/lib/hr-paysim/interpretation/claimRegistry.ts";
+import type {
+  ClaimValidationContext,
+  InterpretationClaim,
+} from "../../src/lib/hr-paysim/interpretation/types.ts";
+import { validateInterpretationClaim } from "../../src/lib/hr-paysim/interpretation/validateInterpretationClaims.ts";
+
+const context: ClaimValidationContext = {
+  evidenceIds: new Set(["pair-001"]),
+  reviewedStateIds: new Set(["review-product"]),
+};
+
+test("one claim preserves different statement statuses", () => {
+  const claim = createClaim();
+
+  assert.deepEqual(validateInterpretationClaim(claim, context), []);
+  assert.deepEqual(
+    claim.statements.map((statement) => statement.claimStatus),
+    ["SUPPORTED_BY_CLIENT_DATA", "WORKING_HYPOTHESIS"],
+  );
+});
+
+test("external claims require a complete structured source", () => {
+  const missing = createClaim();
+  missing.statements[1] = {
+    ...missing.statements[1]!,
+    claimStatus: "VERIFIED_EXTERNAL",
+    sourceRefs: [],
+  };
+  assert.ok(validateInterpretationClaim(missing, context).includes(
+    "EXTERNAL_SOURCE_REQUIRED:premium-hypothesis",
+  ));
+
+  const incomplete = createClaim();
+  incomplete.statements[1] = {
+    ...incomplete.statements[1]!,
+    claimStatus: "VERIFIED_EXTERNAL",
+    sourceRefs: [{
+      kind: "EXTERNAL",
+      title: " ",
+      publisher: "Publisher",
+      publishedAt: "",
+      sourceLocation: "https://example.test/source",
+      populationOrScope: "",
+      applicabilityNote: " ",
+    }],
+  };
+  assert.deepEqual(validateInterpretationClaim(incomplete, context), [
+    "EXTERNAL_FIELD_REQUIRED:premium-hypothesis:title",
+    "EXTERNAL_FIELD_REQUIRED:premium-hypothesis:publishedAt",
+    "EXTERNAL_FIELD_REQUIRED:premium-hypothesis:populationOrScope",
+    "EXTERNAL_FIELD_REQUIRED:premium-hypothesis:applicabilityNote",
+  ]);
+});
+
+test("client sources resolve every evidence and reviewed-state id", () => {
+  const claim = createClaim();
+  claim.statements[0]!.sourceRefs = [{
+    kind: "CLIENT_DATA",
+    evidenceIds: ["pair-001", "pair-missing"],
+    reviewedStateIds: ["review-product", "review-missing"],
+  }];
+
+  assert.deepEqual(validateInterpretationClaim(claim, context), [
+    "CLIENT_EVIDENCE_NOT_FOUND:salary-fact:pair-missing",
+    "CLIENT_REVIEW_NOT_FOUND:salary-fact:review-missing",
+  ]);
+});
+
+test("practitioner claims require a complete experience source", () => {
+  const claim = createClaim();
+  claim.statements[1] = {
+    ...claim.statements[1]!,
+    claimStatus: "KYLE_EXPERIENCE_BASED",
+    sourceRefs: [{
+      kind: "PRACTITIONER_EXPERIENCE",
+      experienceRef: "",
+      context: "Korean startup compensation review",
+      limitation: " ",
+    }],
+  };
+
+  assert.deepEqual(validateInterpretationClaim(claim, context), [
+    "PRACTITIONER_FIELD_REQUIRED:premium-hypothesis:experienceRef",
+    "PRACTITIONER_FIELD_REQUIRED:premium-hypothesis:limitation",
+  ]);
+});
+
+test("questions, triggers, and review dependencies fail closed", () => {
+  const claim = createClaim();
+  claim.founderQuestion.supportingStatementIds.push("missing-statement");
+  claim.statements[1]!.triggerEvidenceIds.push("missing-evidence");
+  claim.statements[1]!.reviewDependencyIds.push("missing-review");
+
+  assert.deepEqual(validateInterpretationClaim(claim, context), [
+    "QUESTION_STATEMENT_NOT_FOUND:missing-statement",
+    "EVIDENCE_NOT_FOUND:premium-hypothesis:missing-evidence",
+    "REVIEW_NOT_FOUND:premium-hypothesis:missing-review",
+  ]);
+});
+
+test("registry contains only the three PaySim sample themes and authorized claim statuses", () => {
+  assert.deepEqual(
+    INTERPRETATION_CLAIM_REGISTRY.map((claim) => claim.themeId),
+    [
+      "product_engineer_emergent_structure_row_001_row_002_row_003_row_004_row_005_row_006",
+      "platform_engineer_emergent_structure_row_007_row_008_row_009_row_010",
+      "gtm_level_fiction_band_overlap_theme",
+    ],
+  );
+
+  for (const claim of INTERPRETATION_CLAIM_REGISTRY) {
+    assert.ok(claim.statements.length >= 2);
+    assert.ok(claim.statements.some((statement) => statement.kind === "SURFACE_OBSERVATION"));
+    assert.ok(claim.statements.some((statement) => statement.claimStatus === "WORKING_HYPOTHESIS"));
+    assert.ok(claim.statements.every((statement) =>
+      statement.claimStatus === "SUPPORTED_BY_CLIENT_DATA"
+      || statement.claimStatus === "WORKING_HYPOTHESIS"
+    ));
+    assert.ok(claim.statements.every((statement) =>
+      statement.sourceRefs.every((source) => source.kind === "CLIENT_DATA")
+    ));
+
+    const registryContext: ClaimValidationContext = {
+      evidenceIds: new Set(claim.statements.flatMap((statement) => statement.triggerEvidenceIds)),
+      reviewedStateIds: new Set(claim.statements.flatMap((statement) => statement.reviewDependencyIds)),
+    };
+    assert.deepEqual(validateInterpretationClaim(claim, registryContext), []);
+  }
+});
+
+function createClaim(): InterpretationClaim {
+  return {
+    id: "product-hiring-premium",
+    themeId: "theme-product",
+    statements: [
+      {
+        id: "salary-fact",
+        kind: "SURFACE_OBSERVATION",
+        copyKey: "product.salary_fact",
+        claimStatus: "SUPPORTED_BY_CLIENT_DATA",
+        triggerEvidenceIds: ["pair-001"],
+        reviewDependencyIds: ["review-product"],
+        sourceRefs: [{
+          kind: "CLIENT_DATA",
+          evidenceIds: ["pair-001"],
+          reviewedStateIds: ["review-product"],
+        }],
+        mustNotClaimKeys: ["employee_intent"],
+      },
+      {
+        id: "premium-hypothesis",
+        kind: "DEEPER_MECHANISM",
+        copyKey: "product.premium_hypothesis",
+        claimStatus: "WORKING_HYPOTHESIS",
+        triggerEvidenceIds: ["pair-001"],
+        reviewDependencyIds: ["review-product"],
+        sourceRefs: [],
+        mustNotClaimKeys: ["confirmed_cause"],
+      },
+    ],
+    founderQuestion: {
+      copyKey: "product.premium_question",
+      supportingStatementIds: ["salary-fact", "premium-hypothesis"],
+    },
+  };
+}
