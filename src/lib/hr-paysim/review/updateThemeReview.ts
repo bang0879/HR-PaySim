@@ -31,7 +31,17 @@ export function updateThemeReview(
     ...(update.explanationBasis !== undefined ? { explanationBasis: update.explanationBasis } : {}),
     ...(update.evidenceStatus !== undefined ? { evidenceStatus: update.evidenceStatus } : {}),
     ...(update.repeatabilityStatus !== undefined ? { repeatabilityStatus: update.repeatabilityStatus } : {}),
-    ...(update.evidenceFollowUp !== undefined ? { evidenceFollowUp: update.evidenceFollowUp } : {}),
+    ...(update.evidenceFollowUp !== undefined
+      ? {
+        evidenceFollowUp: {
+          id: update.evidenceFollowUp.id,
+          themeId: update.evidenceFollowUp.themeId,
+          evidenceNeeded: update.evidenceFollowUp.evidenceNeeded,
+          ownerRole: update.evidenceFollowUp.ownerRole,
+          dueEvent: update.evidenceFollowUp.dueEvent,
+        },
+      }
+      : {}),
   };
   const approvedSentenceKey = nextAnswers.explanationBasis === "unanswered"
     ? undefined

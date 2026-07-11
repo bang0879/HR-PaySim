@@ -131,3 +131,33 @@ test("whitelists runtime update fields when a caller bypasses TypeScript", () =>
   assert.equal(serialized.includes("freeText"), false);
   assert.equal(serialized.includes("baseSalaryKRW"), false);
 });
+
+test("canonicalizes a hostile nested evidence follow-up payload", () => {
+  const hostilePayload = {
+    evidenceFollowUp: {
+      id: "follow-up-product",
+      themeId: "theme-product",
+      evidenceNeeded: "offer_record",
+      ownerRole: "HR",
+      dueEvent: "WITHIN_TWO_WEEKS",
+      freeText: "private evidence note",
+      baseSalaryKRW: 123_000_000,
+    },
+  } as unknown as Parameters<typeof updateThemeReview>[1];
+
+  const state = updateThemeReview(
+    { review: createThemeReview("theme-product") },
+    hostilePayload,
+  );
+  const serialized = JSON.stringify(state);
+
+  assert.deepEqual(state.review.evidenceFollowUp, {
+    id: "follow-up-product",
+    themeId: "theme-product",
+    evidenceNeeded: "offer_record",
+    ownerRole: "HR",
+    dueEvent: "WITHIN_TWO_WEEKS",
+  });
+  assert.equal(serialized.includes("freeText"), false);
+  assert.equal(serialized.includes("baseSalaryKRW"), false);
+});
