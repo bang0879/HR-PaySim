@@ -157,3 +157,30 @@ evidence-follow-up fields.
     npm run build        -> exit 0; Vite built 32 modules
 
 No unresolved concerns were found in this follow-up scope.
+
+## Second Review Follow-Up: Canonical Evidence Follow-Up
+
+RED:
+
+    node --experimental-strip-types --test tests/hr-paysim/theme-review.test.ts
+    tests 7, pass 6, fail 1
+
+The returned evidenceFollowUp retained nested freeText and baseSalaryKRW fields
+from a runtime payload that bypassed the TypeScript boundary.
+
+GREEN:
+
+    node --experimental-strip-types --test tests/hr-paysim/theme-review.test.ts
+    tests 7, pass 7, fail 0
+
+The updater now constructs a new evidenceFollowUp object from only id, themeId,
+evidenceNeeded, ownerRole, and dueEvent.
+
+### Second Follow-Up Full Verification
+
+    npm test             -> 73 tests, 73 pass, 0 fail
+    npm run lint         -> exit 0
+    npm run typecheck    -> exit 0
+    npm run build        -> exit 0; Vite built 32 modules
+
+No unresolved concerns were found in this second follow-up scope.
