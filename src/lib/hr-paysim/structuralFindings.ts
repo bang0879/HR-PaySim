@@ -4,13 +4,13 @@ import type {
   StructuralFinding,
   StructuralFindingPair,
 } from "./domain.ts";
+import { buildMaterialTenurePairs } from "./detectors/tenurePairs.ts";
 import {
   calculateMinimumOrdinalRestoration,
   calculatePairRepairFloor,
   isMaterialLevelOrderViolation,
 } from "./metrics/compensationMetrics.ts";
 
-const MATERIAL_GAP_RATE = 0.08;
 const nonClaim = "이 값은 손실 예측, 이탈률 추정, 대체 비용, 시장연봉 벤치마크, 개인별 권장 연봉이 아닙니다.";
 
 export function detectStructuralFindings(rows: NormalizedRosterRow[]): StructuralFinding[] {
@@ -75,7 +75,7 @@ function detectShadowBand(roleGroup: string, rows: NormalizedRosterRow[]): Struc
 
 function detectPayInversion(roleGroup: string, rows: NormalizedRosterRow[]): StructuralFinding[] {
   if (hasFormalLevels(rows)) return [];
-  const pairs = materialTenurePairs(rows, (underpaid, comparator) => underpaid.tenureMonths! > comparator.tenureMonths!);
+  const pairs = buildMaterialTenurePairs(rows, (underpaid, comparator) => underpaid.tenureMonths! > comparator.tenureMonths!);
   if (pairs.length === 0) return [];
 
   const headlinePair = pickHeadlinePair(pairs);
@@ -113,7 +113,7 @@ function detectLoyaltyTax(roleGroup: string, rows: NormalizedRosterRow[]): Struc
   const recentRows = rows.filter((row) => (row.tenureMonths ?? Number.POSITIVE_INFINITY) <= 24);
   if (longTenureRows.length < 2 || recentRows.length < 2) return [];
 
-  const pairs = materialTenurePairs(rows, (underpaid, comparator) =>
+  const pairs = buildMaterialTenurePairs(rows, (underpaid, comparator) =>
     longTenureRows.includes(underpaid) && recentRows.includes(comparator),
   );
   if (pairs.length === 0) return [];
@@ -210,29 +210,6 @@ function relationshipMetrics(headlinePair: StructuralFindingPair, rows: Normaliz
   };
 }
 
-function materialTenurePairs(
-  rows: NormalizedRosterRow[],
-  predicate: (underpaid: NormalizedRosterRow, comparator: NormalizedRosterRow) => boolean,
-): StructuralFindingPair[] {
-  return rows.flatMap((underpaid) => rows.flatMap((comparator): StructuralFindingPair[] => {
-    if (underpaid.rowId === comparator.rowId) return [];
-    if (underpaid.tenureMonths === undefined || comparator.tenureMonths === undefined) return [];
-    if (!predicate(underpaid, comparator)) return [];
-
-    const salaryGapKRW = comparator.baseSalaryKRW - underpaid.baseSalaryKRW;
-    const gapPercentage = salaryGapKRW / underpaid.baseSalaryKRW;
-    if (salaryGapKRW <= 0 || gapPercentage < MATERIAL_GAP_RATE) return [];
-
-    return [{
-      underpaidRowId: underpaid.rowId,
-      comparatorRowId: comparator.rowId,
-      salaryGapKRW,
-      gapPercentage,
-      reasonThisIsHardToDefend: `${underpaid.rowId} has stronger tenure claim but earns ${formatKRW(salaryGapKRW)} less than ${comparator.rowId}.`,
-    }];
-  })).sort(pairPriority);
-}
-
 function pickHeadlinePair(pairs: StructuralFindingPair[]): StructuralFindingPair {
   return [...pairs].sort(pairPriority)[0]!;
 }
@@ -277,10 +254,7 @@ function clusterFromRows(rows: NormalizedRosterRow[]) {
 }
 
 function riskModel(input: Omit<FindingRiskModel, "nonClaim">): FindingRiskModel {
-  return {
-    ...input,
-    nonClaim,
-  };
+  return { ...input, nonClaim };
 }
 
 function uniqueSorted(values: string[]): string[] {
