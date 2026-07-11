@@ -45,8 +45,12 @@ function compareReviewSubjects(a: StructuralTheme, b: StructuralTheme): number {
     || compareRank(a.patternKind, b.patternKind, ["systematic", "isolated"])
     || b.normalizedHeadlineGap - a.normalizedHeadlineGap
     || b.comparisonPairs.length - a.comparisonPairs.length
-    || a.roleGroup.localeCompare(b.roleGroup)
-    || a.id.localeCompare(b.id);
+    || compareCodeUnits(a.roleGroup, b.roleGroup)
+    || compareCodeUnits(a.id, b.id);
+}
+
+function compareCodeUnits(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function compareRank<T extends string>(a: T, b: T, order: readonly T[]): number {

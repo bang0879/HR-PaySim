@@ -108,3 +108,52 @@ npm run build        -> exit 0; Vite built 32 modules
 - Confirmed `git diff --check` is clean and `package-lock.json` is unchanged.
 
 No unresolved concerns were found in the Task 4 scope.
+
+## Review Follow-Up: Selection And Runtime Boundaries
+
+### Deterministic Code-Unit Ordering
+
+RED:
+
+    node --experimental-strip-types --test tests/hr-paysim/review-subject-selection.test.ts
+    tests 4, pass 3, fail 1
+
+The locale-aware comparator produced a different case, punctuation, and accent
+order from the required JavaScript code-unit order.
+
+GREEN:
+
+    node --experimental-strip-types --test tests/hr-paysim/review-subject-selection.test.ts
+    tests 4, pass 4, fail 0
+
+The final role-group and theme-ID tie-breaks now use an explicit code-unit
+comparator.
+
+### Hostile Runtime Update Payload
+
+RED:
+
+    node --experimental-strip-types --test tests/hr-paysim/theme-review.test.ts
+    tests 6, pass 5, fail 1
+
+A wider runtime object bypassed the TypeScript boundary and leaked freeText
+and baseSalaryKRW through the update object spread.
+
+GREEN:
+
+    node --experimental-strip-types --test tests/hr-paysim/theme-review.test.ts
+    tests 6, pass 6, fail 0
+    node --experimental-strip-types --test tests/hr-paysim/review-subject-selection.test.ts tests/hr-paysim/theme-review.test.ts
+    tests 10, pass 10, fail 0
+
+The updater now copies only defined explanation, evidence, repeatability, and
+evidence-follow-up fields.
+
+### Follow-Up Full Verification
+
+    npm test             -> 72 tests, 72 pass, 0 fail
+    npm run lint         -> exit 0
+    npm run typecheck    -> exit 0
+    npm run build        -> exit 0; Vite built 32 modules
+
+No unresolved concerns were found in this follow-up scope.

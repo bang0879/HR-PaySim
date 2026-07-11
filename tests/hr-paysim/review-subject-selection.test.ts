@@ -54,6 +54,22 @@ test("orders by the frozen tuple and caps recommendations at three", () => {
   assert.deepEqual(selection.unselected, recommended.slice(3));
 });
 
+test("uses deterministic code-unit order for role groups and theme IDs", () => {
+  const roleGroups = ["role-A", "R\u00f4le-A", "Role\u00e1", "Role_A", "Role-A"]
+    .map((roleGroup) => theme(`theme-${roleGroup}`, roleGroup, "sufficient", "systematic", 0.2, 2));
+  const themeIds = ["th\u00e8me-A", "theme\u00e1", "theme_A", "theme-A", "Theme-A"]
+    .map((id) => theme(id, "Same", "sufficient", "systematic", 0.2, 2));
+
+  assert.deepEqual(
+    recommendReviewSubjectOrder(roleGroups).map((item) => item.roleGroup),
+    ["Role-A", "Role_A", "Role\u00e1", "R\u00f4le-A", "role-A"],
+  );
+  assert.deepEqual(
+    recommendReviewSubjectOrder(themeIds).map((item) => item.id),
+    ["Theme-A", "theme-A", "theme_A", "theme\u00e1", "th\u00e8me-A"],
+  );
+});
+
 test("keeps valid facilitator overrides in override order and retains unselected themes", () => {
   const themes = [
     theme("recommended-first", "A", "sufficient", "systematic", 0.3, 2),

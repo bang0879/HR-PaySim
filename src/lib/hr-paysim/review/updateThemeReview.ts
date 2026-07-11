@@ -28,7 +28,10 @@ export function updateThemeReview(
 ): ReviewDependencyState {
   const nextAnswers = {
     ...state.review,
-    ...update,
+    ...(update.explanationBasis !== undefined ? { explanationBasis: update.explanationBasis } : {}),
+    ...(update.evidenceStatus !== undefined ? { evidenceStatus: update.evidenceStatus } : {}),
+    ...(update.repeatabilityStatus !== undefined ? { repeatabilityStatus: update.repeatabilityStatus } : {}),
+    ...(update.evidenceFollowUp !== undefined ? { evidenceFollowUp: update.evidenceFollowUp } : {}),
   };
   const approvedSentenceKey = nextAnswers.explanationBasis === "unanswered"
     ? undefined

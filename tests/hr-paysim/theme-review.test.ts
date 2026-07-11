@@ -111,3 +111,23 @@ test("serializes only enum-backed review state without roster salary or free tex
   assert.equal(JSON.stringify(state).includes("baseSalaryKRW"), false);
   assert.equal(JSON.stringify(state).includes("freeText"), false);
 });
+
+test("whitelists runtime update fields when a caller bypasses TypeScript", () => {
+  const hostilePayload = {
+    explanationBasis: "timing_context",
+    evidenceStatus: "documented",
+    repeatabilityStatus: "not_reusable",
+    freeText: "founder-only explanation",
+    baseSalaryKRW: 123_000_000,
+  } as unknown as Parameters<typeof updateThemeReview>[1];
+
+  const state = updateThemeReview(
+    { review: createThemeReview("theme-product") },
+    hostilePayload,
+  );
+  const serialized = JSON.stringify(state);
+
+  assert.equal(state.review.outcome, "explained_with_evidence");
+  assert.equal(serialized.includes("freeText"), false);
+  assert.equal(serialized.includes("baseSalaryKRW"), false);
+});
