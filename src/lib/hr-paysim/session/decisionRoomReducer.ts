@@ -1,4 +1,3 @@
-import { createDecisionRecord } from "../decisions/decisionRecords.ts";
 import { createThemeReview, updateThemeReview } from "../review/updateThemeReview.ts";
 import type { ReviewSubjectSelection } from "../themes/selectReviewSubjects.ts";
 import {
@@ -9,14 +8,15 @@ import {
   parseReviewUpdate,
   parseStartSessionAction,
   resolveCanonicalClaims,
+  resolveCanonicalDecision,
   resolveCanonicalRepeat,
-  validDecisionThemeIds,
 } from "./runtimeValidation.ts";
 import type {
   DecisionRoomAction,
   DecisionRoomScreen,
   DecisionRoomSessionState,
 } from "./types.ts";
+import { resolveCanonicalInitialSession } from "./validateInitialSession.ts";
 
 const screenOrder: DecisionRoomScreen[] = [
   "introduction",
@@ -41,10 +41,9 @@ export function createEmptyDecisionRoomSession(
   };
 }
 
-export function initializeDecisionRoomSession(
-  initialState: DecisionRoomSessionState,
-): DecisionRoomSessionState {
-  return clonePlainData(initialState);
+export function initializeDecisionRoomSession(initialState: unknown): DecisionRoomSessionState {
+  return resolveCanonicalInitialSession(initialState)
+    ?? createEmptyDecisionRoomSession("facilitated");
 }
 
 export function invalidateThemeDerivations(
@@ -67,7 +66,11 @@ export function decisionRoomReducer(
   action: DecisionRoomAction,
 ): DecisionRoomSessionState {
   const runtimeAction: unknown = action;
-  if (!isRecord(runtimeAction) || typeof runtimeAction.type !== "string") return state;
+  if (
+    !isRecord(runtimeAction)
+    || !Object.hasOwn(runtimeAction, "type")
+    || typeof runtimeAction.type !== "string"
+  ) return state;
 
   if (runtimeAction.type === "START_SESSION") {
     const parsed = parseStartSessionAction(runtimeAction);
@@ -83,9 +86,10 @@ export function decisionRoomReducer(
   }
 
   if (runtimeAction.type === "SELECT_THEME") {
-    if (!hasOnlyKeys(runtimeAction, ["type", "themeId"]) || typeof runtimeAction.themeId !== "string") {
-      return state;
-    }
+    if (
+      !hasOnlyKeys(runtimeAction, ["type", "themeId"], ["type", "themeId"])
+      || typeof runtimeAction.themeId !== "string"
+    ) return state;
     return state.selection.selected.some((theme) => theme.id === runtimeAction.themeId)
       ? { ...state, activeThemeId: runtimeAction.themeId }
       : state;
@@ -93,7 +97,11 @@ export function decisionRoomReducer(
 
   if (runtimeAction.type === "UPDATE_REVIEW") {
     if (
-      !hasOnlyKeys(runtimeAction, ["type", "themeId", "patch"])
+      !hasOnlyKeys(
+        runtimeAction,
+        ["type", "themeId", "patch"],
+        ["type", "themeId", "patch"],
+      )
       || typeof runtimeAction.themeId !== "string"
       || !state.selection.selected.some((theme) => theme.id === runtimeAction.themeId)
       || !state.themes.some((theme) => theme.id === runtimeAction.themeId)
@@ -113,14 +121,11 @@ export function decisionRoomReducer(
       ? invalidateThemeDerivations(state, runtimeAction.themeId)
       : state;
     const review = updateThemeReview({ review: currentReview }, patch).review;
-    return {
-      ...base,
-      reviews: { ...base.reviews, [runtimeAction.themeId]: review },
-    };
+    return { ...base, reviews: { ...base.reviews, [runtimeAction.themeId]: review } };
   }
 
   if (runtimeAction.type === "SET_INTERPRETATIONS") {
-    if (!hasOnlyKeys(runtimeAction, ["type", "claims"])) return state;
+    if (!hasOnlyKeys(runtimeAction, ["type", "claims"], ["type", "claims"])) return state;
     const claims = resolveCanonicalClaims(runtimeAction.claims, state);
     if (!claims) return state;
     const interpretations = { ...state.interpretations };
@@ -129,7 +134,7 @@ export function decisionRoomReducer(
   }
 
   if (runtimeAction.type === "SET_REPEAT") {
-    if (!hasOnlyKeys(runtimeAction, ["type", "repeat"])) return state;
+    if (!hasOnlyKeys(runtimeAction, ["type", "repeat"], ["type", "repeat"])) return state;
     const repeat = resolveCanonicalRepeat(runtimeAction.repeat, state);
     if (!repeat) return state;
     return {
@@ -140,25 +145,24 @@ export function decisionRoomReducer(
   }
 
   if (runtimeAction.type === "APPROVE_DECISION") {
-    if (!hasOnlyKeys(runtimeAction, ["type", "decision"]) || !isRecord(runtimeAction.decision)) {
-      return state;
-    }
-    const result = createDecisionRecord(runtimeAction.decision, validDecisionThemeIds(state));
-    if (result.status !== "ready" || result.decision.status !== "approved") return state;
+    if (!hasOnlyKeys(runtimeAction, ["type", "decision"], ["type", "decision"])) return state;
+    const decision = resolveCanonicalDecision(runtimeAction.decision, state);
+    if (!decision) return state;
     return {
       ...state,
       decisions: [
-        ...state.decisions.filter((decision) => decision.id !== result.decision.id),
-        clonePlainData(result.decision),
+        ...state.decisions.filter((item) => item.id !== decision.id),
+        decision,
       ].sort((a, b) => compareCodeUnits(a.id, b.id)),
       report: undefined,
     };
   }
 
   if (runtimeAction.type === "GO_TO_SCREEN") {
-    if (!hasOnlyKeys(runtimeAction, ["type", "screen"]) || !isKnownScreen(runtimeAction.screen)) {
-      return state;
-    }
+    if (
+      !hasOnlyKeys(runtimeAction, ["type", "screen"], ["type", "screen"])
+      || !isKnownScreen(runtimeAction.screen)
+    ) return state;
     const target = runtimeAction.screen as DecisionRoomScreen;
     const currentIndex = screenOrder.indexOf(state.screen);
     const targetIndex = screenOrder.indexOf(target);

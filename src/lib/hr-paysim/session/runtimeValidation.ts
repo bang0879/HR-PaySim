@@ -1,3 +1,5 @@
+import { createDecisionRecord } from "../decisions/decisionRecords.ts";
+import type { DecisionRecord } from "../decisions/types.ts";
 import { INTERPRETATION_CLAIM_REGISTRY } from "../interpretation/claimRegistry.ts";
 import type { InterpretationClaim } from "../interpretation/types.ts";
 import { validateInterpretationClaim } from "../interpretation/validateInterpretationClaims.ts";
@@ -18,6 +20,13 @@ import type { ReviewSubjectSelection } from "../themes/selectReviewSubjects.ts";
 import type { StructuralTheme } from "../themes/types.ts";
 import type { NormalizedRosterRow } from "../domain.ts";
 import type { DecisionRoomSessionState } from "./types.ts";
+import {
+  cloneSafePlainData,
+  isPlainDataArray,
+  isPlainDataRecord,
+  ownDataValue,
+  safePlainDataEqual,
+} from "./safePlainData.ts";
 
 const modes = new Set<DecisionRoomSessionState["mode"]>(["facilitated", "demo"]);
 const explanationBases = new Set<ExplanationBasis | "unanswered">([
@@ -94,10 +103,14 @@ export interface ValidStartSession {
 }
 
 export function parseStartSessionAction(action: Record<string, unknown>): ValidStartSession | undefined {
-  if (!hasOnlyKeys(action, ["type", "mode", "rows", "themes", "selection", "activeThemeId"])) {
+  if (!hasOnlyKeys(
+    action,
+    ["type", "mode", "rows", "themes", "selection", "activeThemeId"],
+    ["type", "mode", "rows", "themes", "selection"],
+  )) {
     return undefined;
   }
-  if (!isEnum(action.mode, modes) || !Array.isArray(action.rows) || !Array.isArray(action.themes)) {
+  if (!isEnum(action.mode, modes) || !isPlainDataArray(action.rows) || !isPlainDataArray(action.themes)) {
     return undefined;
   }
   if (!action.rows.every(isNormalizedRosterRow) || !action.themes.every(isStructuralTheme)) {
@@ -112,7 +125,8 @@ export function parseStartSessionAction(action: Record<string, unknown>): ValidS
   }
   const selection = parseSelection(action.selection, action.themes);
   if (!selection) return undefined;
-  if (action.activeThemeId !== undefined) {
+  const hasActiveThemeId = Object.hasOwn(action, "activeThemeId");
+  if (hasActiveThemeId) {
     if (!isNonEmptyString(action.activeThemeId)) return undefined;
     if (!selection.selected.some((theme) => theme.id === action.activeThemeId)) return undefined;
   }
@@ -121,7 +135,7 @@ export function parseStartSessionAction(action: Record<string, unknown>): ValidS
     rows: clonePlainData(action.rows),
     themes: clonePlainData(action.themes),
     selection: clonePlainData(selection),
-    ...(action.activeThemeId !== undefined ? { activeThemeId: action.activeThemeId } : {}),
+    ...(hasActiveThemeId ? { activeThemeId: action.activeThemeId as string } : {}),
   };
 }
 
@@ -130,20 +144,21 @@ export function parseReviewUpdate(
   themeId: string,
 ): ThemeReviewUpdate | undefined {
   if (!isRecord(value)) return undefined;
+  if (Object.keys(value).length === 0) return undefined;
   if (!hasOnlyKeys(value, [
     "explanationBasis",
     "evidenceStatus",
     "repeatabilityStatus",
     "evidenceFollowUp",
   ], [])) return undefined;
-  if (value.explanationBasis !== undefined && !isEnum(value.explanationBasis, explanationBases)) {
+  if (Object.hasOwn(value, "explanationBasis") && !isEnum(value.explanationBasis, explanationBases)) {
     return undefined;
   }
-  if (value.evidenceStatus !== undefined && !isEnum(value.evidenceStatus, evidenceStatuses)) {
+  if (Object.hasOwn(value, "evidenceStatus") && !isEnum(value.evidenceStatus, evidenceStatuses)) {
     return undefined;
   }
   if (
-    value.repeatabilityStatus !== undefined
+    Object.hasOwn(value, "repeatabilityStatus")
     && !isEnum(value.repeatabilityStatus, repeatabilityStatuses)
   ) return undefined;
   if (Object.hasOwn(value, "evidenceFollowUp") && !isEvidenceFollowUp(value.evidenceFollowUp, themeId)) {
@@ -156,12 +171,18 @@ export function resolveCanonicalClaims(
   value: unknown,
   state: DecisionRoomSessionState,
 ): InterpretationClaim[] | undefined {
-  if (!Array.isArray(value)) return undefined;
+  if (!isPlainDataArray(value)) return undefined;
   const selectedIds = selectedThemeIds(state);
   const resolved: InterpretationClaim[] = [];
   const seenThemeIds = new Set<string>();
   for (const supplied of value) {
-    if (!isRecord(supplied) || !isNonEmptyString(supplied.id) || !isNonEmptyString(supplied.themeId)) {
+    if (
+      !isRecord(supplied)
+      || !Object.hasOwn(supplied, "id")
+      || !Object.hasOwn(supplied, "themeId")
+      || !isNonEmptyString(supplied.id)
+      || !isNonEmptyString(supplied.themeId)
+    ) {
       return undefined;
     }
     if (!selectedIds.has(supplied.themeId) || !state.reviews[supplied.themeId]) return undefined;
@@ -186,7 +207,11 @@ export function resolveCanonicalRepeat(
   value: unknown,
   state: DecisionRoomSessionState,
 ): PrecedentRepeatResult | undefined {
-  if (!isRecord(value) || !isNonEmptyString(value.themeId)) return undefined;
+  if (
+    !isRecord(value)
+    || !Object.hasOwn(value, "themeId")
+    || !isNonEmptyString(value.themeId)
+  ) return undefined;
   const theme = state.themes.find((item) => item.id === value.themeId);
   if (!theme || !selectedThemeIds(state).has(theme.id) || !state.reviews[theme.id]) return undefined;
 
@@ -207,6 +232,25 @@ export function resolveCanonicalRepeat(
   return undefined;
 }
 
+export function resolveCanonicalDecision(
+  value: unknown,
+  state: DecisionRoomSessionState,
+): DecisionRecord | undefined {
+  if (!isRecord(value) || !hasOnlyKeys(
+    value,
+    ["id", "themeIds", "actionKey", "ownerRole", "dueEvent", "status"],
+    ["id", "themeIds", "actionKey", "ownerRole", "dueEvent", "status"],
+  )) return undefined;
+  if (
+    !isPlainDataArray(value.themeIds)
+    || !value.themeIds.every((themeId) => typeof themeId === "string")
+  ) return undefined;
+  const result = createDecisionRecord(value, validDecisionThemeIds(state));
+  return result.status === "ready" && result.decision.status === "approved"
+    ? clonePlainData(result.decision)
+    : undefined;
+}
+
 export function validDecisionThemeIds(state: DecisionRoomSessionState): ReadonlySet<string> {
   const currentIds = new Set(state.themes.map((theme) => theme.id));
   const selectedIds = selectedThemeIds(state);
@@ -216,7 +260,7 @@ export function validDecisionThemeIds(state: DecisionRoomSessionState): Readonly
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isPlainDataRecord(value);
 }
 
 export function hasOnlyKeys(
@@ -234,28 +278,11 @@ export function isKnownScreen(value: unknown): boolean {
 }
 
 export function clonePlainData<T>(value: T): T {
-  if (Array.isArray(value)) return value.map((item) => clonePlainData(item)) as T;
-  if (isRecord(value)) {
-    const clone: Record<string, unknown> = {};
-    for (const key of Object.keys(value)) clone[key] = clonePlainData(value[key]);
-    return clone as T;
-  }
-  return value;
+  return cloneSafePlainData(value);
 }
 
 export function plainDataEqual(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) return true;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    return Array.isArray(left)
-      && Array.isArray(right)
-      && left.length === right.length
-      && left.every((item, index) => plainDataEqual(item, right[index]));
-  }
-  if (!isRecord(left) || !isRecord(right)) return false;
-  const leftKeys = Object.keys(left).sort(compareCodeUnits);
-  const rightKeys = Object.keys(right).sort(compareCodeUnits);
-  return leftKeys.length === rightKeys.length
-    && leftKeys.every((key, index) => key === rightKeys[index] && plainDataEqual(left[key], right[key]));
+  return safePlainDataEqual(left, right);
 }
 
 function parseSelection(value: unknown, themes: StructuralTheme[]): ReviewSubjectSelection | undefined {
@@ -265,11 +292,12 @@ function parseSelection(value: unknown, themes: StructuralTheme[]): ReviewSubjec
     ["selected", "unselected", "recommendedIds", "wasOverridden"],
   )) return undefined;
   if (
-    !Array.isArray(value.selected)
-    || !Array.isArray(value.unselected)
+    !isPlainDataArray(value.selected)
+    || !isPlainDataArray(value.unselected)
     || !isStringArray(value.recommendedIds)
     || typeof value.wasOverridden !== "boolean"
   ) return undefined;
+  if (value.selected.length > 3 || value.recommendedIds.length > 3) return undefined;
   const themesById = new Map(themes.map((theme) => [theme.id, theme]));
   const selected = resolveSelectionThemes(value.selected, themesById);
   const unselected = resolveSelectionThemes(value.unselected, themesById);
@@ -297,7 +325,7 @@ function resolveSelectionThemes(
 ): StructuralTheme[] | undefined {
   const resolved: StructuralTheme[] = [];
   for (const supplied of values) {
-    if (!isRecord(supplied) || !isNonEmptyString(supplied.id)) return undefined;
+    if (!isRecord(supplied) || !Object.hasOwn(supplied, "id") || !isNonEmptyString(supplied.id)) return undefined;
     const canonical = themesById.get(supplied.id);
     if (!canonical || !plainDataEqual(supplied, canonical)) return undefined;
     resolved.push(clonePlainData(canonical));
@@ -307,6 +335,7 @@ function resolveSelectionThemes(
 
 function isNormalizedRosterRow(value: unknown): value is NormalizedRosterRow {
   if (!isRecord(value) || !Object.keys(value).every((key) => rowKeys.has(key))) return false;
+  if (!hasOwnKeys(value, ["rowId", "roleGroup", "baseSalaryKRW"])) return false;
   if (!isNonEmptyString(value.rowId) || !isNonEmptyString(value.roleGroup) || !isFiniteNumber(value.baseSalaryKRW)) {
     return false;
   }
@@ -318,16 +347,21 @@ function isNormalizedRosterRow(value: unknown): value is NormalizedRosterRow {
 
 function isStructuralTheme(value: unknown): value is StructuralTheme {
   if (!isRecord(value) || !Object.keys(value).every((key) => themeKeys.has(key))) return false;
+  if (!hasOwnKeys(value, [
+    "id", "roleGroup", "archetype", "dataStatus", "patternKind", "findingIds",
+    "comparisonPairs", "affectedRowIds", "supportingObservations", "metrics",
+    "normalizedHeadlineGap",
+  ])) return false;
   return isNonEmptyString(value.id)
     && isNonEmptyString(value.roleGroup)
     && ["emergent_structure", "cohort_precedent", "level_integrity", "isolated_relationship"].includes(String(value.archetype))
     && ["sufficient", "partial"].includes(String(value.dataStatus))
     && ["systematic", "isolated"].includes(String(value.patternKind))
     && isStringArray(value.findingIds)
-    && (value.headlinePair === undefined || isFindingPair(value.headlinePair))
-    && Array.isArray(value.comparisonPairs) && value.comparisonPairs.every(isFindingPair)
+    && (!Object.hasOwn(value, "headlinePair") || isFindingPair(value.headlinePair))
+    && isPlainDataArray(value.comparisonPairs) && value.comparisonPairs.every(isFindingPair)
     && isStringArray(value.affectedRowIds)
-    && Array.isArray(value.supportingObservations) && value.supportingObservations.every(isSupportingObservation)
+    && isPlainDataArray(value.supportingObservations) && value.supportingObservations.every(isSupportingObservation)
     && isMetricSet(value.metrics)
     && isFiniteNumber(value.normalizedHeadlineGap);
 }
@@ -336,9 +370,10 @@ function isFindingPair(value: unknown): boolean {
   return isRecord(value)
     && Object.keys(value).every((key) => pairKeys.has(key))
     && isNonEmptyString(value.underpaidRowId)
+    && hasOwnKeys(value, ["underpaidRowId", "comparatorRowId", "salaryGapKRW", "reasonThisIsHardToDefend"])
     && isNonEmptyString(value.comparatorRowId)
     && isFiniteNumber(value.salaryGapKRW)
-    && (value.gapPercentage === undefined || isFiniteNumber(value.gapPercentage))
+    && (!Object.hasOwn(value, "gapPercentage") || isFiniteNumber(value.gapPercentage))
     && typeof value.reasonThisIsHardToDefend === "string";
 }
 
@@ -353,6 +388,7 @@ function isSupportingObservation(value: unknown): boolean {
 function isMetricSet(value: unknown): boolean {
   return isRecord(value)
     && Object.keys(value).every((key) => metricKeys.has(key))
+    && Object.hasOwn(value, "nonClaim")
     && typeof value.nonClaim === "string"
     && optionalNumbersValid(value, [
       "headlineGapKRW", "pairRepairFloorKRW", "systemRepairFloorKRW", "roleGroupPayrollContextKRW",
@@ -364,7 +400,7 @@ function themeReferencesKnownRows(theme: StructuralTheme, rowIds: ReadonlySet<st
     ...theme.affectedRowIds,
     ...theme.comparisonPairs.flatMap((pair) => [pair.underpaidRowId, pair.comparatorRowId]),
     ...theme.supportingObservations.flatMap((item) => item.affectedRowIds),
-    ...(theme.headlinePair ? [theme.headlinePair.underpaidRowId, theme.headlinePair.comparatorRowId] : []),
+    ...(Object.hasOwn(theme, "headlinePair") ? [theme.headlinePair!.underpaidRowId, theme.headlinePair!.comparatorRowId] : []),
   ];
   return referenced.every((id) => rowIds.has(id));
 }
@@ -384,19 +420,23 @@ function selectedThemeIds(state: DecisionRoomSessionState): ReadonlySet<string> 
 }
 
 function optionalStringsValid(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => value[key] === undefined || typeof value[key] === "string");
+  return keys.every((key) => !Object.hasOwn(value, key) || typeof ownDataValue(value, key) === "string");
 }
 
 function optionalNumbersValid(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => value[key] === undefined || isFiniteNumber(value[key]));
+  return keys.every((key) => !Object.hasOwn(value, key) || isFiniteNumber(ownDataValue(value, key)));
 }
 
 function optionalBooleansValid(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => value[key] === undefined || typeof value[key] === "boolean");
+  return keys.every((key) => !Object.hasOwn(value, key) || typeof ownDataValue(value, key) === "boolean");
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(isNonEmptyString);
+  return isPlainDataArray(value) && value.every(isNonEmptyString);
+}
+
+function hasOwnKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((key) => Object.hasOwn(value, key));
 }
 
 function hasDuplicateIds<T extends Record<K, string>, K extends "id" | "rowId">(
