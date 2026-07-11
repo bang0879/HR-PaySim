@@ -4,7 +4,19 @@ import { join, normalize, resolve } from "node:path";
 import { FOUNDER_COPY } from "../src/lib/hr-paysim/copy/founderCopy.ts";
 import { FORBIDDEN_FOUNDER_TERMS } from "../src/lib/hr-paysim/copy/forbiddenFounderTerms.ts";
 
-const roots = ["src/components", "src/routes", "src/App.tsx"];
+// The new four-screen runtime lives under these boundaries. Legacy prototype
+// surfaces remain unchanged until the migration gate in Task 12.
+const founderSurfaceRoots = ["src/features", "src/app/PaySimApp.tsx"];
+const visibleAttributeNames = new Set([
+  "aria-label",
+  "title",
+  "placeholder",
+  "alt",
+  "label",
+  "description",
+  "text",
+  "body",
+]);
 
 export function findForbiddenCopyValues(values: Record<string, string>): string[] {
   return Object.entries(values).flatMap(([copyKey, value]) =>
@@ -22,7 +34,7 @@ export function findForbiddenRenderedCopy(source: string): string[] {
 export function collectForbiddenCopyViolations(): string[] {
   const copyViolations = findForbiddenCopyValues(FOUNDER_COPY)
     .map((violation) => `FOUNDER_COPY:${violation}`);
-  const sourceViolations = roots
+  const sourceViolations = founderSurfaceRoots
     .filter((root) => existsSync(root))
     .flatMap(filesUnder)
     .filter((file) => /\.(tsx|jsx)$/.test(file))
@@ -35,12 +47,145 @@ export function collectForbiddenCopyViolations(): string[] {
 
 function extractRenderedStrings(source: string): string[] {
   const values: string[] = [];
-  for (const match of source.matchAll(/>([^<>{}\r\n]+)</g)) values.push(match[1] ?? "");
-  for (const match of source.matchAll(/\b(?:aria-label|title|placeholder|alt|label|description|text|body)\s*=\s*(["'])(.*?)\1/gs)) {
-    values.push(match[2] ?? "");
+  const openElements: string[] = [];
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const tagStart = findNextTagStart(source, cursor);
+    if (tagStart < 0) {
+      if (openElements.length > 0) pushChildContent(values, source.slice(cursor));
+      break;
+    }
+    if (openElements.length > 0) pushChildContent(values, source.slice(cursor, tagStart));
+
+    const tagEnd = findTagEnd(source, tagStart);
+    if (tagEnd < 0) break;
+    const tagSource = source.slice(tagStart + 1, tagEnd);
+    const tag = parseTag(tagSource);
+    if (tag) {
+      if (tag.kind === "open") {
+        pushVisibleAttributes(values, tagSource);
+        if (!tag.selfClosing) openElements.push(tag.name);
+      } else {
+        const matchingIndex = openElements.lastIndexOf(tag.name);
+        if (matchingIndex >= 0) openElements.splice(matchingIndex);
+      }
+    }
+    cursor = tagEnd + 1;
   }
-  for (const match of source.matchAll(/\{\s*(["'`])([^"'`]+)\1\s*\}/g)) values.push(match[2] ?? "");
+
   return values;
+}
+
+function findNextTagStart(source: string, from: number): number {
+  for (let index = from; index < source.length - 1; index += 1) {
+    if (source[index] !== "<") continue;
+    const next = source[index + 1] ?? "";
+    if (/[A-Za-z/]/.test(next)) return index;
+  }
+  return -1;
+}
+
+function findTagEnd(source: string, tagStart: number): number {
+  let quote: string | undefined;
+  let braceDepth = 0;
+  for (let index = tagStart + 1; index < source.length; index += 1) {
+    const char = source[index] ?? "";
+    if (quote) {
+      if (char === "\\") index += 1;
+      else if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "\"" || char === "'" || char === "`") {
+      quote = char;
+      continue;
+    }
+    if (char === "{") braceDepth += 1;
+    else if (char === "}" && braceDepth > 0) braceDepth -= 1;
+    else if (char === ">" && braceDepth === 0) return index;
+  }
+  return -1;
+}
+
+function parseTag(tagSource: string):
+  | { kind: "open"; name: string; selfClosing: boolean }
+  | { kind: "close"; name: string }
+  | undefined {
+  const trimmed = tagSource.trim();
+  const closing = trimmed.match(/^\/\s*([A-Za-z][\w.-]*)/);
+  if (closing) return { kind: "close", name: closing[1]! };
+  const opening = trimmed.match(/^([A-Za-z][\w.-]*)/);
+  if (!opening) return undefined;
+  return {
+    kind: "open",
+    name: opening[1]!,
+    selfClosing: /\/\s*$/.test(trimmed),
+  };
+}
+
+function pushVisibleAttributes(values: string[], tagSource: string): void {
+  const attributePattern = /\b([A-Za-z][\w:-]*)\s*=\s*/g;
+  for (const match of tagSource.matchAll(attributePattern)) {
+    const name = match[1] ?? "";
+    if (!visibleAttributeNames.has(name)) continue;
+    const valueStart = (match.index ?? 0) + match[0].length;
+    const first = tagSource[valueStart] ?? "";
+    if (first === "\"" || first === "'") {
+      const end = findQuotedEnd(tagSource, valueStart, first);
+      if (end >= 0) values.push(tagSource.slice(valueStart + 1, end));
+    } else if (first === "{") {
+      const end = findBalancedBraceEnd(tagSource, valueStart);
+      if (end >= 0) pushQuotedLiterals(values, tagSource.slice(valueStart + 1, end));
+    }
+  }
+}
+
+function pushChildContent(values: string[], source: string): void {
+  let plainStart = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] !== "{") continue;
+    values.push(source.slice(plainStart, index));
+    const end = findBalancedBraceEnd(source, index);
+    if (end < 0) return;
+    pushQuotedLiterals(values, source.slice(index + 1, end));
+    index = end;
+    plainStart = end + 1;
+  }
+  values.push(source.slice(plainStart));
+}
+
+function findQuotedEnd(source: string, start: number, quote: string): number {
+  for (let index = start + 1; index < source.length; index += 1) {
+    if (source[index] === "\\") index += 1;
+    else if (source[index] === quote) return index;
+  }
+  return -1;
+}
+
+function findBalancedBraceEnd(source: string, start: number): number {
+  let depth = 0;
+  let quote: string | undefined;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index] ?? "";
+    if (quote) {
+      if (char === "\\") index += 1;
+      else if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "\"" || char === "'" || char === "`") quote = char;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function pushQuotedLiterals(values: string[], source: string): void {
+  for (const literal of source.matchAll(/(["'`])([^"'`]*)\1/g)) {
+    values.push(literal[2] ?? "");
+  }
 }
 
 function matchingTerms(value: string): string[] {

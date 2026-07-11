@@ -49,6 +49,8 @@ test("locks the Product Engineer conclusion, non-claims, and required states", (
     FOUNDER_COPY["state.recalculated"],
     "앞서 선택한 설명이 변경되어 이후 계산과 결정사항을 다시 확인했습니다.",
   );
+  assert.match(resolveFounderCopy("state.personal_information_detected") ?? "", /열 이름.*행 번호/);
+  assert.match(resolveFounderCopy("state.copy_failed") ?? "", /복사.*다시/);
 });
 
 test("every claim and founder-question copy key resolves from the founder SSOT", () => {
@@ -71,11 +73,18 @@ test("founder amounts always include a won unit and comparison context", () => {
   );
   assert.throws(() => formatFounderAmount(27_000_000, " "), /COMPARISON_CONTEXT_REQUIRED/);
   assert.throws(() => formatFounderAmount(-1, "직원 간 차이"), /INVALID_FOUNDER_AMOUNT/);
+  assert.throws(() => formatFounderAmount(1.5, "직원 간 차이"), /INVALID_FOUNDER_AMOUNT/);
+  assert.throws(() => formatFounderAmount(Number.MAX_SAFE_INTEGER + 1, "직원 간 차이"), /INVALID_FOUNDER_AMOUNT/);
+  assert.throws(
+    () => formatFounderAmount(1_000_000, undefined as unknown as string),
+    /COMPARISON_CONTEXT_REQUIRED/,
+  );
 });
 
 test("founder copy values contain none of the forbidden founder terms", () => {
   assert.ok(FORBIDDEN_FOUNDER_TERMS.includes("finding"));
   assert.ok(FORBIDDEN_FOUNDER_TERMS.includes("stale"));
+  assert.ok(FORBIDDEN_FOUNDER_TERMS.includes("AI substitution"));
   assert.deepEqual(findForbiddenCopyValues(FOUNDER_COPY), []);
 });
 
@@ -88,9 +97,15 @@ test("lint allows internal identifiers but rejects the same words in rendered JS
   `;
   const renderedSource = `export function View() { return <p>theme relationship</p>; }`;
   const quotedAttribute = `export function Button() { return <button aria-label="memo">복사</button>; }`;
+  const conditionalRenderedSource = `
+    export function View({ active }: { active: boolean }) {
+      return <p>{active ? "memo" : \`relationship\`}</p>;
+    }
+  `;
 
   assert.deepEqual(findForbiddenRenderedCopy(internalSource), []);
   assert.deepEqual(findForbiddenRenderedCopy(genericBoundarySource), []);
   assert.deepEqual(findForbiddenRenderedCopy(renderedSource), ["theme", "relationship"]);
   assert.deepEqual(findForbiddenRenderedCopy(quotedAttribute), ["memo"]);
+  assert.deepEqual(findForbiddenRenderedCopy(conditionalRenderedSource), ["relationship", "memo"]);
 });

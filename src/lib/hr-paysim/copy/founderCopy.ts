@@ -25,6 +25,12 @@ export const FOUNDER_COPY = {
     "현재 자료만으로는 이 차이가 생긴 이유를 설명하기 어렵습니다. 다음으로 확인할 기록을 정리합니다.",
   "state.repeat_insufficient":
     "적용 대상, 금액, 승인자 또는 재검토 시점이 정해지지 않아 같은 방식을 적용한 결과를 계산하지 않았습니다.",
+  "state.personal_information_detected":
+    "개인정보로 볼 수 있는 항목이 확인되어 계산을 멈췄습니다. 실제 값은 다시 표시하지 않으며, 확인이 필요한 열 이름과 행 번호만 안내합니다.",
+  "state.copy_failed":
+    "결과를 복사하지 못했습니다. 브라우저의 복사 권한을 확인한 뒤 다시 시도해 주세요.",
+  "state.export_failed":
+    "결과 파일을 만들지 못했습니다. 현재 화면 내용은 유지되어 있으므로 잠시 후 다시 시도해 주세요.",
 
   "action.view_evidence": "실제 연봉 분포와 비교 사례 보기",
   "action.review_reason": "이 차이가 생긴 이유 확인하기",
@@ -68,11 +74,12 @@ export function resolveFounderCopy(copyKey: string): string | undefined {
 }
 
 export function formatFounderAmount(amountKRW: number, comparisonContext: string): string {
-  if (!Number.isFinite(amountKRW) || amountKRW < 0) {
+  if (!Number.isSafeInteger(amountKRW) || amountKRW < 0) {
     throw new Error("INVALID_FOUNDER_AMOUNT");
   }
-  if (comparisonContext.trim().length === 0) {
+  if (typeof comparisonContext !== "string" || comparisonContext.trim().length === 0) {
     throw new Error("COMPARISON_CONTEXT_REQUIRED");
   }
-  return `${new Intl.NumberFormat("ko-KR").format(amountKRW)}원 · ${comparisonContext.trim()}`;
+  const formattedAmount = amountKRW.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${formattedAmount}원 · ${comparisonContext.trim()}`;
 }

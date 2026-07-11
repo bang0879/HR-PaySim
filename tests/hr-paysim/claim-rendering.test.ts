@@ -71,6 +71,43 @@ test("unsupported statements never render at any destination", () => {
   }
 });
 
+test("malformed runtime statements and destinations fail closed", () => {
+  const surface = claim("client-surface", "SUPPORTED_BY_CLIENT_DATA", "SURFACE_OBSERVATION");
+  const malformedStatements = [null, { ...surface, claimStatus: "PROMOTED_AT_RUNTIME" }, surface] as unknown as InterpretationStatement[];
+
+  assert.deepEqual(
+    resolveStatementsForDestination(malformedStatements, "SCREEN_2_EVIDENCE"),
+    [surface],
+  );
+  assert.deepEqual(
+    resolveStatementsForDestination(
+      [surface],
+      "UNKNOWN_DESTINATION" as ClaimDestination,
+    ),
+    [],
+  );
+});
+
+test("destination resolution is input-order independent without mutating callers", () => {
+  const a = claim("a-statement", "SUPPORTED_BY_CLIENT_DATA", "SURFACE_OBSERVATION");
+  const z = claim("z-statement", "SUPPORTED_BY_CLIENT_DATA", "SURFACE_OBSERVATION");
+  const forward = [a, z];
+  const reverse = [z, a];
+  const forwardSnapshot = [...forward];
+  const reverseSnapshot = [...reverse];
+
+  assert.deepEqual(
+    resolveStatementsForDestination(forward, "SCREEN_4_CONFIRMED").map((item) => item.id),
+    ["a-statement", "z-statement"],
+  );
+  assert.deepEqual(
+    resolveStatementsForDestination(reverse, "SCREEN_4_CONFIRMED").map((item) => item.id),
+    ["a-statement", "z-statement"],
+  );
+  assert.deepEqual(forward, forwardSnapshot);
+  assert.deepEqual(reverse, reverseSnapshot);
+});
+
 function claim(
   id: string,
   claimStatus: InterpretationStatement["claimStatus"],

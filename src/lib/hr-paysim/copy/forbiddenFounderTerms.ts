@@ -19,4 +19,12 @@ export const FORBIDDEN_FOUNDER_TERMS = [
   "stale",
   "memo",
   "decision domain",
+  "AI substitution",
+  "job replacement",
+  "Total Work Cost",
+  "attrition probability",
+  "salary calculator",
+  "이직 확률",
+  "생산성 향상률",
+  "대체율",
 ] as const;
