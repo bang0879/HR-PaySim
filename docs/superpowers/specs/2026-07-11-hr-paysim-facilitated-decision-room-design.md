@@ -197,6 +197,7 @@ Roster paste
   -> DetectorFinding[]
   -> StructuralTheme[]
   -> ThemeReview[]
+  -> InterpretationClaim[]
   -> PrecedentRepeatResult[]
   -> DecisionRecord[] and EvidenceFollowUp[]
   -> SessionReportViewModel
@@ -282,6 +283,56 @@ Required distinctions:
 - `reusable_rule`: the founder has approved explicit conditions for future use.
 
 `추가 확인 필요` is a workflow state represented by `EvidenceFollowUp`; it is not a policy domain.
+
+## Claim Basis And Interpretation Contract
+
+This contract governs internal interpretation content. It does not reintroduce founder-visible insight-card grids. The twelve HR Prism insight cards are not copied into PaySim; only their reasoning sequence may inform a newly authorized PaySim interpretation after its evidence and claim basis are recorded.
+
+`InterpretationClaimStatus` is separate from `EvidenceStatus`. `EvidenceStatus` describes whether the founder's explanation is supported. `InterpretationClaimStatus` describes what the product may assert about the observed relationship.
+
+```ts
+export type InterpretationClaimStatus =
+  | "VERIFIED_EXTERNAL"
+  | "SUPPORTED_BY_CLIENT_DATA"
+  | "KYLE_EXPERIENCE_BASED"
+  | "WORKING_HYPOTHESIS"
+  | "UNSUPPORTED_DO_NOT_USE";
+
+export interface InterpretationClaim {
+  id: string;
+  themeId: string;
+  triggerEvidenceIds: string[];
+  surfaceObservationKey: string;
+  typicalInterpretationKey?: string;
+  deeperMechanismKey?: string;
+  timeAxisOrCascadeKey?: string;
+  counterIntuitiveAngleKey?: string;
+  decisionRelevanceKey: string;
+  founderQuestionKey: string;
+  mustNotClaimKeys: string[];
+  claimStatus: InterpretationClaimStatus;
+  sourceRefs: string[];
+}
+```
+
+Claim rules:
+
+- `VERIFIED_EXTERNAL` requires a named source, source date, population or scope, and a clear statement of how the source applies to this session.
+- `SUPPORTED_BY_CLIENT_DATA` requires traceable detector/theme evidence plus the reviewed state that supports the interpretation.
+- `KYLE_EXPERIENCE_BASED` is framed as practitioner experience or a facilitation lens, never as a universal company fact.
+- `WORKING_HYPOTHESIS` may appear only as a conditional interpretation, founder question, or evidence follow-up. It cannot appear as a confirmed result.
+- `UNSUPPORTED_DO_NOT_USE` never renders in a founder-facing screen, copy/export result, or portfolio artifact.
+- No interpretation may infer employee intent, declare unfairness, choose a policy domain, create numeric repeat parameters, or approve a decision.
+- Changing an explanation or its evidence status invalidates dependent interpretations before repeat results and decisions are recalculated.
+
+Flow integration:
+
+- Screen 2 may use the surface observation and founder question after the concrete relationship evidence.
+- Screens 3 and 4 may use deeper mechanism or cascade content only when its claim status and reviewed-state dependency permit it.
+- `VERIFIED_EXTERNAL` and `SUPPORTED_BY_CLIENT_DATA` may support a result statement.
+- `KYLE_EXPERIENCE_BASED` remains facilitator or methodology framing.
+- `WORKING_HYPOTHESIS` remains explicitly labeled as a question or follow-up.
+- The final report derives interpretation copy from structured claim records; it does not store or generate an untracked narrative block.
 
 ## Repeat-The-Practice Calculation
 
@@ -466,6 +517,14 @@ Target routes:
 - `/hr-paysim/session/new`: facilitator-only preparation.
 - `/hr-paysim/session`: active four-screen in-memory session.
 
+### Route Exposure And Indexing
+
+- `/hr-paysim/demo` is a direct-link, synthetic-data portfolio demonstration. It remains `noindex` in v1 until Kyle explicitly approves a portfolio-publication gate.
+- `/hr-paysim/session/new` and `/hr-paysim/session` are private operational routes. They remain `noindex`, are excluded from public navigation and sitemaps, and never contain synthetic-to-live data crossover.
+- V1 has no public marketing landing page, cold conversion funnel, pricing, payment, or public self-service onboarding.
+- The demo route cannot accept or retain user-entered roster data.
+- Any future indexing or public-discovery change requires an explicit product decision plus privacy, copy, and route QA.
+
 Runtime no longer routes to the old nine-step prototype. Prototype files remain reference artifacts outside the production route tree.
 
 Target bounded modules:
@@ -474,6 +533,7 @@ Target bounded modules:
 - deterministic detectors
 - structural-theme builder
 - review-state model
+- interpretation-claim registry and claim-basis validation
 - observed and bounded repeat calculators
 - decision records and evidence follow-ups
 - founder report view model
@@ -512,6 +572,11 @@ No detector may import founder report rendering. No report renderer may infer a 
 - Headline gap, pair repair floor, and system repair floor have distinct fields and tests.
 - System repair floor does not double-count overlapping ordinal repairs.
 - Same input and reviewed rule produce the same result.
+- Every rendered interpretation resolves from an `InterpretationClaim` with a non-empty claim status.
+- `UNSUPPORTED_DO_NOT_USE` content is absent from screens, exports, and portfolio artifacts.
+- `WORKING_HYPOTHESIS` content renders only as a conditional question or evidence follow-up.
+- `VERIFIED_EXTERNAL` claims fail validation without complete source references.
+- `SUPPORTED_BY_CLIENT_DATA` claims retain traceable evidence and reviewed-state dependencies.
 
 ### Privacy
 
@@ -520,6 +585,7 @@ No detector may import founder report rendering. No report renderer may infer a 
 - Raw and normalized roster data do not appear in browser storage or URLs.
 - Explicit session end clears in-memory state.
 - No roster or founder free text is emitted automatically.
+- Demo and session routes satisfy the route-exposure and `noindex` contract.
 
 ### Copy
 
