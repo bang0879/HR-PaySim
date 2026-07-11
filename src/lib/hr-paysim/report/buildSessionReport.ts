@@ -1,4 +1,5 @@
 import { createDecisionRecord } from "../decisions/decisionRecords.ts";
+import { resolveStatementsForDestination } from "../interpretation/resolveStatements.ts";
 import type { InterpretationStatement } from "../interpretation/types.ts";
 import type { PrecedentRepeatResult } from "../repeat/types.ts";
 import type { ThemeReview } from "../review/types.ts";
@@ -60,7 +61,10 @@ export function buildSessionReport(input: BuildSessionReportInput): SessionRepor
   });
 
   const confirmedResults: ConfirmedReportResult[] = selectedThemes.flatMap((theme) =>
-    statementRefs((statementsByTheme.get(theme.id) ?? []).filter(isConfirmedClientFact))
+    statementRefs(resolveStatementsForDestination(
+      statementsByTheme.get(theme.id) ?? [],
+      "EXPORT_CONFIRMED",
+    ))
       .map((statement) => ({ themeId: theme.id, ...statement }))
   );
   const followUpCandidates: ReportEvidenceFollowUp[] = input.followUps
@@ -72,7 +76,10 @@ export function buildSessionReport(input: BuildSessionReportInput): SessionRepor
       ownerRole: followUp.ownerRole,
       dueEvent: followUp.dueEvent,
       statementRefs: statementRefs(
-        (statementsByTheme.get(followUp.themeId) ?? []).filter(isWorkingHypothesis),
+        resolveStatementsForDestination(
+          statementsByTheme.get(followUp.themeId) ?? [],
+          "EXPORT_FOLLOW_UP",
+        ),
       ),
     }));
   const followUps = resolveIdentityCollisions(
@@ -120,15 +127,6 @@ function reportRepeatResult(result: PrecedentRepeatResult): ReportRepeatResult {
     conclusionKey: result.conclusionKey,
     nonClaimKey: result.nonClaimKey,
   };
-}
-
-function isConfirmedClientFact(statement: InterpretationStatement): boolean {
-  return statement.claimStatus === "SUPPORTED_BY_CLIENT_DATA"
-    && statement.kind === "SURFACE_OBSERVATION";
-}
-
-function isWorkingHypothesis(statement: InterpretationStatement): boolean {
-  return statement.claimStatus === "WORKING_HYPOTHESIS";
 }
 
 function statementRefs(statements: InterpretationStatement[]): ReportStatementRef[] {
