@@ -32,12 +32,11 @@ export function isMaterialLevelOrderViolation(
 
 export function calculateMinimumOrdinalRestoration(rows: NormalizedRosterRow[]): SystemRepairResult {
   const levelPairs = findLevelOrderViolations(rows);
-  const materialPairs = levelPairs.filter((pair) => isMaterialLevelOrderViolation(pair, rows));
   const adjustments = Array.from(groupByRole(rows).values()).flatMap(calculateRoleAdjustments);
 
   return {
-    headlineGapKRW: maximumPairGap(materialPairs),
-    pairRepairFloorKRW: maximumPairGap(materialPairs),
+    headlineGapKRW: maximumPairGap(levelPairs),
+    pairRepairFloorKRW: maximumPairGap(levelPairs),
     systemRepairFloorKRW: adjustments.reduce((total, item) => total + item.adjustmentKRW, 0),
     adjustments,
   };

@@ -1,5 +1,3 @@
-import type { StructuralFindingPair } from "../domain.ts";
-
 export interface OrdinalAdjustment {
   rowId: string;
   fromSalaryKRW: number;
@@ -21,5 +19,3 @@ export interface FindingMetricSet {
   roleGroupPayrollContextKRW?: number;
   nonClaim: string;
 }
-
-export type PairRepairCalculator = (pair: StructuralFindingPair) => number;

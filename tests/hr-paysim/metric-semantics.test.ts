@@ -37,6 +37,19 @@ test("equal salaries across adjacent ranks require no restoration", () => {
   });
 });
 
+test("strict sub-threshold inversions retain positive factual restoration metrics", () => {
+  const rows = [rosterRow("lower", 1, 70_000_000), rosterRow("higher", 2, 68_000_000)];
+
+  assert.deepEqual(calculateMinimumOrdinalRestoration(rows), {
+    headlineGapKRW: 2_000_000,
+    pairRepairFloorKRW: 2_000_000,
+    systemRepairFloorKRW: 2_000_000,
+    adjustments: [
+      { rowId: "higher", fromSalaryKRW: 68_000_000, toSalaryKRW: 70_000_000, adjustmentKRW: 2_000_000 },
+    ],
+  });
+});
+
 test("restoration targets the maximum lower-rank salary and adjusts each higher-rank row once", () => {
   const rows = [
     rosterRow("lower_max", 1, 80_000_000),
