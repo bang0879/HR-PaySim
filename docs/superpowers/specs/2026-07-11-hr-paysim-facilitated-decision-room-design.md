@@ -286,9 +286,9 @@ Required distinctions:
 
 ## Claim Basis And Interpretation Contract
 
-This contract governs internal interpretation content. It does not reintroduce founder-visible insight-card grids. The twelve HR Prism insight cards are not copied into PaySim; only their reasoning sequence may inform a newly authorized PaySim interpretation after its evidence and claim basis are recorded.
+This contract governs internal interpretation content. It does not reintroduce founder-visible insight-card grids. The twelve HR Prism insight cards are not copied into PaySim; only their reasoning sequence may inform a newly authorized PaySim interpretation after each statement's evidence and claim basis are recorded.
 
-`InterpretationClaimStatus` is separate from `EvidenceStatus`. `EvidenceStatus` describes whether the founder's explanation is supported. `InterpretationClaimStatus` describes what the product may assert about the observed relationship.
+`InterpretationClaimStatus` is separate from `EvidenceStatus`. `EvidenceStatus` describes whether the founder's explanation is supported. `InterpretationClaimStatus` describes what one displayable statement may assert about the observed relationship. A claim container may contain statements with different statuses.
 
 ```ts
 export type InterpretationClaimStatus =
@@ -298,41 +298,90 @@ export type InterpretationClaimStatus =
   | "WORKING_HYPOTHESIS"
   | "UNSUPPORTED_DO_NOT_USE";
 
+export type InterpretationStatementKind =
+  | "SURFACE_OBSERVATION"
+  | "TYPICAL_INTERPRETATION"
+  | "DEEPER_MECHANISM"
+  | "TIME_AXIS_OR_CASCADE"
+  | "COUNTER_INTUITIVE_ANGLE"
+  | "DECISION_RELEVANCE";
+
+export interface ExternalClaimSource {
+  kind: "EXTERNAL";
+  title: string;
+  publisher: string;
+  publishedAt: string;
+  sourceLocation: string;
+  populationOrScope: string;
+  applicabilityNote: string;
+}
+
+export interface ClientDataClaimSource {
+  kind: "CLIENT_DATA";
+  evidenceIds: string[];
+  reviewedStateIds: string[];
+}
+
+export interface PractitionerExperienceSource {
+  kind: "PRACTITIONER_EXPERIENCE";
+  experienceRef: string;
+  context: string;
+  limitation: string;
+}
+
+export type ClaimSourceRef =
+  | ExternalClaimSource
+  | ClientDataClaimSource
+  | PractitionerExperienceSource;
+
+export interface InterpretationStatement {
+  id: string;
+  kind: InterpretationStatementKind;
+  copyKey: string;
+  claimStatus: InterpretationClaimStatus;
+  triggerEvidenceIds: string[];
+  reviewDependencyIds: string[];
+  sourceRefs: ClaimSourceRef[];
+  mustNotClaimKeys: string[];
+}
+
 export interface InterpretationClaim {
   id: string;
   themeId: string;
-  triggerEvidenceIds: string[];
-  surfaceObservationKey: string;
-  typicalInterpretationKey?: string;
-  deeperMechanismKey?: string;
-  timeAxisOrCascadeKey?: string;
-  counterIntuitiveAngleKey?: string;
-  decisionRelevanceKey: string;
-  founderQuestionKey: string;
-  mustNotClaimKeys: string[];
-  claimStatus: InterpretationClaimStatus;
-  sourceRefs: string[];
+  statements: InterpretationStatement[];
+  founderQuestion: {
+    copyKey: string;
+    supportingStatementIds: string[];
+  };
 }
 ```
 
-Claim rules:
+Atomicity and source rules:
 
-- `VERIFIED_EXTERNAL` requires a named source, source date, population or scope, and a clear statement of how the source applies to this session.
-- `SUPPORTED_BY_CLIENT_DATA` requires traceable detector/theme evidence plus the reviewed state that supports the interpretation.
-- `KYLE_EXPERIENCE_BASED` is framed as practitioner experience or a facilitation lens, never as a universal company fact.
-- `WORKING_HYPOTHESIS` may appear only as a conditional interpretation, founder question, or evidence follow-up. It cannot appear as a confirmed result.
+- A factual salary difference may be `SUPPORTED_BY_CLIENT_DATA` while a proposed mechanism remains `WORKING_HYPOTHESIS` and a time-axis pattern remains `VERIFIED_EXTERNAL` or `KYLE_EXPERIENCE_BASED`.
+- `VERIFIED_EXTERNAL` requires at least one `ExternalClaimSource` with title, publisher, publication date, source location, population or scope, and an applicability note.
+- `SUPPORTED_BY_CLIENT_DATA` requires at least one `ClientDataClaimSource` whose evidence and reviewed-state IDs resolve in the current session.
+- `KYLE_EXPERIENCE_BASED` requires at least one `PractitionerExperienceSource` that records the experience reference, context, and limitation.
+- `WORKING_HYPOTHESIS` may use linked evidence as a trigger but cannot be promoted without a new validated source and status transition.
 - `UNSUPPORTED_DO_NOT_USE` never renders in a founder-facing screen, copy/export result, or portfolio artifact.
-- No interpretation may infer employee intent, declare unfairness, choose a policy domain, create numeric repeat parameters, or approve a decision.
-- Changing an explanation or its evidence status invalidates dependent interpretations before repeat results and decisions are recalculated.
+- Every founder question declares the statement IDs it relies on. A question cannot silently introduce a stronger factual premise than its supporting statements.
+- No statement may infer employee intent, declare unfairness, choose a policy domain, create numeric repeat parameters, or approve a decision.
 
-Flow integration:
+Rendering rules:
 
-- Screen 2 may use the surface observation and founder question after the concrete relationship evidence.
-- Screens 3 and 4 may use deeper mechanism or cascade content only when its claim status and reviewed-state dependency permit it.
-- `VERIFIED_EXTERNAL` and `SUPPORTED_BY_CLIENT_DATA` may support a result statement.
-- `KYLE_EXPERIENCE_BASED` remains facilitator or methodology framing.
-- `WORKING_HYPOTHESIS` remains explicitly labeled as a question or follow-up.
-- The final report derives interpretation copy from structured claim records; it does not store or generate an untracked narrative block.
+- `SUPPORTED_BY_CLIENT_DATA` may establish a client fact but cannot by itself establish causality, employee intent, or a future cascade.
+- `VERIFIED_EXTERNAL` may establish external context or a known pattern. It cannot confirm that the same mechanism exists in the client company without linked client evidence.
+- `KYLE_EXPERIENCE_BASED` cannot render in `확인된 내용`, `확인된 근거`, a client-specific confirmed result, or as the asserted basis for a decision. It may appear only in facilitator guidance, a methodology note, an explicitly labeled `검토 관점`, or the background to a founder question while preserving its lower claim status.
+- `WORKING_HYPOTHESIS` may appear only as a conditional interpretation, founder question, or evidence follow-up. It cannot appear as a confirmed result.
+- Screen 4 and exported results render only statements allowed for their destination. Lower-status framing remains visibly labeled and is never merged into confirmed-result prose.
+
+Flow integration and invalidation:
+
+- Screen 2 may use validated surface-observation statements and a founder question after the concrete relationship evidence.
+- Screens 3 and 4 may use deeper-mechanism or cascade statements only when each statement's status, source, destination, and reviewed-state dependency permit it.
+- The final report derives interpretation copy from validated statement records; it does not store or generate an untracked narrative block.
+- Changing a founder explanation or `EvidenceStatus` invalidates all dependent interpretation statements, repeat results, decision records, and report sections before any of them render again.
+- Invalidated outputs remain absent or explicitly pending recalculation; old claim copy, repeat results, decision sentences, and export copy cannot survive the dependency change.
 
 ## Repeat-The-Practice Calculation
 
@@ -519,11 +568,15 @@ Target routes:
 
 ### Route Exposure And Indexing
 
-- `/hr-paysim/demo` is a direct-link, synthetic-data portfolio demonstration. It remains `noindex` in v1 until Kyle explicitly approves a portfolio-publication gate.
-- `/hr-paysim/session/new` and `/hr-paysim/session` are private operational routes. They remain `noindex`, are excluded from public navigation and sitemaps, and never contain synthetic-to-live data crossover.
+- `/hr-paysim/demo` is a direct-link, synthetic-data portfolio demonstration. It remains `noindex` in v1 until Kyle explicitly approves a portfolio-publication gate. It does not require a facilitator access gate.
+- `/hr-paysim/session/new` and `/hr-paysim/session` are facilitator-only operational routes. If they are included in a publicly reachable deployment, both routes require an approved facilitator access gate. Otherwise they must be excluded from that public deployment.
+- `noindex`, sitemap exclusion, and navigation exclusion control discovery only. They do not constitute access control.
+- Unauthenticated users cannot enter facilitator preparation or session screens in an access-gated deployment.
+- Authentication secrets never appear in URLs, query parameters, client bundles, browser storage, or telemetry. Obscure paths and URL tokens are not accepted as access control.
 - V1 has no public marketing landing page, cold conversion funnel, pricing, payment, or public self-service onboarding.
 - The demo route cannot accept or retain user-entered roster data.
-- Any future indexing or public-discovery change requires an explicit product decision plus privacy, copy, and route QA.
+- `noindex` behavior and facilitator access control are verified independently.
+- Any future indexing or public-discovery change requires an explicit product decision plus privacy, copy, access-control, and route QA.
 
 Runtime no longer routes to the old nine-step prototype. Prototype files remain reference artifacts outside the production route tree.
 
@@ -572,11 +625,16 @@ No detector may import founder report rendering. No report renderer may infer a 
 - Headline gap, pair repair floor, and system repair floor have distinct fields and tests.
 - System repair floor does not double-count overlapping ordinal repairs.
 - Same input and reviewed rule produce the same result.
-- Every rendered interpretation resolves from an `InterpretationClaim` with a non-empty claim status.
+- Every rendered interpretation sentence resolves from an `InterpretationStatement` with one claim status and a valid destination.
+- Statements inside one `InterpretationClaim` may hold different claim statuses without promoting neighboring statements.
 - `UNSUPPORTED_DO_NOT_USE` content is absent from screens, exports, and portfolio artifacts.
 - `WORKING_HYPOTHESIS` content renders only as a conditional question or evidence follow-up.
-- `VERIFIED_EXTERNAL` claims fail validation without complete source references.
-- `SUPPORTED_BY_CLIENT_DATA` claims retain traceable evidence and reviewed-state dependencies.
+- `VERIFIED_EXTERNAL` statements fail validation without a complete `ExternalClaimSource` and cannot alone confirm a client-specific mechanism.
+- `SUPPORTED_BY_CLIENT_DATA` statements retain traceable evidence and reviewed-state dependencies and do not assert causality or employee intent.
+- `KYLE_EXPERIENCE_BASED` statements do not render in confirmed-result or confirmed-evidence areas.
+- External context, client facts, practitioner framing, and hypotheses remain distinct in the copy hierarchy.
+- Changing a founder explanation or `EvidenceStatus` invalidates all dependent interpretation statements, repeat results, decision records, and report sections before any of them render again.
+- Integration tests prove old claim copy, repeat results, decision sentences, and export copy disappear before recalculation and only new valid outputs render afterward.
 
 ### Privacy
 
@@ -585,7 +643,11 @@ No detector may import founder report rendering. No report renderer may infer a 
 - Raw and normalized roster data do not appear in browser storage or URLs.
 - Explicit session end clears in-memory state.
 - No roster or founder free text is emitted automatically.
-- Demo and session routes satisfy the route-exposure and `noindex` contract.
+- The demo route satisfies its synthetic-only and `noindex` contract.
+- Public builds either exclude both facilitator routes or place both behind an approved facilitator access gate.
+- Unauthenticated access to `/hr-paysim/session/new` and `/hr-paysim/session` is blocked when those routes are deployed.
+- Authentication secrets are absent from URLs, query parameters, client bundles, browser storage, and telemetry.
+- `noindex` and facilitator access control have independent verification checks.
 
 ### Copy
 
