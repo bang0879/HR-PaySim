@@ -98,6 +98,40 @@ test("client sources resolve every evidence and reviewed-state id", () => {
   ]);
 });
 
+test("malformed client source arrays return validation errors instead of throwing", () => {
+  const claim = createClaim();
+  claim.statements[0]!.sourceRefs = [{
+    kind: "CLIENT_DATA",
+    evidenceIds: null,
+    reviewedStateIds: "review-product",
+  } as never];
+
+  let errors: string[] | undefined;
+  assert.doesNotThrow(() => {
+    errors = validateInterpretationClaim(claim, context);
+  });
+  assert.deepEqual(errors, [
+    "CLIENT_EVIDENCE_IDS_INVALID:salary-fact",
+    "CLIENT_REVIEWED_STATE_IDS_INVALID:salary-fact",
+  ]);
+});
+
+test("client source arrays reject non-string and blank ids before context lookup", () => {
+  const claim = createClaim();
+  claim.statements[0]!.sourceRefs = [{
+    kind: "CLIENT_DATA",
+    evidenceIds: ["pair-001", " ", 42],
+    reviewedStateIds: ["review-product", null, ""],
+  } as never];
+
+  assert.deepEqual(validateInterpretationClaim(claim, context), [
+    "CLIENT_EVIDENCE_ID_INVALID:salary-fact:1",
+    "CLIENT_EVIDENCE_ID_INVALID:salary-fact:2",
+    "CLIENT_REVIEWED_STATE_ID_INVALID:salary-fact:1",
+    "CLIENT_REVIEWED_STATE_ID_INVALID:salary-fact:2",
+  ]);
+});
+
 test("practitioner claims require a complete experience source", () => {
   const claim = createClaim();
   claim.statements[1] = {
