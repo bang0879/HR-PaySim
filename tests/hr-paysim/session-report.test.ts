@@ -13,7 +13,7 @@ const stale = minimalTheme("theme-stale", "Stale");
 const productReview = reviewFor(product.id);
 const platformReview = reviewFor(platform.id);
 
-test("includes reviewed decisions and an unselected-subject appendix without prose", () => {
+test("includes reviewed decisions and an unselected-subject appendix without inferred prose", () => {
   const report = buildSessionReport(baseInput());
 
   assert.deepEqual(report.decisions, [{
@@ -28,8 +28,11 @@ test("includes reviewed decisions and an unselected-subject appendix without pro
     themeId: platform.id,
     roleGroup: "Platform Engineer",
   }]);
-  assert.equal(JSON.stringify(report).includes("generatedProse"), false);
-  assert.equal(JSON.stringify(report).includes("recommend"), false);
+  const serialized = JSON.stringify(report);
+  assert.equal(serialized.includes("generatedProse"), false);
+  assert.equal(serialized.includes("recommend"), false);
+  assert.equal(serialized.includes("syntheticRow"), false);
+  assert.equal(serialized.includes("row_001"), false);
 });
 
 test("ignores stale claim, repeat, decision, follow-up, and appendix references fail-closed", () => {
@@ -83,10 +86,7 @@ function baseInput(): BuildSessionReportInput {
   return {
     themes: [product, platform],
     reviews: { [platform.id]: platformReview, [product.id]: productReview },
-    validatedClaims: [
-      claimFor(platform.id, "platform-surface"),
-      claimFor(product.id, "product-surface"),
-    ],
+    validatedClaims: [claimFor(platform.id, "platform-surface"), claimFor(product.id, "product-surface")],
     repeatResults: { [product.id]: repeatFor(product.id) },
     decisions: [{
       id: "decision-product",

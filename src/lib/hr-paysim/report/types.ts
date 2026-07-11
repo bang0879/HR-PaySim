@@ -19,6 +19,18 @@ export interface ReportStatementRef {
   copyKey: string;
 }
 
+export interface ReportRepeatResult {
+  themeId: string;
+  currentRosterPairCount: number;
+  baselineCandidatePairCount: number;
+  repeatedCandidatePairCount: number;
+  combinedPairCount: number;
+  maximumGapKRW: number;
+  affectedRowCount: number;
+  conclusionKey: PrecedentRepeatResult["conclusionKey"];
+  nonClaimKey: PrecedentRepeatResult["nonClaimKey"];
+}
+
 export interface SessionReportSubject {
   themeId: string;
   roleGroup: string;
@@ -30,7 +42,7 @@ export interface SessionReportSubject {
     | "repeatabilityStatus"
     | "approvedSentenceKey"
   >;
-  repeatResult?: PrecedentRepeatResult;
+  repeatResult?: ReportRepeatResult;
   decisionIds: string[];
 }
 

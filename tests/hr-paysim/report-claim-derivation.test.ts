@@ -29,21 +29,7 @@ const claim: InterpretationClaim = {
 };
 
 test("confirmed results contain only client-data surface observations", () => {
-  const report = buildSessionReport({
-    themes: [theme],
-    reviews: { [theme.id]: review },
-    validatedClaims: [claim],
-    repeatResults: {},
-    decisions: [],
-    followUps: [{
-      id: "follow-product",
-      themeId: theme.id,
-      evidenceNeeded: "offer_record",
-      ownerRole: "HR",
-      dueEvent: "WITHIN_TWO_WEEKS",
-    }],
-    unselectedSubjects: [],
-  });
+  const report = buildSessionReport(reportInput(true));
 
   assert.deepEqual(report.confirmedResults, [{
     themeId: theme.id,
@@ -53,21 +39,7 @@ test("confirmed results contain only client-data surface observations", () => {
 });
 
 test("working hypotheses appear only inside an evidence follow-up", () => {
-  const report = buildSessionReport({
-    themes: [theme],
-    reviews: { [theme.id]: review },
-    validatedClaims: [claim],
-    repeatResults: {},
-    decisions: [],
-    followUps: [{
-      id: "follow-product",
-      themeId: theme.id,
-      evidenceNeeded: "offer_record",
-      ownerRole: "HR",
-      dueEvent: "WITHIN_TWO_WEEKS",
-    }],
-    unselectedSubjects: [],
-  });
+  const report = buildSessionReport(reportInput(true));
 
   assert.deepEqual(report.followUps[0]?.statementRefs, [{
     statementId: "working-hypothesis",
@@ -77,21 +49,31 @@ test("working hypotheses appear only inside an evidence follow-up", () => {
 });
 
 test("Kyle-experience and unsupported statements never enter confirmed content", () => {
-  const report = buildSessionReport({
-    themes: [theme],
-    reviews: { [theme.id]: review },
-    validatedClaims: [claim],
-    repeatResults: {},
-    decisions: [],
-    followUps: [],
-    unselectedSubjects: [],
-  });
+  const report = buildSessionReport(reportInput(false));
   const confirmed = JSON.stringify(report.confirmedResults);
 
   assert.equal(confirmed.includes("kyle-surface"), false);
   assert.equal(confirmed.includes("unsupported"), false);
   assert.equal(report.followUps.length, 0);
 });
+
+function reportInput(includeFollowUp: boolean) {
+  return {
+    themes: [theme],
+    reviews: { [theme.id]: review },
+    validatedClaims: [claim],
+    repeatResults: {},
+    decisions: [],
+    followUps: includeFollowUp ? [{
+      id: "follow-product",
+      themeId: theme.id,
+      evidenceNeeded: "offer_record" as const,
+      ownerRole: "HR" as const,
+      dueEvent: "WITHIN_TWO_WEEKS" as const,
+    }] : [],
+    unselectedSubjects: [],
+  };
+}
 
 function statement(
   id: string,

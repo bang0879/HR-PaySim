@@ -13,13 +13,30 @@ const approvedRule: FounderBoundedHiringRule = {
   approverRole: "CEO_AND_HR",
   reviewEvent: "BEFORE_NEXT_OFFER",
 };
+const approvedFields = Object.keys(approvedRule) as Array<keyof FounderBoundedHiringRule>;
+
+function repeat(rule: unknown, fields: unknown = approvedFields) {
+  return repeatFounderBoundedHiringRule({ rule, approvedFields: fields });
+}
 
 test("returns insufficient parameters instead of inventing missing rule fields", () => {
   const { maximumSalaryKRW: _missing, ...incomplete } = approvedRule;
 
-  assert.deepEqual(repeatFounderBoundedHiringRule(incomplete), {
+  assert.deepEqual(repeat(incomplete), {
     status: "insufficient_parameters",
     invalidFields: ["maximumSalaryKRW"],
+    unapprovedFields: [],
+  });
+});
+
+test("does not calculate until every field is explicitly founder-approved", () => {
+  assert.deepEqual(repeat(
+    approvedRule,
+    approvedFields.filter((field) => field !== "reviewEvent"),
+  ), {
+    status: "insufficient_parameters",
+    invalidFields: [],
+    unapprovedFields: ["reviewEvent"],
   });
 });
 
@@ -36,15 +53,12 @@ test("rejects malformed runtime enum and numeric fields fail-closed", () => {
   ];
 
   for (const hostileRule of hostileRules) {
-    assert.equal(
-      repeatFounderBoundedHiringRule(hostileRule).status,
-      "insufficient_parameters",
-    );
+    assert.equal(repeat(hostileRule).status, "insufficient_parameters");
   }
 });
 
 test("calculates only the founder-approved bounded salary", () => {
-  const result = repeatFounderBoundedHiringRule(approvedRule);
+  const result = repeat(approvedRule);
 
   assert.deepEqual(result, {
     status: "ready",
@@ -63,7 +77,7 @@ test("calculates only the founder-approved bounded salary", () => {
 });
 
 test("zero additional amount reproduces the reference baseline", () => {
-  const result = repeatFounderBoundedHiringRule({
+  const result = repeat({
     ...approvedRule,
     additionalAmountKRW: 0,
     maximumSalaryKRW: 100_000_000,
@@ -74,14 +88,8 @@ test("zero additional amount reproduces the reference baseline", () => {
 });
 
 test("a stricter cap never raises the synthetic salary", () => {
-  const permissive = repeatFounderBoundedHiringRule({
-    ...approvedRule,
-    maximumSalaryKRW: 100_000_000,
-  });
-  const strict = repeatFounderBoundedHiringRule({
-    ...approvedRule,
-    maximumSalaryKRW: 85_000_000,
-  });
+  const permissive = repeat({ ...approvedRule, maximumSalaryKRW: 100_000_000 });
+  const strict = repeat({ ...approvedRule, maximumSalaryKRW: 85_000_000 });
 
   assert.equal(permissive.status, "ready");
   assert.equal(strict.status, "ready");
@@ -98,8 +106,7 @@ test("does not retain unapproved runtime fields", () => {
     freeText: "private founder explanation",
     rosterRows: [{ rowId: "row_private", baseSalaryKRW: 999_000_000 }],
   };
-
-  const serialized = JSON.stringify(repeatFounderBoundedHiringRule(hostile));
+  const serialized = JSON.stringify(repeat(hostile));
 
   assert.equal(serialized.includes("freeText"), false);
   assert.equal(serialized.includes("rosterRows"), false);

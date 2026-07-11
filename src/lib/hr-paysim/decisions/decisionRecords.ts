@@ -1,61 +1,82 @@
-import type { DecisionRecord } from "./types.ts";
+import type { DecisionRecord, DecisionRecordValidationResult } from "./types.ts";
 
-export type CreateDecisionRecordResult =
-  | { status: "ready"; decision: DecisionRecord }
-  | { status: "invalid_decision" };
-
-const actionKeys = new Set<DecisionRecord["actionKey"]>([
+const DECISION_FIELDS = [
+  "id",
+  "themeIds",
+  "actionKey",
+  "ownerRole",
+  "dueEvent",
+  "status",
+] as const satisfies readonly (keyof DecisionRecord)[];
+const ACTION_KEYS = new Set<DecisionRecord["actionKey"]>([
   "define_hiring_additional_pay",
   "review_long_tenure_pay",
   "document_role_ranges",
   "collect_evidence",
 ]);
-const ownerRoles = new Set<DecisionRecord["ownerRole"]>(["CEO", "HR", "ROLE_LEAD", "CEO_AND_HR"]);
-const dueEvents = new Set<DecisionRecord["dueEvent"]>([
+const OWNER_ROLES = new Set<DecisionRecord["ownerRole"]>([
+  "CEO",
+  "HR",
+  "ROLE_LEAD",
+  "CEO_AND_HR",
+]);
+const DUE_EVENTS = new Set<DecisionRecord["dueEvent"]>([
   "BEFORE_NEXT_OFFER",
   "BEFORE_NEXT_REVIEW",
   "WITHIN_TWO_WEEKS",
 ]);
-const statuses = new Set<DecisionRecord["status"]>(["draft", "approved"]);
+const STATUSES = new Set<DecisionRecord["status"]>(["draft", "approved"]);
 
 export function createDecisionRecord(
   input: unknown,
   validThemeIds: ReadonlySet<string>,
-): CreateDecisionRecordResult {
-  if (!isRecord(input)) return { status: "invalid_decision" };
-  if (typeof input.id !== "string" || input.id.trim().length === 0) {
-    return { status: "invalid_decision" };
-  }
-  if (!Array.isArray(input.themeIds) || input.themeIds.length === 0) {
-    return { status: "invalid_decision" };
-  }
-  if (!input.themeIds.every((id) => typeof id === "string" && validThemeIds.has(id))) {
-    return { status: "invalid_decision" };
-  }
-  if (!actionKeys.has(input.actionKey as DecisionRecord["actionKey"])) {
-    return { status: "invalid_decision" };
-  }
-  if (!ownerRoles.has(input.ownerRole as DecisionRecord["ownerRole"])) {
-    return { status: "invalid_decision" };
-  }
-  if (!dueEvents.has(input.dueEvent as DecisionRecord["dueEvent"])) {
-    return { status: "invalid_decision" };
-  }
-  if (!statuses.has(input.status as DecisionRecord["status"])) {
-    return { status: "invalid_decision" };
-  }
+): DecisionRecordValidationResult {
+  const payload = isRecord(input) ? input : {};
+  const canonicalThemeIds = canonicalThemeIdsFrom(payload.themeIds);
+  const invalidFields = DECISION_FIELDS.filter((field) => {
+    switch (field) {
+      case "id":
+        return !isNonEmptyString(payload.id);
+      case "themeIds":
+        return canonicalThemeIds.length === 0
+          || canonicalThemeIds.some((themeId) => !validThemeIds.has(themeId));
+      case "actionKey":
+        return !isEnumValue(payload.actionKey, ACTION_KEYS);
+      case "ownerRole":
+        return !isEnumValue(payload.ownerRole, OWNER_ROLES);
+      case "dueEvent":
+        return !isEnumValue(payload.dueEvent, DUE_EVENTS);
+      case "status":
+        return !isEnumValue(payload.status, STATUSES);
+    }
+  });
+
+  if (invalidFields.length > 0) return { status: "invalid_decision", invalidFields };
 
   return {
     status: "ready",
     decision: {
-      id: input.id,
-      themeIds: Array.from(new Set(input.themeIds as string[])).sort(compareCodeUnits),
-      actionKey: input.actionKey as DecisionRecord["actionKey"],
-      ownerRole: input.ownerRole as DecisionRecord["ownerRole"],
-      dueEvent: input.dueEvent as DecisionRecord["dueEvent"],
-      status: input.status as DecisionRecord["status"],
+      id: payload.id as string,
+      themeIds: canonicalThemeIds,
+      actionKey: payload.actionKey as DecisionRecord["actionKey"],
+      ownerRole: payload.ownerRole as DecisionRecord["ownerRole"],
+      dueEvent: payload.dueEvent as DecisionRecord["dueEvent"],
+      status: payload.status as DecisionRecord["status"],
     },
   };
+}
+
+function canonicalThemeIdsFrom(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((item) => !isNonEmptyString(item))) return [];
+  return Array.from(new Set(value)).sort(compareCodeUnits);
+}
+
+function isEnumValue<T extends string>(value: unknown, allowed: ReadonlySet<T>): value is T {
+  return typeof value === "string" && allowed.has(value as T);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

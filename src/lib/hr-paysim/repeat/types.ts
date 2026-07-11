@@ -40,3 +40,31 @@ export interface FounderBoundedHiringRule {
   approverRole: "CEO" | "CEO_AND_HR";
   reviewEvent: "BEFORE_NEXT_OFFER" | "BEFORE_NEXT_REVIEW";
 }
+
+export type FounderBoundedHiringRuleField = keyof FounderBoundedHiringRule;
+
+export interface FounderBoundedRuleApproval {
+  rule: unknown;
+  approvedFields: unknown;
+}
+
+export type FounderBoundedRuleRepeatResult =
+  | {
+    status: "insufficient_parameters";
+    invalidFields: FounderBoundedHiringRuleField[];
+    unapprovedFields: FounderBoundedHiringRuleField[];
+  }
+  | {
+    status: "ready";
+    themeId: string;
+    roleGroup: string;
+    trigger: FounderBoundedHiringRule["trigger"];
+    referenceSalaryKRW: number;
+    additionalAmountKRW: number;
+    maximumSalaryKRW: number;
+    syntheticSalaryKRW: number;
+    approverRole: FounderBoundedHiringRule["approverRole"];
+    reviewEvent: FounderBoundedHiringRule["reviewEvent"];
+    conclusionKey: "founder_bounded_hiring_rule_repeat";
+    nonClaimKey: "bounded_rule_not_salary_recommendation";
+  };

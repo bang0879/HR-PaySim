@@ -10,3 +10,7 @@ export interface DecisionRecord {
   dueEvent: "BEFORE_NEXT_OFFER" | "BEFORE_NEXT_REVIEW" | "WITHIN_TWO_WEEKS";
   status: "draft" | "approved";
 }
+
+export type DecisionRecordValidationResult =
+  | { status: "ready"; decision: DecisionRecord }
+  | { status: "invalid_decision"; invalidFields: Array<keyof DecisionRecord> };
