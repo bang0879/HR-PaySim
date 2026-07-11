@@ -34,6 +34,9 @@ test("detectStructuralFindings finds the Product Engineer shadow band without a 
     ],
   );
   assert.equal(finding.clusterGapKRW, 12000000);
+  assert.equal(finding.metrics.headlineGapKRW, 12000000);
+  assert.equal(finding.metrics.pairRepairFloorKRW, undefined);
+  assert.equal(finding.metrics.systemRepairFloorKRW, undefined);
   assert.equal(finding.riskModel.exposurePayrollKRW, 489000000);
   assert.equal(finding.riskModel.correctionFloorKRW, undefined);
   assert.equal(finding.riskModel.communicationRisk, "high");
@@ -56,6 +59,9 @@ test("detectStructuralFindings uses the Product Engineer headline pair for pay i
   assert.equal(finding.headlinePair?.comparatorRowId, "row_004");
   assert.equal(finding.headlinePair?.salaryGapKRW, 27000000);
   assert.equal(roundPercent(finding.headlinePair?.gapPercentage), 0.397);
+  assert.equal(finding.metrics.headlineGapKRW, 27000000);
+  assert.equal(finding.metrics.pairRepairFloorKRW, 27000000);
+  assert.equal(finding.metrics.systemRepairFloorKRW, undefined);
   assert.equal(finding.riskModel.correctionFloorKRW, 27000000);
   assert.equal(finding.additionalUnderpaidRowCount, 2);
 });
@@ -75,6 +81,9 @@ test("detectStructuralFindings keeps Platform shadow band present but leads the 
   assert.equal(loyaltyTax.headlinePair?.comparatorRowId, "row_009");
   assert.equal(loyaltyTax.headlinePair?.salaryGapKRW, 18000000);
   assert.equal(roundPercent(loyaltyTax.headlinePair?.gapPercentage), 0.214);
+  assert.equal(loyaltyTax.metrics.headlineGapKRW, 18000000);
+  assert.equal(loyaltyTax.metrics.pairRepairFloorKRW, 18000000);
+  assert.equal(loyaltyTax.metrics.systemRepairFloorKRW, undefined);
   assert.equal(loyaltyTax.riskModel.correctionFloorKRW, 18000000);
   assert.equal(loyaltyTax.riskModel.exposurePayrollKRW, 370000000);
   assert.equal(loyaltyTax.additionalUnderpaidRowCount, 1);
@@ -88,6 +97,9 @@ test("detectStructuralFindings keeps Platform shadow band present but leads the 
     ],
   );
   assert.equal(shadowBand.clusterGapKRW, 12000000);
+  assert.equal(shadowBand.metrics.headlineGapKRW, 12000000);
+  assert.equal(shadowBand.metrics.pairRepairFloorKRW, undefined);
+  assert.equal(shadowBand.metrics.systemRepairFloorKRW, undefined);
   assert.equal(shadowBand.riskModel.correctionFloorKRW, undefined);
 });
 
@@ -96,6 +108,9 @@ test("detectStructuralFindings uses ordinal restoration for GTM level fiction", 
   const finding = findByRoleAndType(findings, "GTM", "level_fiction_band_overlap");
 
   assert.deepEqual(finding.affectedRowIds, ["row_012", "row_013", "row_014"]);
+  assert.equal(finding.metrics.headlineGapKRW, 4000000);
+  assert.equal(finding.metrics.pairRepairFloorKRW, 4000000);
+  assert.equal(finding.metrics.systemRepairFloorKRW, 5000000);
   assert.equal(finding.riskModel.correctionFloorKRW, 5000000);
   assert.deepEqual(
     finding.comparisonPairs.map((pair) => [pair.underpaidRowId, pair.comparatorRowId, pair.salaryGapKRW]),

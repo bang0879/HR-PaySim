@@ -1,4 +1,6 @@
-﻿export type PaySimStep =
+import type { FindingMetricSet } from "./metrics/types.ts";
+
+export type PaySimStep =
   | "entry"
   | "intake"
   | "aggregate_review"
@@ -92,6 +94,7 @@ export interface DeidentificationReport {
 }
 
 export interface FindingRiskModel {
+  /** @deprecated Read StructuralFinding.metrics repair fields instead. */
   correctionFloorKRW?: number;
   exposurePayrollKRW?: number;
   communicationRisk: RiskBand;
@@ -129,6 +132,7 @@ export interface StructuralFinding {
   clusterGapKRW?: number;
   clusterGapRowIds?: [string, string];
   evidence: string[];
+  metrics: FindingMetricSet;
   riskModel: FindingRiskModel;
   confidence: ConfidenceBand;
   explanationText: string;

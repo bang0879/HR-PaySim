@@ -1,9 +1,14 @@
-﻿import type {
+import type {
   FindingRiskModel,
   NormalizedRosterRow,
   StructuralFinding,
   StructuralFindingPair,
 } from "./domain.ts";
+import {
+  calculateMinimumOrdinalRestoration,
+  calculatePairRepairFloor,
+  isMaterialLevelOrderViolation,
+} from "./metrics/compensationMetrics.ts";
 
 const MATERIAL_GAP_RATE = 0.08;
 const nonClaim = "이 값은 손실 예측, 이탈률 추정, 대체 비용, 시장연봉 벤치마크, 개인별 권장 연봉이 아닙니다.";
@@ -52,6 +57,11 @@ function detectShadowBand(roleGroup: string, rows: NormalizedRosterRow[]): Struc
     evidence: [
       `${formatKRW(split.lower.baseSalaryKRW)}에서 ${formatKRW(split.upper.baseSalaryKRW)}로 ${formatKRW(split.gap)} gap이 있습니다.`,
     ],
+    metrics: {
+      headlineGapKRW: split.gap,
+      roleGroupPayrollContextKRW: sumSalary(rows),
+      nonClaim,
+    },
     riskModel: riskModel({
       exposurePayrollKRW: sumSalary(rows),
       communicationRisk: "high",
@@ -71,6 +81,7 @@ function detectPayInversion(roleGroup: string, rows: NormalizedRosterRow[]): Str
   const headlinePair = pickHeadlinePair(pairs);
   const affectedRowIds = uniqueSorted(pairs.flatMap((pair) => [pair.underpaidRowId, pair.comparatorRowId]));
   const underpaidRowIds = uniqueSorted(pairs.map((pair) => pair.underpaidRowId));
+  const metrics = relationshipMetrics(headlinePair, rows);
 
   return [{
     id: `${slug(roleGroup)}_pay_inversion`,
@@ -84,8 +95,9 @@ function detectPayInversion(roleGroup: string, rows: NormalizedRosterRow[]): Str
     additionalUnderpaidRowCount: Math.max(0, underpaidRowIds.length - 1),
     comparisonPairs: pairs,
     evidence: [`headline gap: ${formatKRW(headlinePair.salaryGapKRW)}`],
+    metrics,
     riskModel: riskModel({
-      correctionFloorKRW: headlinePair.salaryGapKRW,
+      correctionFloorKRW: metrics.pairRepairFloorKRW,
       communicationRisk: "high",
       spreadRisk: rows.some(hasPremiumFlag) ? "high" : "medium",
       decisionUrgency: "high",
@@ -108,6 +120,7 @@ function detectLoyaltyTax(roleGroup: string, rows: NormalizedRosterRow[]): Struc
 
   const headlinePair = pickHeadlinePair(pairs);
   const underpaidRowIds = uniqueSorted(pairs.map((pair) => pair.underpaidRowId));
+  const metrics = relationshipMetrics(headlinePair, rows);
 
   return [{
     id: `${slug(roleGroup)}_loyalty_tax`,
@@ -124,8 +137,9 @@ function detectLoyaltyTax(roleGroup: string, rows: NormalizedRosterRow[]): Struc
       `long-tenure average: ${formatKRW(averageSalary(longTenureRows))}`,
       `recent-hire average: ${formatKRW(averageSalary(recentRows))}`,
     ],
+    metrics,
     riskModel: riskModel({
-      correctionFloorKRW: headlinePair.salaryGapKRW,
+      correctionFloorKRW: metrics.pairRepairFloorKRW,
       exposurePayrollKRW: sumSalary(rows),
       communicationRisk: "high",
       spreadRisk: "medium",
@@ -142,17 +156,27 @@ function detectLevelFiction(roleGroup: string, rows: NormalizedRosterRow[]): Str
   const pairs = rows.flatMap((lowerRankRow) => rows.flatMap((higherRankRow): StructuralFindingPair[] => {
     if (lowerRankRow.levelRank === undefined || higherRankRow.levelRank === undefined) return [];
     if (lowerRankRow.levelRank >= higherRankRow.levelRank) return [];
-    if (lowerRankRow.baseSalaryKRW < higherRankRow.baseSalaryKRW) return [];
+    if (lowerRankRow.baseSalaryKRW <= higherRankRow.baseSalaryKRW) return [];
 
     return [{
       underpaidRowId: higherRankRow.rowId,
       comparatorRowId: lowerRankRow.rowId,
       salaryGapKRW: lowerRankRow.baseSalaryKRW - higherRankRow.baseSalaryKRW,
-      reasonThisIsHardToDefend: `${lowerRankRow.rowId} has a lower level rank but meets or exceeds ${higherRankRow.rowId}'s pay.`,
+      reasonThisIsHardToDefend: `${lowerRankRow.rowId} has a lower level rank but exceeds ${higherRankRow.rowId}'s pay.`,
     }];
   })).sort((a, b) => a.underpaidRowId.localeCompare(b.underpaidRowId) || a.comparatorRowId.localeCompare(b.comparatorRowId));
 
-  if (pairs.length === 0) return [];
+  const materialPairs = pairs.filter((pair) => isMaterialLevelOrderViolation(pair, rows));
+  if (materialPairs.length === 0) return [];
+
+  const restoration = calculateMinimumOrdinalRestoration(rows);
+  const metrics = {
+    headlineGapKRW: restoration.headlineGapKRW,
+    pairRepairFloorKRW: restoration.pairRepairFloorKRW,
+    systemRepairFloorKRW: restoration.systemRepairFloorKRW,
+    roleGroupPayrollContextKRW: sumSalary(rows),
+    nonClaim,
+  };
 
   return [{
     id: `${slug(roleGroup)}_level_fiction_band_overlap`,
@@ -164,8 +188,9 @@ function detectLevelFiction(roleGroup: string, rows: NormalizedRosterRow[]): Str
     affectedRowIds: uniqueSorted(pairs.flatMap((pair) => [pair.underpaidRowId, pair.comparatorRowId])),
     comparisonPairs: pairs,
     evidence: pairs.map((pair) => `${pair.underpaidRowId} needs ${formatKRW(pair.salaryGapKRW)} to restore ordinal order.`),
+    metrics,
     riskModel: riskModel({
-      correctionFloorKRW: pairs.reduce((total, pair) => total + pair.salaryGapKRW, 0),
+      correctionFloorKRW: metrics.systemRepairFloorKRW,
       communicationRisk: "medium",
       spreadRisk: "medium",
       decisionUrgency: "medium",
@@ -173,6 +198,16 @@ function detectLevelFiction(roleGroup: string, rows: NormalizedRosterRow[]): Str
     confidence: "medium",
     explanationText: "레벨이 있어도 보상 순서가 뒤집히면 레벨 언어가 약해집니다.",
   }];
+}
+
+function relationshipMetrics(headlinePair: StructuralFindingPair, rows: NormalizedRosterRow[]) {
+  const pairRepairFloorKRW = calculatePairRepairFloor(headlinePair);
+  return {
+    headlineGapKRW: headlinePair.salaryGapKRW,
+    pairRepairFloorKRW,
+    roleGroupPayrollContextKRW: sumSalary(rows),
+    nonClaim,
+  };
 }
 
 function materialTenurePairs(
@@ -267,4 +302,3 @@ function slug(value: string): string {
 function formatKRW(value: number): string {
   return `${value.toLocaleString("ko-KR")} KRW`;
 }
-
