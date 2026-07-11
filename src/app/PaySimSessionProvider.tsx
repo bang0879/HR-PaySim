@@ -8,6 +8,7 @@ import {
 import {
   createEmptyDecisionRoomSession,
   decisionRoomReducer,
+  initializeDecisionRoomSession,
 } from "../lib/hr-paysim/session/decisionRoomReducer.ts";
 import type {
   DecisionRoomAction,
@@ -31,6 +32,7 @@ export function PaySimSessionProvider({
   const [state, dispatch] = useReducer(
     decisionRoomReducer,
     initialState ?? createEmptyDecisionRoomSession(),
+    initializeDecisionRoomSession,
   );
   return (
     <PaySimSessionContext.Provider value={{ state, dispatch }}>

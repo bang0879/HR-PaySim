@@ -20,7 +20,7 @@ test("demo contract fixes four screens, three clicks, and a visible synthetic la
   ]);
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.clicksToResult, 3);
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.syntheticOnly, true);
-  assert.equal(DECISION_ROOM_DEMO_CONTRACT.sampleLabel, "샘플로 입력된 내용");
+  assert.equal(DECISION_ROOM_DEMO_CONTRACT.sampleLabel, "샘플로 입력한 내용");
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.route, "/hr-paysim/decision-room-preview");
 });
 

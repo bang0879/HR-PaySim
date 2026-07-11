@@ -1,6 +1,17 @@
 import { createDecisionRecord } from "../decisions/decisionRecords.ts";
 import { createThemeReview, updateThemeReview } from "../review/updateThemeReview.ts";
 import type { ReviewSubjectSelection } from "../themes/selectReviewSubjects.ts";
+import {
+  clonePlainData,
+  hasOnlyKeys,
+  isKnownScreen,
+  isRecord,
+  parseReviewUpdate,
+  parseStartSessionAction,
+  resolveCanonicalClaims,
+  resolveCanonicalRepeat,
+  validDecisionThemeIds,
+} from "./runtimeValidation.ts";
 import type {
   DecisionRoomAction,
   DecisionRoomScreen,
@@ -30,6 +41,12 @@ export function createEmptyDecisionRoomSession(
   };
 }
 
+export function initializeDecisionRoomSession(
+  initialState: DecisionRoomSessionState,
+): DecisionRoomSessionState {
+  return clonePlainData(initialState);
+}
+
 export function invalidateThemeDerivations(
   state: DecisionRoomSessionState,
   themeId: string,
@@ -49,87 +66,110 @@ export function decisionRoomReducer(
   state: DecisionRoomSessionState,
   action: DecisionRoomAction,
 ): DecisionRoomSessionState {
-  if (action.type === "START_SESSION") {
-    const selectedIds = new Set(action.selection.selected.map((theme) => theme.id));
-    const activeThemeId = action.activeThemeId && selectedIds.has(action.activeThemeId)
-      ? action.activeThemeId
-      : action.selection.selected[0]?.id;
+  const runtimeAction: unknown = action;
+  if (!isRecord(runtimeAction) || typeof runtimeAction.type !== "string") return state;
+
+  if (runtimeAction.type === "START_SESSION") {
+    const parsed = parseStartSessionAction(runtimeAction);
+    if (!parsed) return state;
+    const activeThemeId = parsed.activeThemeId ?? parsed.selection.selected[0]?.id;
     return {
-      ...createEmptyDecisionRoomSession(action.mode),
-      rows: action.rows.map((row) => ({ ...row })),
-      themes: [...action.themes],
-      selection: cloneSelection(action.selection),
+      ...createEmptyDecisionRoomSession(parsed.mode),
+      rows: parsed.rows,
+      themes: parsed.themes,
+      selection: parsed.selection,
       ...(activeThemeId ? { activeThemeId } : {}),
     };
   }
 
-  if (action.type === "SELECT_THEME") {
-    return state.selection.selected.some((theme) => theme.id === action.themeId)
-      ? { ...state, activeThemeId: action.themeId }
+  if (runtimeAction.type === "SELECT_THEME") {
+    if (!hasOnlyKeys(runtimeAction, ["type", "themeId"]) || typeof runtimeAction.themeId !== "string") {
+      return state;
+    }
+    return state.selection.selected.some((theme) => theme.id === runtimeAction.themeId)
+      ? { ...state, activeThemeId: runtimeAction.themeId }
       : state;
   }
 
-  if (action.type === "UPDATE_REVIEW") {
-    const currentReview = state.reviews[action.themeId] ?? createThemeReview(action.themeId);
+  if (runtimeAction.type === "UPDATE_REVIEW") {
+    if (
+      !hasOnlyKeys(runtimeAction, ["type", "themeId", "patch"])
+      || typeof runtimeAction.themeId !== "string"
+      || !state.selection.selected.some((theme) => theme.id === runtimeAction.themeId)
+      || !state.themes.some((theme) => theme.id === runtimeAction.themeId)
+    ) return state;
+    const patch = parseReviewUpdate(runtimeAction.patch, runtimeAction.themeId);
+    if (!patch) return state;
+    const currentReview = state.reviews[runtimeAction.themeId]
+      ?? createThemeReview(runtimeAction.themeId);
     const changesDependency = (
-      action.patch.explanationBasis !== undefined
-      && action.patch.explanationBasis !== currentReview.explanationBasis
+      patch.explanationBasis !== undefined
+      && patch.explanationBasis !== currentReview.explanationBasis
     ) || (
-      action.patch.evidenceStatus !== undefined
-      && action.patch.evidenceStatus !== currentReview.evidenceStatus
+      patch.evidenceStatus !== undefined
+      && patch.evidenceStatus !== currentReview.evidenceStatus
     );
     const base = changesDependency
-      ? invalidateThemeDerivations(state, action.themeId)
+      ? invalidateThemeDerivations(state, runtimeAction.themeId)
       : state;
-    const review = updateThemeReview({ review: currentReview }, action.patch).review;
+    const review = updateThemeReview({ review: currentReview }, patch).review;
     return {
       ...base,
-      reviews: { ...base.reviews, [action.themeId]: review },
+      reviews: { ...base.reviews, [runtimeAction.themeId]: review },
     };
   }
 
-  if (action.type === "SET_INTERPRETATIONS") {
+  if (runtimeAction.type === "SET_INTERPRETATIONS") {
+    if (!hasOnlyKeys(runtimeAction, ["type", "claims"])) return state;
+    const claims = resolveCanonicalClaims(runtimeAction.claims, state);
+    if (!claims) return state;
     const interpretations = { ...state.interpretations };
-    for (const claim of [...action.claims].sort((a, b) => compareCodeUnits(a.id, b.id))) {
-      if (!state.reviews[claim.themeId]) continue;
-      interpretations[claim.themeId] = claim;
-    }
+    for (const claim of claims) interpretations[claim.themeId] = claim;
     return { ...state, interpretations, report: undefined };
   }
 
-  if (action.type === "SET_REPEAT") {
-    if (!state.reviews[action.repeat.themeId]) return state;
+  if (runtimeAction.type === "SET_REPEAT") {
+    if (!hasOnlyKeys(runtimeAction, ["type", "repeat"])) return state;
+    const repeat = resolveCanonicalRepeat(runtimeAction.repeat, state);
+    if (!repeat) return state;
     return {
       ...state,
-      repeats: { ...state.repeats, [action.repeat.themeId]: action.repeat },
+      repeats: { ...state.repeats, [repeat.themeId]: repeat },
       report: undefined,
     };
   }
 
-  if (action.type === "APPROVE_DECISION") {
-    if (action.decision.status !== "approved") return state;
-    const validThemeIds = new Set(Object.keys(state.reviews));
-    const result = createDecisionRecord(action.decision, validThemeIds);
-    if (result.status !== "ready") return state;
+  if (runtimeAction.type === "APPROVE_DECISION") {
+    if (!hasOnlyKeys(runtimeAction, ["type", "decision"]) || !isRecord(runtimeAction.decision)) {
+      return state;
+    }
+    const result = createDecisionRecord(runtimeAction.decision, validDecisionThemeIds(state));
+    if (result.status !== "ready" || result.decision.status !== "approved") return state;
     return {
       ...state,
       decisions: [
         ...state.decisions.filter((decision) => decision.id !== result.decision.id),
-        result.decision,
+        clonePlainData(result.decision),
       ].sort((a, b) => compareCodeUnits(a.id, b.id)),
       report: undefined,
     };
   }
 
-  if (action.type === "GO_TO_SCREEN") {
+  if (runtimeAction.type === "GO_TO_SCREEN") {
+    if (!hasOnlyKeys(runtimeAction, ["type", "screen"]) || !isKnownScreen(runtimeAction.screen)) {
+      return state;
+    }
+    const target = runtimeAction.screen as DecisionRoomScreen;
     const currentIndex = screenOrder.indexOf(state.screen);
-    const targetIndex = screenOrder.indexOf(action.screen);
+    const targetIndex = screenOrder.indexOf(target);
     if (targetIndex < 0 || targetIndex > currentIndex + 1) return state;
-    return { ...state, screen: action.screen };
+    return { ...state, screen: target };
   }
 
-  if (action.type === "END_SESSION") {
-    return createEmptyDecisionRoomSession(state.mode);
+  if (runtimeAction.type === "END_SESSION") {
+    return hasOnlyKeys(runtimeAction, ["type"])
+      ? createEmptyDecisionRoomSession(state.mode)
+      : state;
   }
 
   return state;
@@ -137,15 +177,6 @@ export function decisionRoomReducer(
 
 function emptySelection(): ReviewSubjectSelection {
   return { selected: [], unselected: [], recommendedIds: [], wasOverridden: false };
-}
-
-function cloneSelection(selection: ReviewSubjectSelection): ReviewSubjectSelection {
-  return {
-    selected: [...selection.selected],
-    unselected: [...selection.unselected],
-    recommendedIds: [...selection.recommendedIds],
-    wasOverridden: selection.wasOverridden,
-  };
 }
 
 function compareCodeUnits(a: string, b: string): number {

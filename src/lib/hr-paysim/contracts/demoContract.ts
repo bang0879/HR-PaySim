@@ -16,7 +16,7 @@ import { selectReviewSubjects } from "../themes/selectReviewSubjects.ts";
 export const DECISION_ROOM_DEMO_CONTRACT = {
   route: "/hr-paysim/decision-room-preview",
   syntheticOnly: true,
-  sampleLabel: "샘플로 입력된 내용",
+  sampleLabel: "샘플로 입력한 내용",
   screens: [
     "introduction",
     "confirmed_pay_differences",
@@ -40,7 +40,7 @@ export function createSyntheticDemoSession(): DecisionRoomSessionState {
     themeId: productTheme.id,
     explanationBasis: "market_hiring_additional_pay",
     evidenceStatus: "documented",
-    repeatabilityStatus: "conditional_rule",
+    repeatabilityStatus: "unanswered",
     outcome: "explained_with_evidence",
     approvedSentenceKey: "market_hiring_additional_pay",
   };

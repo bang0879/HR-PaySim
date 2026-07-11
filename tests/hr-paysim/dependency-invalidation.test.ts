@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createSyntheticDemoSession } from "../../src/lib/hr-paysim/contracts/demoContract.ts";
 import type { DecisionRecord } from "../../src/lib/hr-paysim/decisions/types.ts";
 import type { InterpretationClaim } from "../../src/lib/hr-paysim/interpretation/types.ts";
 import type { PrecedentRepeatResult } from "../../src/lib/hr-paysim/repeat/types.ts";
@@ -12,67 +13,80 @@ import type { DecisionRoomSessionState } from "../../src/lib/hr-paysim/session/t
 
 test("changing explanation or EvidenceStatus removes every stale derivative before render", () => {
   const populated = fixtureSession();
+  const productThemeId = populated.activeThemeId!;
   const changed = decisionRoomReducer(populated, {
     type: "UPDATE_REVIEW",
-    themeId: "theme-product",
+    themeId: productThemeId,
     patch: {
       explanationBasis: "timing_context",
       evidenceStatus: "leader_assertion_only",
     },
   });
 
-  assert.equal(changed.interpretations["theme-product"], undefined);
-  assert.equal(changed.repeats["theme-product"], undefined);
-  assert.equal(
-    changed.decisions.some((item) => item.themeIds.includes("theme-product")),
-    false,
-  );
+  assert.equal(changed.interpretations[productThemeId], undefined);
+  assert.equal(changed.repeats[productThemeId], undefined);
+  assert.equal(changed.decisions.some((item) => item.themeIds.includes(productThemeId)), false);
   assert.equal(changed.report, undefined);
-  assert.equal(changed.reviews["theme-product"]?.explanationBasis, "timing_context");
-  assert.equal(changed.reviews["theme-product"]?.evidenceStatus, "leader_assertion_only");
+  assert.equal(changed.reviews[productThemeId]?.explanationBasis, "timing_context");
+  assert.equal(changed.reviews[productThemeId]?.evidenceStatus, "leader_assertion_only");
   assert.doesNotMatch(
-    JSON.stringify(changed),
-    /product\.premium_hypothesis|row-product|define_hiring_additional_pay/,
+    JSON.stringify({
+      interpretation: changed.interpretations[productThemeId],
+      repeat: changed.repeats[productThemeId],
+      decisions: changed.decisions.filter((item) => item.themeIds.includes(productThemeId)),
+      report: changed.report,
+    }),
+    /product\.premium_hypothesis|observed_precedent_not_policy|define_hiring_additional_pay|product\.export_copy/,
   );
 });
 
 test("invalidation removes only the changed theme while clearing the shared report", () => {
   const populated = fixtureSession();
-  const changed = invalidateThemeDerivations(populated, "theme-product");
+  const productThemeId = populated.activeThemeId!;
+  const platformThemeId = populated.selection.selected.find(
+    (theme) => theme.roleGroup === "Platform Engineer",
+  )!.id;
+  const changed = invalidateThemeDerivations(populated, productThemeId);
 
-  assert.ok(changed.interpretations["theme-platform"]);
-  assert.ok(changed.repeats["theme-platform"]);
-  assert.equal(changed.decisions.map((item) => item.id).includes("decision-platform"), true);
+  assert.ok(changed.interpretations[platformThemeId]);
+  assert.ok(changed.repeats[platformThemeId]);
+  assert.equal(changed.decisions.some((item) => item.id === "decision-platform"), true);
   assert.equal(changed.report, undefined);
 });
 
 test("changing repeatability alone keeps already validated derivatives", () => {
   const populated = fixtureSession();
+  const productThemeId = populated.activeThemeId!;
   const changed = decisionRoomReducer(populated, {
     type: "UPDATE_REVIEW",
-    themeId: "theme-product",
+    themeId: productThemeId,
     patch: { repeatabilityStatus: "one_time_exception" },
   });
 
-  assert.ok(changed.interpretations["theme-product"]);
-  assert.ok(changed.repeats["theme-product"]);
+  assert.ok(changed.interpretations[productThemeId]);
+  assert.ok(changed.repeats[productThemeId]);
   assert.equal(changed.decisions.some((item) => item.id === "decision-product"), true);
   assert.ok(changed.report);
 });
 
 function fixtureSession(): DecisionRoomSessionState {
-  const productClaim = claim("theme-product", "product.premium_hypothesis");
-  const platformClaim = claim("theme-platform", "platform.salary_fact");
-  const productRepeat = repeat("theme-product", "row-product");
-  const platformRepeat = repeat("theme-platform", "row-platform");
+  const demo = createSyntheticDemoSession();
+  const productThemeId = demo.activeThemeId!;
+  const platformThemeId = demo.selection.selected.find(
+    (theme) => theme.roleGroup === "Platform Engineer",
+  )!.id;
+  const productClaim = claim(productThemeId, "product.premium_hypothesis");
+  const platformClaim = claim(platformThemeId, "platform.salary_fact");
+  const productRepeat = structuredClone(demo.repeats[productThemeId]!);
+  const platformRepeat = repeat(platformThemeId, "row-platform");
   const decisions: DecisionRecord[] = [
-    decision("decision-product", "theme-product", "define_hiring_additional_pay"),
-    decision("decision-platform", "theme-platform", "collect_evidence"),
+    decision("decision-product", productThemeId, "define_hiring_additional_pay"),
+    decision("decision-platform", platformThemeId, "collect_evidence"),
   ];
   const report: SessionReport = {
     reviewedSubjects: [],
     confirmedResults: [{
-      themeId: "theme-product",
+      themeId: productThemeId,
       statementId: "product-statement",
       copyKey: "product.export_copy",
     }],
@@ -82,34 +96,26 @@ function fixtureSession(): DecisionRoomSessionState {
   };
 
   return {
-    mode: "facilitated",
+    ...demo,
     screen: "company_rule",
-    rows: [],
-    themes: [],
-    selection: {
-      selected: [],
-      unselected: [],
-      recommendedIds: [],
-      wasOverridden: false,
-    },
-    activeThemeId: "theme-product",
     reviews: {
-      "theme-product": {
-        themeId: "theme-product",
-        explanationBasis: "market_hiring_additional_pay",
-        evidenceStatus: "documented",
-        repeatabilityStatus: "conditional_rule",
+      [productThemeId]: demo.reviews[productThemeId]!,
+      [platformThemeId]: {
+        themeId: platformThemeId,
+        explanationBasis: "timing_context",
+        evidenceStatus: "observable",
+        repeatabilityStatus: "unanswered",
         outcome: "explained_with_evidence",
-        approvedSentenceKey: "market_hiring_additional_pay",
+        approvedSentenceKey: "timing_context",
       },
     },
     interpretations: {
-      "theme-product": productClaim,
-      "theme-platform": platformClaim,
+      [productThemeId]: productClaim,
+      [platformThemeId]: platformClaim,
     },
     repeats: {
-      "theme-product": productRepeat,
-      "theme-platform": platformRepeat,
+      [productThemeId]: productRepeat,
+      [platformThemeId]: platformRepeat,
     },
     decisions,
     report,
@@ -137,7 +143,7 @@ function claim(themeId: string, copyKey: string): InterpretationClaim {
 function repeat(themeId: string, rowId: string): PrecedentRepeatResult {
   return {
     themeId,
-    syntheticRow: { rowId, roleGroup: "Engineering", baseSalaryKRW: 95_000_000 },
+    syntheticRow: { rowId, roleGroup: "Platform Engineer", baseSalaryKRW: 95_000_000 },
     currentRosterPairCount: 1,
     baselineCandidatePairCount: 1,
     repeatedCandidatePairCount: 1,
