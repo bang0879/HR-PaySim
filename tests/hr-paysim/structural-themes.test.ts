@@ -88,8 +88,47 @@ test("keeps disconnected relationship graphs as separate themes", () => {
   assert.ok(themes.every((theme) => theme.archetype === "isolated_relationship"));
 });
 
+test("keeps disconnected level-order graphs as separate level-integrity themes", () => {
+  const rows = [
+    rankedRosterRow("row_a", 2, 60_000_000),
+    rankedRosterRow("row_b", 1, 70_000_000),
+    rankedRosterRow("row_c", 3, 80_000_000),
+    rankedRosterRow("row_d", 2, 90_000_000),
+  ];
+  const finding = levelFinding([
+    pair("row_a", "row_b", 10_000_000),
+    pair("row_c", "row_d", 10_000_000),
+  ]);
+
+  const themes = buildStructuralThemes(rows, [finding]);
+
+  assert.equal(themes.length, 2);
+  assert.deepEqual(
+    themes.map((theme) => theme.affectedRowIds),
+    [["row_a", "row_b"], ["row_c", "row_d"]],
+  );
+  assert.deepEqual(
+    themes.map((theme) => theme.comparisonPairs.map(pairKey)),
+    [["row_a->row_b"], ["row_c->row_d"]],
+  );
+  assert.deepEqual(
+    themes.map((theme) => [
+      theme.metrics.headlineGapKRW,
+      theme.metrics.pairRepairFloorKRW,
+      theme.metrics.systemRepairFloorKRW,
+    ]),
+    [[10_000_000, 10_000_000, 10_000_000], [10_000_000, 10_000_000, 10_000_000]],
+  );
+  assert.equal(new Set(themes.map((theme) => theme.id)).size, 2);
+  assert.ok(themes.every((theme) => theme.archetype === "level_integrity"));
+});
+
 function rosterRow(rowId: string, baseSalaryKRW: number): NormalizedRosterRow {
   return { rowId, roleGroup: "Ops", levelLabel: "none", baseSalaryKRW, tenureMonths: 24 };
+}
+
+function rankedRosterRow(rowId: string, levelRank: number, baseSalaryKRW: number): NormalizedRosterRow {
+  return { rowId, roleGroup: "Ops", levelLabel: `L${levelRank}`, levelRank, baseSalaryKRW };
 }
 
 function pair(
@@ -122,6 +161,35 @@ function relationshipFinding(id: string, comparisonPairs: StructuralFindingPair[
     metrics: {
       headlineGapKRW: headlinePair.salaryGapKRW,
       pairRepairFloorKRW: headlinePair.salaryGapKRW,
+      roleGroupPayrollContextKRW: 300_000_000,
+      nonClaim: "test",
+    },
+    riskModel: {
+      communicationRisk: "medium",
+      spreadRisk: "medium",
+      decisionUrgency: "medium",
+      nonClaim: "test",
+    },
+    confidence: "medium",
+    explanationText: "test",
+  };
+}
+
+function levelFinding(comparisonPairs: StructuralFindingPair[]): StructuralFinding {
+  return {
+    id: "ops_level_fiction_band_overlap",
+    type: "level_fiction_band_overlap",
+    roleGroup: "Ops",
+    title: "test",
+    defensibilityQuestion: "test",
+    relationshipSummary: "test",
+    affectedRowIds: comparisonPairs.flatMap((item) => [item.underpaidRowId, item.comparatorRowId]),
+    comparisonPairs,
+    evidence: [],
+    metrics: {
+      headlineGapKRW: 10_000_000,
+      pairRepairFloorKRW: 10_000_000,
+      systemRepairFloorKRW: 20_000_000,
       roleGroupPayrollContextKRW: 300_000_000,
       nonClaim: "test",
     },

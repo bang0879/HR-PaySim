@@ -3,6 +3,7 @@ import type {
   StructuralFinding,
   StructuralFindingPair,
 } from "../domain.ts";
+import { calculateMinimumOrdinalRestoration } from "../metrics/compensationMetrics.ts";
 import type { FindingMetricSet } from "../metrics/types.ts";
 import type {
   StructuralTheme,
@@ -105,33 +106,37 @@ function buildLevelThemes(
   return findings
     .filter((finding) => finding.type === "level_fiction_band_overlap")
     .sort(compareFinding)
-    .map((finding) => {
-      const comparisonPairs = uniquePairs(findingPairs(finding));
-      const affectedRowIds = uniqueSorted([
-        ...finding.affectedRowIds,
-        ...comparisonPairs.flatMap(pairRowIds),
-      ]);
-      const affectedRowIdSet = new Set(affectedRowIds);
-      const observation: SupportingObservation = {
-        sourceType: "level_fiction_band_overlap",
-        plainLanguageKey: "level_order_conflict",
-        affectedRowIds,
-      };
+    .flatMap((finding) => {
+      const components = connectedPairComponents(uniquePairs(findingPairs(finding)));
+      return components.map((comparisonPairs) => {
+        const affectedRowIds = uniqueSorted(comparisonPairs.flatMap(pairRowIds));
+        const affectedRowIdSet = new Set(affectedRowIds);
+        const componentRows = rows.filter((row) => affectedRowIdSet.has(row.rowId));
+        const headlinePair = comparisonPairs[0]!;
+        const metrics = levelThemeMetrics(finding.metrics, componentRows);
+        const observation: SupportingObservation = {
+          sourceType: "level_fiction_band_overlap",
+          plainLanguageKey: "level_order_conflict",
+          affectedRowIds,
+        };
 
-      return {
-        id: `${finding.id}_theme`,
-        roleGroup,
-        archetype: "level_integrity",
-        dataStatus: levelDataStatus(rows, affectedRowIdSet),
-        patternKind: "systematic",
-        findingIds: [finding.id],
-        ...(finding.headlinePair ? { headlinePair: finding.headlinePair } : {}),
-        comparisonPairs,
-        affectedRowIds,
-        supportingObservations: [observation],
-        metrics: { ...finding.metrics },
-        normalizedHeadlineGap: normalizeHeadlineGap(finding.headlinePair, finding.metrics, rows),
-      };
+        return {
+          id: components.length === 1
+            ? `${finding.id}_theme`
+            : `${finding.id}_theme_${affectedRowIds.join("_")}`,
+          roleGroup,
+          archetype: "level_integrity",
+          dataStatus: levelDataStatus(rows, affectedRowIdSet),
+          patternKind: "systematic",
+          findingIds: [finding.id],
+          headlinePair,
+          comparisonPairs,
+          affectedRowIds,
+          supportingObservations: [observation],
+          metrics,
+          normalizedHeadlineGap: normalizeHeadlineGap(headlinePair, metrics, rows),
+        };
+      });
     });
 }
 
@@ -230,6 +235,19 @@ function relationshipThemeMetrics(
     pairRepairFloorKRW: headlinePair.salaryGapKRW,
     roleGroupPayrollContextKRW: findingMetrics.roleGroupPayrollContextKRW
       ?? rows.reduce((total, row) => total + row.baseSalaryKRW, 0),
+  };
+}
+
+function levelThemeMetrics(
+  findingMetrics: FindingMetricSet,
+  rows: NormalizedRosterRow[],
+): FindingMetricSet {
+  const restoration = calculateMinimumOrdinalRestoration(rows);
+  return {
+    ...findingMetrics,
+    headlineGapKRW: restoration.headlineGapKRW,
+    pairRepairFloorKRW: restoration.pairRepairFloorKRW,
+    systemRepairFloorKRW: restoration.systemRepairFloorKRW,
   };
 }
 
