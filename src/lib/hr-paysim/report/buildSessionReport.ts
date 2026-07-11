@@ -13,6 +13,11 @@ import type {
   SessionReportSubject,
 } from "./types.ts";
 
+interface ScopedStatement {
+  themeId: string;
+  statement: InterpretationStatement;
+}
+
 export function buildSessionReport(input: BuildSessionReportInput): SessionReport {
   const themes = canonicalThemes(input.themes);
   const themesById = new Map(themes.map((theme) => [theme.id, theme]));
@@ -27,10 +32,14 @@ export function buildSessionReport(input: BuildSessionReportInput): SessionRepor
     return !unselectedIds.has(theme.id) && review?.themeId === theme.id;
   });
   const selectedThemeIds = new Set(selectedThemes.map((theme) => theme.id));
-  const decisions = input.decisions
+  const validatedDecisions = input.decisions
     .map((decision) => createDecisionRecord(decision, selectedThemeIds))
-    .flatMap((result) => result.status === "ready" ? [result.decision] : [])
-    .sort((a, b) => compareCodeUnits(a.id, b.id));
+    .flatMap((result) => result.status === "ready" ? [result.decision] : []);
+  const decisions = resolveIdentityCollisions(
+    validatedDecisions,
+    (decision) => decision.id,
+    stableSerialize,
+  );
   const statementsByTheme = collectStatements(input, selectedThemeIds);
 
   const reviewedSubjects = selectedThemes.flatMap((theme): SessionReportSubject[] => {
@@ -54,7 +63,7 @@ export function buildSessionReport(input: BuildSessionReportInput): SessionRepor
     statementRefs((statementsByTheme.get(theme.id) ?? []).filter(isConfirmedClientFact))
       .map((statement) => ({ themeId: theme.id, ...statement }))
   );
-  const followUps: ReportEvidenceFollowUp[] = input.followUps
+  const followUpCandidates: ReportEvidenceFollowUp[] = input.followUps
     .filter((followUp) => selectedThemeIds.has(followUp.themeId))
     .map((followUp) => ({
       id: followUp.id,
@@ -65,8 +74,12 @@ export function buildSessionReport(input: BuildSessionReportInput): SessionRepor
       statementRefs: statementRefs(
         (statementsByTheme.get(followUp.themeId) ?? []).filter(isWorkingHypothesis),
       ),
-    }))
-    .sort(compareFollowUps);
+    }));
+  const followUps = resolveIdentityCollisions(
+    followUpCandidates,
+    (followUp) => followUp.id,
+    stableSerialize,
+  ).sort(compareFollowUps);
 
   return {
     reviewedSubjects,
@@ -119,27 +132,64 @@ function isWorkingHypothesis(statement: InterpretationStatement): boolean {
 }
 
 function statementRefs(statements: InterpretationStatement[]): ReportStatementRef[] {
-  const byId = new Map<string, ReportStatementRef>();
-  for (const statement of [...statements].sort((a, b) => compareCodeUnits(a.id, b.id))) {
-    if (!byId.has(statement.id)) {
-      byId.set(statement.id, { statementId: statement.id, copyKey: statement.copyKey });
-    }
-  }
-  return Array.from(byId.values());
+  return statements
+    .map((statement) => ({ statementId: statement.id, copyKey: statement.copyKey }))
+    .sort((a, b) => compareCodeUnits(a.statementId, b.statementId));
 }
 
 function collectStatements(
   input: BuildSessionReportInput,
   selectedThemeIds: ReadonlySet<string>,
 ): Map<string, InterpretationStatement[]> {
+  const candidates: ScopedStatement[] = input.validatedClaims.flatMap((claim) =>
+    selectedThemeIds.has(claim.themeId)
+      ? claim.statements.map((statement) => ({ themeId: claim.themeId, statement }))
+      : []
+  );
+  const resolved = resolveIdentityCollisions(
+    candidates,
+    (item) => item.statement.id,
+    stableSerialize,
+  );
   const result = new Map<string, InterpretationStatement[]>();
-  for (const claim of [...input.validatedClaims].sort((a, b) =>
-    compareCodeUnits(a.themeId, b.themeId) || compareCodeUnits(a.id, b.id)
-  )) {
-    if (!selectedThemeIds.has(claim.themeId)) continue;
-    result.set(claim.themeId, [...(result.get(claim.themeId) ?? []), ...claim.statements]);
+  for (const item of resolved) {
+    result.set(item.themeId, [...(result.get(item.themeId) ?? []), item.statement]);
   }
   return result;
+}
+
+function resolveIdentityCollisions<T>(
+  items: T[],
+  identityOf: (item: T) => string,
+  fingerprintOf: (item: T) => string,
+): T[] {
+  const groups = new Map<string, Map<string, T>>();
+  for (const item of items) {
+    const identity = identityOf(item);
+    const fingerprints = groups.get(identity) ?? new Map<string, T>();
+    const fingerprint = fingerprintOf(item);
+    if (!fingerprints.has(fingerprint)) fingerprints.set(fingerprint, item);
+    groups.set(identity, fingerprints);
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => compareCodeUnits(a, b))
+    .flatMap(([, fingerprints]) => fingerprints.size === 1
+      ? [fingerprints.values().next().value as T]
+      : []);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
+  }
+  if (typeof value === "object" && value !== null) {
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => compareCodeUnits(a, b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? String(value);
 }
 
 function compareThemes(a: StructuralTheme, b: StructuralTheme): number {
