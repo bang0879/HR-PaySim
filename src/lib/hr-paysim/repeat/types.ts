@@ -29,3 +29,14 @@ export interface PrecedentRepeatResult {
   conclusionKey: "product_engineer_observed_hiring_repeat";
   nonClaimKey: "observed_precedent_not_policy";
 }
+
+export interface FounderBoundedHiringRule {
+  themeId: string;
+  roleGroup: string;
+  trigger: "hard_to_fill_role" | "scarce_skill" | "approved_exception";
+  referenceSalaryKRW: number;
+  additionalAmountKRW: number;
+  maximumSalaryKRW: number;
+  approverRole: "CEO" | "CEO_AND_HR";
+  reviewEvent: "BEFORE_NEXT_OFFER" | "BEFORE_NEXT_REVIEW";
+}
