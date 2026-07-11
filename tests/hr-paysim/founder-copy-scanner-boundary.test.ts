@@ -31,3 +31,23 @@ test("copy scanning checks quoted choices in visible JSX attributes", () => {
 
   assert.deepEqual(findForbiddenRenderedCopy(source), ["relationship", "memo"]);
 });
+
+test("copy scanning checks plain text rendered by a React fragment", () => {
+  const source = `
+    export function View() {
+      return <>memo relationship</>;
+    }
+  `;
+
+  assert.deepEqual(findForbiddenRenderedCopy(source), ["relationship", "memo"]);
+});
+
+test("copy scanning checks quoted choices in a React fragment child expression", () => {
+  const source = `
+    export function View({ active }: { active: boolean }) {
+      return <>{active ? "memo" : \`relationship\`}</>;
+    }
+  `;
+
+  assert.deepEqual(findForbiddenRenderedCopy(source), ["relationship", "memo"]);
+});

@@ -81,7 +81,7 @@ function findNextTagStart(source: string, from: number): number {
   for (let index = from; index < source.length - 1; index += 1) {
     if (source[index] !== "<") continue;
     const next = source[index + 1] ?? "";
-    if (/[A-Za-z/]/.test(next)) return index;
+    if (next === ">" || /[A-Za-z/]/.test(next)) return index;
   }
   return -1;
 }
@@ -112,6 +112,8 @@ function parseTag(tagSource: string):
   | { kind: "close"; name: string }
   | undefined {
   const trimmed = tagSource.trim();
+  if (trimmed === "") return { kind: "open", name: "#fragment", selfClosing: false };
+  if (/^\/\s*$/.test(trimmed)) return { kind: "close", name: "#fragment" };
   const closing = trimmed.match(/^\/\s*([A-Za-z][\w.-]*)/);
   if (closing) return { kind: "close", name: closing[1]! };
   const opening = trimmed.match(/^([A-Za-z][\w.-]*)/);
