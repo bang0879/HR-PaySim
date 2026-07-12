@@ -2,13 +2,13 @@
 
 ## Status
 
-Approved integration design for connecting the shared diagnostic-product governance work to HR PaySim and then finishing the existing Product Engineer Task 9 vertical slice.
+Approved integration design for finishing the existing Product Engineer Task 9 vertical slice and then connecting the shared diagnostic-product governance work to HR PaySim as a separate, non-blocking change.
 
 This design does not change the shared Constitution, the shared casebook, HR Prism production code, or the approved four-screen HR PaySim product design. It defines the PaySim-local connection layer and the order in which Task 9 may be completed.
 
 ## Goal
 
-Preserve the verified Task 1-8 implementation and the current uncommitted Task 9 work, add a traceable PaySim-local governance connection, and finish Screen 2 so a non-HR participant can understand the comparison, the observed pay difference, and the requested founder action within five seconds.
+Preserve the verified Task 1-8 implementation and the current uncommitted Task 9 work, finish Screen 2 so non-HR participants can understand the comparison, the observed pay difference, and the requested founder action within five seconds, and add a traceable PaySim-local governance connection without delaying the human comprehension test.
 
 Task 10 remains out of scope until Task 9 passes the human comprehension gate, is committed independently, and receives an independent code review.
 
@@ -38,6 +38,21 @@ Task 10 remains out of scope until Task 9 passes the human comprehension gate, i
 - Task 10 or later product scope;
 - Task 8 session ownership, invalidation, or runtime-validation commits.
 
+## Sequencing Principle
+
+The PaySim Adapter is documentation of product-governance alignment, not a functional dependency of Task 9. The approved four-screen design, `FOUNDER_COPY`, Task 8 state contract, and existing Task 9 tests already define the behavior required to finish Screen 2.
+
+The execution order is therefore:
+
+1. finish the Task 9 Screen 2 hierarchy and copy;
+2. run fresh automated verification;
+3. pass the multi-participant human comprehension gate;
+4. commit and independently review Task 9;
+5. create the thin PaySim governance artifacts as a separate scoped change only after the shared governance schema has a stable verified revision;
+6. request approval before Task 10.
+
+An unstable upstream governance schema must not block Task 9 or cause PaySim to invent a competing Adapter format.
+
 ## Source-Of-Truth Model
 
 PaySim must reference shared governance rather than copy it.
@@ -57,13 +72,17 @@ The Adapter records the upstream location and verified revision. It links to pri
 
 ## PaySim-Local Governance Artifacts
 
+These artifacts are intentionally thin and non-blocking. They must not expand into a second Constitution, a second casebook, a new common UI package, or a large validation framework before the first product pilot.
+
 ### 1. PaySim Adapter
 
 Create `docs/hr-paysim/diagnostic-product-adapter.md` using the schema established by the shared governance work.
 
 It must record:
 
-- the upstream Constitution and casebook locations and verified revision;
+- the upstream repository, Constitution path, casebook path, and exact verified commit SHA;
+- the date and method used to verify that commit;
+- whether the upstream branch has moved beyond the pinned SHA at the time of the next manual audit;
 - the PaySim product definition and facilitated operating mode;
 - the PaySim application point for each locked principle;
 - relevant case status as `CONFIRMED`, `ADAPTED`, `REJECTED`, or `NOT_TESTED`;
@@ -116,6 +135,8 @@ At 1280 x 720, the first viewport must make these three facts visible without in
 - the maximum observed annual salary difference is 27 million won;
 - the founder must select the closest reason for the difference and then identify whether supporting evidence exists.
 
+The 27 million won amount must be derived from the current Product Engineer theme's computed `headlineGapKRW` and formatted for display. It must not be stored as a second hard-coded conclusion literal in the view model or component.
+
 ### Copy hierarchy
 
 The current long conclusion becomes:
@@ -167,6 +188,8 @@ Run `scripts/qa-decision-room.mjs` at:
 - 1440 x 900;
 - 390 px mobile width.
 
+The 390 px check is a non-breaking reflow check, not a promise of full mobile feature parity for the facilitated v1 surface.
+
 Verify:
 
 - no horizontal overflow;
@@ -193,32 +216,34 @@ Previous passing results are not completion evidence.
 
 ## Human STOP GATE
 
-Before committing Task 9, show the revised Screen 2 to a non-HR participant for five seconds without explanation.
+Before committing Task 9, show the revised Screen 2 to at least two non-HR participants for five seconds each without explanation. At least one participant must be reasonably close to the target audience, such as a growth-stage founder or operator.
 
-The participant must be able to state:
+Every participant must be able to state:
 
 1. what two groups are being compared;
 2. what annual salary difference was observed;
 3. what the founder must now explain or choose.
 
-Record the participant's actual wording. Do not self-certify the gate. If any answer is unclear, revise Screen 2 and repeat automated verification before running the human check again.
+Record each participant's actual wording and relevant target proximity. Do not self-certify the gate. If any participant cannot answer any item clearly, keep Task 9 uncommitted, revise Screen 2, and repeat automated verification before running the full human check again.
 
 ## Commit And Review Boundaries
 
 1. Commit this approved integration design independently.
-2. Implement and verify the PaySim-local governance artifacts as their own scoped change.
-3. Finish Task 9 without staging unrelated files.
+2. Finish Task 9 without staging unrelated files.
+3. Run all automated checks and the multi-participant human gate.
 4. Do not commit Task 9 before the human gate passes.
 5. After the gate passes, commit only the Task 9 files with:
 
    `feat: build Product Engineer decision-room slice`
 
 6. Request an independent code review of the Task 9 commit.
-7. Stop and ask for approval before starting Task 10.
+7. When the upstream governance schema has a stable verified commit SHA, implement and verify the thin PaySim-local governance artifacts as their own scoped change and commit.
+8. The governance change is not a prerequisite for Task 9 completion or the Task 10 approval decision.
+9. Stop and ask for approval before starting Task 10.
 
 ## Failure Handling
 
-- If the upstream governance schema is still changing, wait for a stable verified revision rather than inventing a competing Adapter format.
+- If the upstream governance schema is still changing, defer the PaySim Adapter, report the unstable revision, and continue Task 9 rather than inventing a competing Adapter format.
 - If a document authority conflict remains, stop product changes and report the conflict; do not resolve it by copying shared content.
 - If automated verification fails, diagnose and fix within Task 9 scope before the human gate.
 - If the human gate fails, keep Task 9 uncommitted and iterate only on information hierarchy, copy, and visual clarity.
@@ -233,4 +258,5 @@ Record the participant's actual wording. Do not self-certify the gate. If any an
 - market salary estimation;
 - public deployment or access-control implementation;
 - final visual-brand polish;
-- a new shared UI component package.
+- a new shared UI component package;
+- a pre-pilot governance framework beyond the thin Adapter, root work guide, and document authority notes.
