@@ -1,5 +1,7 @@
 # HR PaySim Final Design Acceptance
 
+> **Authority:** `LEGACY` visual and historical reference for the earlier eight-step design. The current founder-facing runtime and copy order are governed by `docs/superpowers/specs/2026-07-11-hr-paysim-facilitated-decision-room-design.md`.
+
 ## Design Source
 
 - Source type: exported screenshot pack and handoff docs

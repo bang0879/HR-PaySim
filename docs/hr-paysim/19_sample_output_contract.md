@@ -1,5 +1,7 @@
 ﻿# HR PaySim Sample Output Contract
 
+> **Authority:** `PRODUCT-SPECIFIC` for the synthetic roster, fixture values, and expected detection output. It is not the authority for the current four-screen structure or founder-facing copy.
+
 ## Status
 
 This is a Phase 0.1 contract. It defines the expected synthetic output before parser, detector, memo, session, route, or UI work starts.
