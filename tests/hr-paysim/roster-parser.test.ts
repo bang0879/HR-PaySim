@@ -16,6 +16,7 @@ test("parseRosterPaste normalizes clean sheet paste without retaining raw text",
   assert.equal(result.requiresPiiColumnConfirmation, false);
   assert.equal(result.report.acceptedRowCount, 2);
   assert.equal(result.report.rawTextPersisted, false);
+  assert.deepEqual(result.records.map((record) => record.sourceLineNumber), [2, 3]);
   assert.equal(result.rows[0]?.baseSalaryKRW, 68000000);
   assert.equal(result.rows[0]?.levelRank, undefined);
   assert.equal(result.rows[0]?.managerLabel, "manager_1");
@@ -45,6 +46,25 @@ test("parseRosterPaste requires confirmation before stripping PII-like columns",
   assert.equal(JSON.stringify(confirmed).includes("jane@example.com"), false);
 });
 
+test("parseRosterPaste requires confirmation before stripping every unapproved column", () => {
+  const pasteWithUnapprovedColumn = [
+    "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel\tnotes",
+    "row_001\tProduct Engineer\tProduct Engineer\tnone\t\t68000000\t2022-01-01\t54\tfalse\tfalse\tAlice Kim\tProduct Core\tjane@example.com",
+  ].join("\n");
+
+  const blocked = parseRosterPaste(pasteWithUnapprovedColumn);
+  assert.equal(blocked.requiresPiiColumnConfirmation, true);
+  assert.deepEqual(blocked.rows, []);
+  assert.deepEqual(blocked.report.rejectedColumnHeaders, ["notes"]);
+  assert.equal(JSON.stringify(blocked).includes("jane@example.com"), false);
+
+  const confirmed = parseRosterPaste(pasteWithUnapprovedColumn, { confirmPiiColumnStripping: true });
+  assert.equal(confirmed.requiresPiiColumnConfirmation, false);
+  assert.equal(confirmed.rows.length, 1);
+  assert.deepEqual(confirmed.report.rejectedColumnHeaders, ["notes"]);
+  assert.equal(JSON.stringify(confirmed).includes("jane@example.com"), false);
+});
+
 test("parseRosterPaste blocks rows with PII-like values in retained fields", () => {
   const pasteWithPiiValue = [
     "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel",
@@ -56,8 +76,14 @@ test("parseRosterPaste blocks rows with PII-like values in retained fields", () 
 
   assert.equal(result.rows.length, 1);
   assert.deepEqual(result.rows.map((row) => row.rowId), ["row_001"]);
-  assert.ok(result.errors.some((error) => error.includes("row_002")));
+  assert.deepEqual(result.issues, [{
+    sourceLineNumber: 3,
+    code: "PII_VALUE",
+    valuePattern: "email",
+  }]);
+  assert.ok(result.errors.some((error) => error.includes("\uC785\uB825 3\uD589")));
   assert.deepEqual(result.report.rejectedValuePatterns, ["email"]);
+  assert.equal(JSON.stringify(result).includes("row_002"), false);
   assert.equal(JSON.stringify(result).includes("person@example.com"), false);
 });
 

@@ -4,8 +4,23 @@ export interface RosterParseOptions {
   confirmPiiColumnStripping?: boolean;
 }
 
+export type PiiValuePattern = "email" | "phone" | "residentId" | "piiText";
+
+export interface RosterParseIssue {
+  sourceLineNumber: number;
+  code: "PII_VALUE" | "MISSING_REQUIRED_FIELD";
+  valuePattern?: PiiValuePattern;
+}
+
+export interface ParsedRosterRecord {
+  sourceLineNumber: number;
+  row: NormalizedRosterRow;
+}
+
 export interface RosterParseResult {
   rows: NormalizedRosterRow[];
+  records: ParsedRosterRecord[];
+  issues: RosterParseIssue[];
   warnings: string[];
   errors: string[];
   requiresPiiColumnConfirmation: boolean;
@@ -33,26 +48,6 @@ const headerAliases: Record<string, RosterField> = {
   teamlabel: "teamLabel",
 };
 
-const piiHeaderKeys = new Set([
-  "name",
-  "fullname",
-  "employeename",
-  "email",
-  "phone",
-  "phonenumber",
-  "mobile",
-  "residentid",
-  "rrn",
-  "ssn",
-  "employeeid",
-  "staffid",
-  "address",
-  "companyname",
-  "rawcsv",
-  "rawpaste",
-  "contact",
-]);
-
 export function parseRosterPaste(rawText: string, options: RosterParseOptions = {}): RosterParseResult {
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -65,15 +60,20 @@ export function parseRosterPaste(rawText: string, options: RosterParseOptions = 
 
   const delimiter = lines[0]!.includes("\t") ? "\t" : ",";
   const headers = splitLine(lines[0]!, delimiter);
-  const piiColumnIndexes = headers
-    .map((header, index) => ({ header, index }))
-    .filter(({ header }) => isPiiColumnHeader(header));
-  const rejectedColumnHeaders = piiColumnIndexes.map(({ header }) => header.trim());
+  const classifiedColumns = headers.map((header, index) => ({
+    field: headerAliases[normalizeHeader(header)],
+    header,
+    index,
+  }));
+  const rejectedColumns = classifiedColumns.filter(({ field }) => field === undefined);
+  const rejectedColumnHeaders = rejectedColumns.map(({ header }) => header.trim());
 
   if (rejectedColumnHeaders.length > 0 && options.confirmPiiColumnStripping !== true) {
-    warnings.push(`PII-like columns detected and require confirmation before stripping: ${rejectedColumnHeaders.join(", ")}.`);
+    warnings.push(`PII/unapproved columns detected and require confirmation before stripping: ${rejectedColumnHeaders.join(", ")}.`);
     return {
       rows: [],
+      records: [],
+      issues: [],
       warnings,
       errors,
       requiresPiiColumnConfirmation: true,
@@ -82,42 +82,49 @@ export function parseRosterPaste(rawText: string, options: RosterParseOptions = 
   }
 
   if (rejectedColumnHeaders.length > 0) {
-    warnings.push(`PII-like columns stripped after confirmation: ${rejectedColumnHeaders.join(", ")}.`);
+    warnings.push(`PII/unapproved columns stripped after confirmation: ${rejectedColumnHeaders.join(", ")}.`);
   }
 
-  const piiIndexSet = new Set(piiColumnIndexes.map(({ index }) => index));
-  const retainedColumns = headers
-    .map((header, index) => ({ field: headerAliases[normalizeHeader(header)], index }))
-    .filter((column): column is { field: RosterField; index: number } => column.field !== undefined && !piiIndexSet.has(column.index));
+  const retainedColumns = classifiedColumns.filter(
+    (column): column is { field: RosterField; header: string; index: number } =>
+      column.field !== undefined,
+  );
 
   const managerLabels = new Map<string, string>();
   const teamLabels = new Map<string, string>();
   const rejectedValuePatterns: string[] = [];
   const rows: NormalizedRosterRow[] = [];
+  const records: ParsedRosterRecord[] = [];
+  const issues: RosterParseIssue[] = [];
 
   for (const [lineIndex, line] of lines.slice(1).entries()) {
+    const sourceLineNumber = lineIndex + 2;
     const values = splitLine(line, delimiter);
     const rawRow = Object.fromEntries(retainedColumns.map(({ field, index }) => [field, values[index]?.trim() ?? ""]));
-    const rowLabel = rawRow.rowId || `line_${lineIndex + 2}`;
     const piiPattern = firstPiiValuePattern(Object.values(rawRow));
 
     if (piiPattern !== undefined) {
-      errors.push(`${rowLabel} contains a PII-like ${piiPattern} value and was blocked.`);
+      errors.push(`\uC785\uB825 ${sourceLineNumber}\uD589\uC5D0 \uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC740 \uAC1C\uC778 \uC815\uBCF4 \uD615\uC2DD\uC774 \uC788\uC2B5\uB2C8\uB2E4.`);
+      issues.push({ sourceLineNumber, code: "PII_VALUE", valuePattern: piiPattern });
       pushUnique(rejectedValuePatterns, piiPattern);
       continue;
     }
 
     const row = normalizeRow(rawRow, managerLabels, teamLabels);
     if (row === undefined) {
-      errors.push(`${rowLabel} is missing rowId, roleGroup, or baseSalaryKRW.`);
+      errors.push(`\uC785\uB825 ${sourceLineNumber}\uD589\uC758 \uD544\uC218 \uAC12\uC744 \uD655\uC778\uD558\uC138\uC694.`);
+      issues.push({ sourceLineNumber, code: "MISSING_REQUIRED_FIELD" });
       continue;
     }
 
     rows.push(row);
+    records.push({ sourceLineNumber, row });
   }
 
   return {
     rows,
+    records,
+    issues,
     warnings,
     errors,
     requiresPiiColumnConfirmation: false,
@@ -168,12 +175,7 @@ function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function isPiiColumnHeader(header: string): boolean {
-  const normalized = normalizeHeader(header);
-  return piiHeaderKeys.has(normalized) || /주민등록|이메일|전화번호|사번|주소|이름/.test(header);
-}
-
-function firstPiiValuePattern(values: string[]): string | undefined {
+function firstPiiValuePattern(values: string[]): PiiValuePattern | undefined {
   for (const value of values) {
     if (!value) continue;
     if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value)) return "email";
@@ -225,6 +227,8 @@ function pushUnique(values: string[], value: string): void {
 function emptyResult(input: { errors?: string[]; warnings?: string[] } = {}): RosterParseResult {
   return {
     rows: [],
+    records: [],
+    issues: [],
     warnings: input.warnings ?? [],
     errors: input.errors ?? [],
     requiresPiiColumnConfirmation: false,

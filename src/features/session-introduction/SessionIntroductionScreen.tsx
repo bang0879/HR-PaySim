@@ -56,7 +56,7 @@ export function SessionIntroductionScreen({
       </div>
 
       <footer className="dr-action-bar">
-        <p>먼저 Product Engineer 6명의 실제 연봉 분포와 직원 A·B 비교를 확인합니다.</p>
+        <p>{model.nextStepSummary}</p>
         <button className="dr-primary" type="button" onClick={onNext} data-primary-action="true">
           {model.primaryAction}
           <span aria-hidden="true">→</span>

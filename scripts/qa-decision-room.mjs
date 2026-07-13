@@ -2,11 +2,41 @@ import { chromium } from "playwright";
 
 const url = process.env.HR_PAYSIM_URL
   ?? "http://127.0.0.1:5173/hr-paysim/decision-room-preview";
+const origin = new URL(url).origin;
+const facilitatorHeader =
+  "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel";
+const facilitatorRows = [
+  "actual_001\tProduct Engineer\tProduct Engineer\tnone\t\t73000000\t2021-06-01\t61\tfalse\tfalse\tmanager_private\tteam_private",
+  "actual_002\tProduct Engineer\tProduct Engineer\tnone\t\t77000000\t2022-05-01\t50\tfalse\tfalse\tmanager_private\tteam_private",
+  "actual_003\tProduct Engineer\tProduct Engineer\tnone\t\t81000000\t2023-04-01\t39\tfalse\tfalse\tmanager_private\tteam_private",
+  "actual_004\tProduct Engineer\tProduct Engineer\tnone\t\t91000000\t2025-06-01\t13\ttrue\tfalse\tmanager_private\tteam_private",
+  "actual_005\tProduct Engineer\tProduct Engineer\tnone\t\t88000000\t2024-11-01\t20\tfalse\ttrue\tmanager_private\tteam_private",
+];
+const supportedFacilitatorPaste = [facilitatorHeader, ...facilitatorRows].join("\n");
+const piiColumnPaste = [
+  "name\temail\tnotes\t" + facilitatorHeader,
+  ...facilitatorRows.map((row, index) =>
+    "Private " + index + "\tprivate" + index + "@example.com\tunapproved" + index + "@example.com\t" + row
+  ),
+].join("\n");
+const rowPiiPaste = [
+  facilitatorHeader,
+  ...facilitatorRows.map((row, index) =>
+    index === 1 ? row.replace("Product Engineer\tnone", "person@example.com\tnone") : row
+  ),
+].join("\n");
+const mixedRolePaste = [
+  facilitatorHeader,
+  ...facilitatorRows.map((row, index) =>
+    index === 1 ? row.replace("Product Engineer\tProduct Engineer", "Platform Engineer\tProduct Engineer") : row
+  ),
+].join("\n");
 const viewports = [
   { name: "desktop-1280", width: 1280, height: 720 },
   { name: "desktop-1440", width: 1440, height: 900 },
   { name: "mobile-390", width: 390, height: 844 },
 ];
+const facilitatorViewports = [viewports[0], viewports[2]];
 const expectedScreens = [
   "introduction",
   "confirmed_pay_differences",
@@ -66,6 +96,14 @@ const result = {
   consoleIssues,
   screenshots: {},
   errors: [],
+  facilitatorByViewport: {},
+  columnConsentRequired: {},
+  rowPiiBlocksAll: {},
+  rawTextareaCleared: {},
+  facilitatedSampleLabelHidden: {},
+  sessionUrlContainsRosterData: {},
+  directSessionFailsClosed: {},
+  explicitEndClearsRows: {},
 };
 
 async function openFresh(viewport) {
@@ -288,7 +326,180 @@ async function inspectScreen2(viewport) {
   }
 }
 
+async function runFacilitatorQa(viewport) {
+  const facilitatorContext = await browser.newContext({ viewport });
+  const facilitatorPage = await facilitatorContext.newPage();
+  facilitatorPage.on("console", (message) => {
+    if (["error", "warning"].includes(message.type())) {
+      consoleIssues.push("facilitator/" + viewport.name + "/" + message.type() + ": " + message.text());
+    }
+  });
+  facilitatorPage.on("pageerror", (error) => {
+    consoleIssues.push("facilitator/" + viewport.name + "/pageerror: " + error.message);
+  });
+
+  const preparationUrl = origin + "/hr-paysim/session/new";
+  const sessionUrl = origin + "/hr-paysim/session";
+  const inspect = async (paste) => {
+    const textarea = facilitatorPage.locator("textarea");
+    await textarea.fill(paste);
+    await facilitatorPage.locator(".fp-input-actions .fp-primary").click();
+  };
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  await inspect(piiColumnPaste);
+  const consentVisible = await facilitatorPage.locator('[data-column-consent-required="true"]').isVisible();
+  const consentText = await facilitatorPage.locator('[data-column-consent-required="true"]').innerText();
+  const consentBody = await facilitatorPage.locator("body").innerText();
+  const columnConsentRequired = consentVisible
+    && consentText.includes("name")
+    && consentText.includes("email")
+    && consentText.includes("notes")
+    && !consentBody.includes("Private 0")
+    && !consentBody.includes("private0@example.com")
+    && !consentBody.includes("unapproved0@example.com");
+  result.columnConsentRequired[viewport.name] = columnConsentRequired;
+  if (!columnConsentRequired) throw new Error(viewport.name + " PII column consent failed");
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  await inspect(rowPiiPaste);
+  const blockedVisible = await facilitatorPage.locator('[data-preparation-blocked="true"]').isVisible();
+  const rowPiiRawCleared = (await facilitatorPage.locator("textarea").inputValue()) === "";
+  const rowPiiBody = await facilitatorPage.locator("body").innerText();
+  const rowPiiBlocksAll = blockedVisible
+    && await facilitatorPage.locator('[data-start-facilitated-session="true"]').count() === 0
+    && !rowPiiBody.includes("person@example.com")
+    && !rowPiiBody.includes("actual_002");
+  result.rowPiiBlocksAll[viewport.name] = rowPiiBlocksAll;
+  if (!rowPiiBlocksAll || !rowPiiRawCleared) {
+    throw new Error(viewport.name + " row PII did not block and clear all");
+  }
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  await inspect(mixedRolePaste);
+  const mixedRoleText = await facilitatorPage.locator('[data-preparation-blocked="true"]').innerText();
+  if (!mixedRoleText.includes("\uC785\uB825 3\uD589")
+    || await facilitatorPage.locator('[data-start-facilitated-session="true"]').count() !== 0) {
+    throw new Error(viewport.name + " mixed role did not fail closed");
+  }
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  await inspect(supportedFacilitatorPaste);
+  await facilitatorPage.locator('[data-preparation-confirmation="true"]').waitFor();
+  const supportedRawCleared = (await facilitatorPage.locator("textarea").inputValue()) === "";
+  const startCount = await facilitatorPage.locator('[data-start-facilitated-session="true"]').count();
+  const preparationOverflow = await facilitatorPage.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+  );
+  const overflowDetails = preparationOverflow
+    ? await facilitatorPage.evaluate(() => [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.right > document.documentElement.clientWidth + 1;
+      })
+      .slice(0, 8)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { tag: element.tagName, className: element.className, right: rect.right, width: rect.width };
+      }))
+    : [];
+  if (!supportedRawCleared || startCount !== 1 || preparationOverflow) {
+    throw new Error(viewport.name + " supported confirmation failed: " + JSON.stringify({
+      supportedRawCleared,
+      startCount,
+      preparationOverflow,
+      overflowDetails,
+    }));
+  }
+  result.rawTextareaCleared[viewport.name] = rowPiiRawCleared && supportedRawCleared;
+
+  await facilitatorPage.locator('[data-start-facilitated-session="true"]').click();
+  await facilitatorPage.locator('[data-decision-room="true"]').waitFor();
+  const rosterDataInUrl = /actual_|73000000|manager_private|team_private/.test(facilitatorPage.url());
+  result.sessionUrlContainsRosterData[viewport.name] = rosterDataInUrl;
+  if (new URL(facilitatorPage.url()).pathname !== "/hr-paysim/session" || rosterDataInUrl) {
+    throw new Error(viewport.name + " session URL leaked roster data");
+  }
+
+  const sampleLabelHidden = await facilitatorPage.locator(".dr-sample-label").count() === 0;
+  result.facilitatedSampleLabelHidden[viewport.name] = sampleLabelHidden;
+  if (!sampleLabelHidden) throw new Error(viewport.name + " facilitated sample label is visible");
+
+  const introPrimary = facilitatorPage.locator('[data-screen="introduction"] [data-primary-action="true"]');
+  await introPrimary.focus();
+  await facilitatorPage.keyboard.press("Enter");
+  await facilitatorPage.locator('[data-screen="confirmed_pay_differences"]').waitFor();
+  const evidenceText = await facilitatorPage.locator('[data-screen="confirmed_pay_differences"]').innerText();
+  if (!evidenceText.includes("Product Engineer 5\uBA85")
+    || evidenceText.includes("Product Engineer 6\uBA85")
+    || !evidenceText.includes("1,800\uB9CC\uC6D0")) {
+    throw new Error(viewport.name + " real-input facts are missing");
+  }
+  const focusMoved = await facilitatorPage.evaluate(() =>
+    document.activeElement?.getAttribute("data-conclusion-heading") === "true"
+  );
+  if (!focusMoved) throw new Error(viewport.name + " facilitated focus did not move");
+
+  await facilitatorPage.locator('input[name="explanation"][value="timing_context"]').check();
+  await facilitatorPage.locator('input[name="evidence"][value="documented"]').check();
+  const evidencePrimary = facilitatorPage.locator(
+    '[data-screen="confirmed_pay_differences"] [data-primary-action="true"]',
+  );
+  await evidencePrimary.focus();
+  await facilitatorPage.keyboard.press("Enter");
+  await facilitatorPage.locator('[data-screen="company_rule"]').waitFor();
+  const rulePrimary = facilitatorPage.locator('[data-screen="company_rule"] [data-primary-action="true"]');
+  await rulePrimary.focus();
+  await facilitatorPage.keyboard.press("Enter");
+  await facilitatorPage.locator('[data-screen="session_result"]').waitFor();
+
+  const storage = await facilitatorPage.evaluate(() => ({
+    localStorageKeys: localStorage.length,
+    sessionStorageKeys: sessionStorage.length,
+  }));
+  if (storage.localStorageKeys !== 0 || storage.sessionStorageKeys !== 0) {
+    throw new Error(viewport.name + " facilitated session wrote browser storage");
+  }
+
+  await facilitatorPage.locator(".dr-danger").click();
+  await facilitatorPage.locator('[data-facilitator-preparation="true"]').waitFor();
+  const explicitEndClearsRows =
+    await facilitatorPage.locator('[data-decision-room="true"]').count() === 0
+    && new URL(facilitatorPage.url()).pathname === "/hr-paysim/session/new";
+  result.explicitEndClearsRows[viewport.name] = explicitEndClearsRows;
+  if (!explicitEndClearsRows) throw new Error(viewport.name + " explicit end did not clear rows");
+
+  const directContext = await browser.newContext({ viewport });
+  const directPage = await directContext.newPage();
+  directPage.on("console", (message) => {
+    if (["error", "warning"].includes(message.type())) {
+      consoleIssues.push("direct/" + viewport.name + "/" + message.type() + ": " + message.text());
+    }
+  });
+  directPage.on("pageerror", (error) => {
+    consoleIssues.push("direct/" + viewport.name + "/pageerror: " + error.message);
+  });
+  await directPage.goto(sessionUrl, { waitUntil: "networkidle" });
+  const directSessionFailsClosed = await directPage.locator('[data-no-active-session="true"]').isVisible();
+  result.directSessionFailsClosed[viewport.name] = directSessionFailsClosed;
+  if (!directSessionFailsClosed) throw new Error(viewport.name + " direct session did not fail closed");
+  await directContext.close();
+
+  result.facilitatorByViewport[viewport.name] = {
+    columnConsentRequired,
+    rowPiiBlocksAll,
+    rawTextareaCleared: result.rawTextareaCleared[viewport.name],
+    facilitatedSampleLabelHidden: sampleLabelHidden,
+    sessionUrlContainsRosterData: rosterDataInUrl,
+    directSessionFailsClosed,
+    explicitEndClearsRows,
+  };
+  await facilitatorContext.close();
+}
 try {
+  for (const viewport of facilitatorViewports) {
+    await runFacilitatorQa(viewport);
+  }
   for (const viewport of viewports) {
     await openFresh(viewport);
     const visited = [];

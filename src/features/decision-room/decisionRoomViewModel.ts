@@ -4,6 +4,8 @@ import {
   formatProductEngineerEvidenceTitle,
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
 import type { DecisionRecord } from "../../lib/hr-paysim/decisions/types.ts";
+import { createEmployeeLabels } from "../../lib/hr-paysim/presentation/createEmployeeLabels.ts";
+import { findObservedPrecedentCandidates } from "../../lib/hr-paysim/repeat/selectObservedPrecedent.ts";
 import type { NormalizedRosterRow } from "../../lib/hr-paysim/domain.ts";
 import type { EvidenceStatus, ExplanationBasis } from "../../lib/hr-paysim/review/types.ts";
 import type {
@@ -90,35 +92,48 @@ export function createProductEngineerDecisionRoomViewModel(
   const review = state.reviews[selectedTheme.id];
   const repeat = state.repeats[selectedTheme.id];
   const decision = state.decisions.find((item) => item.themeIds.includes(selectedTheme.id));
+  const employeeCount = rows.length;
+  const lowerPaidLabel = labels.get(lowerPaid.rowId)!;
+  const higherPaidLabel = labels.get(higherPaid.rowId)!;
+  const evidenceConclusion = formatProductEngineerEvidenceTitle({
+    employeeCount,
+    lowerPaidLabel,
+    lowerPaidTenureMonths: lowerPaid.tenureMonths,
+    higherPaidLabel,
+    higherPaidTenureMonths: higherPaid.tenureMonths,
+    headlineGapKRW,
+  });
+  const repeatAdditionalPayKRW = repeat
+    ? findObservedPrecedentCandidates(rows, selectedTheme.roleGroup).find(
+      (candidate) => candidate.observedSalaryKRW === repeat.syntheticRow.baseSalaryKRW,
+    )?.additionalAmountKRW
+    : undefined;
 
   return {
     introduction: {
       heading: FOUNDER_COPY["screen.introduction.heading"],
       conclusion: "금번 진단에서는 같은 역할을 맡은 직원들의 실제 연봉 차이를 확인하고, 다음 채용 전에 회사가 정해야 할 기준을 정리합니다.",
-      scope: "16명의 이름 없는 샘플 자료 중 Product Engineer 6명의 역할, 기본 연봉, 근속 기간과 채용 예외 기록을 먼저 살펴봅니다.",
+      scope: state.mode === "demo"
+        ? "16명의 이름 없는 샘플 자료 중 Product Engineer 6명의 역할, 기본 연봉, 근속 기간과 채용 예외 기록을 먼저 살펴봅니다."
+        : `${employeeCount}명의 이름 없는 입력 자료에서 Product Engineer ${employeeCount}명의 역할, 기본 연봉, 근속 기간과 채용 예외 기록을 먼저 살펴봅니다.`,
       sectionLabel: FOUNDER_COPY["screen.introduction.scope_label"],
       nonClaims: [
         "개인의 적정 연봉이나 인상액을 추천하지 않습니다.",
         "직원의 성과, 의도 또는 퇴사 가능성을 판단하지 않습니다.",
       ],
       outputs: [
-        "Product Engineer 6명의 실제 연봉 분포와 구체적인 직원 비교를 확인합니다.",
+        `Product Engineer ${employeeCount}명의 실제 연봉 분포와 구체적인 직원 비교를 확인합니다.`,
         "선택한 설명을 어떤 기록으로 확인할 수 있는지 정리합니다.",
         "같은 채용 방식을 다음에도 적용하기 전에 회사가 정할 기준과 담당 시점을 남깁니다.",
       ],
       duration: "예상 대화 시간은 45~60분입니다.",
+      nextStepSummary:
+        `먼저 Product Engineer ${employeeCount}명의 실제 연봉 분포와 직원 A·B 비교를 확인합니다.`,
       primaryAction: FOUNDER_COPY["action.view_evidence"],
     },
     evidence: {
       heading: FOUNDER_COPY["screen.evidence.heading"],
-      conclusion: formatProductEngineerEvidenceTitle({
-        employeeCount: rows.length,
-        lowerPaidLabel: labels.get(lowerPaid.rowId)!,
-        lowerPaidTenureMonths: lowerPaid.tenureMonths,
-        higherPaidLabel: labels.get(higherPaid.rowId)!,
-        higherPaidTenureMonths: higherPaid.tenureMonths,
-        headlineGapKRW,
-      }),
+      conclusion: evidenceConclusion,
       supportingCopy: formatProductEngineerEvidenceSupporting({
         employeeCount: rows.length,
         lowerPaidLabel: labels.get(lowerPaid.rowId)!,
@@ -126,8 +141,10 @@ export function createProductEngineerDecisionRoomViewModel(
       }),
       actionPrompt: FOUNDER_COPY["screen.evidence.product_engineer.action_prompt"],
       nonClaim: FOUNDER_COPY["non_claim.higher_salary"],
+      distributionKicker:
+        `Product Engineer ${employeeCount}명의 기본 연봉과 근속 개월`,
       distributionHeading:
-        "Product Engineer 6명의 기본 연봉과 근속 개월을 함께 표시했습니다.",
+        `Product Engineer ${employeeCount}명의 기본 연봉과 근속 개월을 함께 표시했습니다.`,
       distribution: rows.map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         salary: formatManwon(row.baseSalaryKRW),
@@ -147,9 +164,11 @@ export function createProductEngineerDecisionRoomViewModel(
         lowerPaidException: formatExceptionRecord(lowerPaid),
         higherPaidException: formatExceptionRecord(higherPaid),
       },
+      supportingObservationsHeading:
+        `Product Engineer ${employeeCount}명 전체에서도 비슷한 차이가 반복되는지 확인했습니다.`,
       supportingObservations: [
-        "Product Engineer 6명의 근속 개월과 기본 연봉을 함께 놓았을 때, 근속 64개월인 직원 A는 6,800만원이고 근속 14개월인 직원 B는 9,500만원입니다.",
-        "직원 A와 직원 B 사이의 2,700만원 차이가 가장 큽니다. 현재 기록만으로 이 차이를 모두 설명할 공통 기준은 확인되지 않았습니다.",
+        `Product Engineer ${employeeCount}명의 근속 개월과 기본 연봉을 함께 놓았을 때, 근속 ${lowerPaid.tenureMonths}개월인 ${lowerPaidLabel}는 ${formatManwon(lowerPaid.baseSalaryKRW)}이고 근속 ${higherPaid.tenureMonths}개월인 ${higherPaidLabel}는 ${formatManwon(higherPaid.baseSalaryKRW)}입니다.`,
+        `${lowerPaidLabel}와 ${higherPaidLabel} 사이의 ${formatManwon(headlineGapKRW)} 차이가 가장 큽니다. 현재 기록만으로 이 차이를 모두 설명할 공통 기준은 확인되지 않았습니다.`,
       ],
       explanationQuestion:
         FOUNDER_COPY["screen.evidence.product_engineer.explanation_question"],
@@ -173,7 +192,7 @@ export function createProductEngineerDecisionRoomViewModel(
     rule: {
       heading: FOUNDER_COPY["screen.rule.heading"],
       conclusion: repeat
-        ? "현재 확인된 채용 사례를 한 번 더 적용한다고 가정하면 기존 Product Engineer 3명과 최대 2,700만원의 연봉 차이가 생깁니다."
+        ? `현재 확인된 채용 사례를 한 번 더 적용한다고 가정하면 기존 Product Engineer ${repeat.affectedRowIds.length}명과 최대 ${formatManwon(repeat.maximumGapKRW)}의 연봉 차이가 생깁니다.`
         : "앞서 선택한 설명이 변경되어 같은 채용 방식을 적용한 결과를 다시 확인해야 합니다.",
       selectedExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
         ? explanationLabels[review.explanationBasis]
@@ -181,7 +200,7 @@ export function createProductEngineerDecisionRoomViewModel(
       selectedEvidence: evidenceLabels[review?.evidenceStatus ?? "unanswered"],
       observedRepeat: {
         heading: repeat
-          ? "다음 Product Engineer의 기본 연봉이 9,500만원이라고 가정해 기존 직원과 다시 비교했습니다."
+          ? `다음 Product Engineer의 기본 연봉이 ${formatManwon(repeat.syntheticRow.baseSalaryKRW)}이라고 가정해 기존 직원과 다시 비교했습니다.`
           : "설명과 근거를 다시 확인한 뒤 같은 채용 사례를 적용한 결과를 계산합니다.",
         nextHireSalary: repeat ? formatManwon(repeat.syntheticRow.baseSalaryKRW) : "계산 전",
         affectedEmployees: repeat ? `기존 Product Engineer ${repeat.affectedRowIds.length}명` : "계산 전",
@@ -190,7 +209,7 @@ export function createProductEngineerDecisionRoomViewModel(
         nonClaim: FOUNDER_COPY["non_claim.observed_repeat"],
       },
       missingRuleConditions: ["적용 대상", "금액 또는 범위", "승인자", "재검토 시점"],
-      ruleConditions: createRuleConditions(Boolean(repeat)),
+      ruleConditions: createRuleConditions(repeatAdditionalPayKRW),
       boundedRuleNonClaim: "위 네 가지 항목은 현재 사례에서 확인해야 할 질문이며, 아직 회사가 승인한 기준이나 개인별 권장 연봉이 아닙니다.",
       decision: {
         heading: decision
@@ -220,7 +239,9 @@ export function createProductEngineerDecisionRoomViewModel(
         FOUNDER_COPY["result.column.due"],
       ],
       rows: [{
-        confirmed: FOUNDER_COPY["interpretation.product_engineer.salary_observation"],
+        confirmed: state.mode === "demo"
+          ? FOUNDER_COPY["interpretation.product_engineer.salary_observation"]
+          : evidenceConclusion,
         founderExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
           ? explanationLabels[review.explanationBasis]
           : "설명 확인 필요",
@@ -253,7 +274,8 @@ export function createProductEngineerDecisionRoomViewModel(
   };
 }
 
-function createRuleConditions(hasRepeat: boolean) {
+function createRuleConditions(repeatAdditionalPayKRW: number | undefined) {
+  const hasRepeat = repeatAdditionalPayKRW !== undefined;
   const pending = "아직 승인하지 않았습니다.";
   return [
     {
@@ -266,7 +288,7 @@ function createRuleConditions(hasRepeat: boolean) {
     {
       label: "금액 또는 범위",
       observedContext: hasRepeat
-        ? "현재 사례에서 700만원이 추가됐지만, 앞으로 사용할 금액 또는 범위로 승인하지 않았습니다."
+        ? `현재 사례에서 ${formatManwon(repeatAdditionalPayKRW!)}이 추가됐지만, 앞으로 사용할 금액 또는 범위로 승인하지 않았습니다.`
         : "설명이 변경되어 앞으로 검토할 금액 또는 범위를 다시 확인해야 합니다.",
       approvalStatus: pending,
     },
@@ -281,22 +303,6 @@ function createRuleConditions(hasRepeat: boolean) {
       approvalStatus: pending,
     },
   ];
-}
-
-function createEmployeeLabels(
-  rows: NormalizedRosterRow[],
-  lowerPaidRowId: string,
-  higherPaidRowId: string,
-): Map<string, string> {
-  const labels = new Map<string, string>([
-    [lowerPaidRowId, "직원 A"],
-    [higherPaidRowId, "직원 B"],
-  ]);
-  const alphabet = ["C", "D", "E", "F", "G", "H"];
-  rows
-    .filter((row) => !labels.has(row.rowId))
-    .forEach((row, index) => labels.set(row.rowId, `직원 ${alphabet[index] ?? index + 3}`));
-  return labels;
 }
 
 function requiredRow(rows: NormalizedRosterRow[], rowId: string): NormalizedRosterRow {

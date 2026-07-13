@@ -58,6 +58,7 @@ test("createRosterDiagnosticViewModel surfaces blocked rows without leaking PII 
   assert.equal(viewModel.status, "partial_blocked");
   assert.equal(viewModel.summary.acceptedRowCount, 1);
   assert.equal(viewModel.summary.blockedRowCount, 1);
-  assert.ok(viewModel.errors.some((error) => error.includes("row_002")));
+  assert.ok(viewModel.errors.some((error) => error.includes("\uC785\uB825 3\uD589")));
+  assert.equal(JSON.stringify(viewModel).includes("row_002"), false);
   assert.equal(JSON.stringify(viewModel).includes("person@example.com"), false);
 });

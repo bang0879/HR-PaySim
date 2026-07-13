@@ -11,3 +11,8 @@ test("resolveHrPaySimSurface exposes facilitated roster and synthetic demo route
   assert.equal(resolveHrPaySimSurface("/hr-paysim/roster"), "roster");
   assert.equal(resolveHrPaySimSurface("/hr-paysim/demo"), "demo");
 });
+test("local facilitator paths resolve without changing existing surfaces", () => {
+  assert.equal(resolveHrPaySimSurface("/hr-paysim/session/new"), "facilitator_preparation");
+  assert.equal(resolveHrPaySimSurface("/hr-paysim/session"), "facilitator_session");
+  assert.equal(resolveHrPaySimSurface("/hr-paysim/decision-room-preview"), "decision_room_preview");
+});

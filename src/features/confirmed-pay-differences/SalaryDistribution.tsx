@@ -12,9 +12,11 @@ type EvidenceModel = ReturnType<
 
 export function SalaryDistribution({
   distribution,
+  distributionKicker,
   distributionHeading,
 }: {
   distribution: EvidenceModel["distribution"];
+  distributionKicker: EvidenceModel["distributionKicker"];
   distributionHeading: EvidenceModel["distributionHeading"];
 }) {
   const plot = createSalaryTenurePlot(distribution);
@@ -36,7 +38,7 @@ export function SalaryDistribution({
     <section className="dr-panel dr-distribution" aria-labelledby="salary-distribution-title">
       <div className="dr-panel-heading">
         <div>
-          <p className="dr-section-kicker">Product Engineer 6명의 기본 연봉과 근속 개월</p>
+          <p className="dr-section-kicker">{distributionKicker}</p>
           <h2 id="salary-distribution-title">{distributionHeading}</h2>
         </div>
         <span>직원 {distribution.length}명 전체</span>

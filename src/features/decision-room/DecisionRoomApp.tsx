@@ -19,7 +19,11 @@ const nextScreen: Partial<Record<DecisionRoomScreen, DecisionRoomScreen>> = {
   company_rule: "session_result",
 };
 
-export function DecisionRoomApp() {
+export interface DecisionRoomAppProps {
+  onSessionEnd?: () => void;
+}
+
+export function DecisionRoomApp({ onSessionEnd }: DecisionRoomAppProps = {}) {
   const { state, dispatch } = usePaySimSession();
   const conclusionRef = useRef<HTMLHeadingElement>(null);
   const currentSubjectId = getActiveSubjectId(state);
@@ -44,6 +48,10 @@ export function DecisionRoomApp() {
     const target = nextScreen[state.screen];
     if (target) dispatch({ type: "GO_TO_SCREEN", screen: target });
   };
+  const endSession = () => {
+    dispatch({ type: "END_SESSION" });
+    onSessionEnd?.();
+  };
 
   return (
     <div className="dr-app" data-decision-room="true">
@@ -55,7 +63,9 @@ export function DecisionRoomApp() {
             <small>대표와 함께 확인하는 보상 의사결정</small>
           </div>
         </div>
-        <span className="dr-sample-label">{DECISION_ROOM_DEMO_CONTRACT.sampleLabel}</span>
+        {state.mode === "demo" ? (
+          <span className="dr-sample-label">{DECISION_ROOM_DEMO_CONTRACT.sampleLabel}</span>
+        ) : null}
       </header>
 
       <nav className="dr-progress" aria-label="금번 진단 진행 단계">
@@ -101,7 +111,7 @@ export function DecisionRoomApp() {
           <SessionResultScreen
             model={model.result}
             headingRef={conclusionRef}
-            onEnd={() => dispatch({ type: "END_SESSION" })}
+            onEnd={endSession}
           />
         ) : null}
       </main>

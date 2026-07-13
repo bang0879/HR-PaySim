@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const preparation = readFileSync(
+  new URL("../../src/features/facilitator-preparation/FacilitatorPreparationScreen.tsx", import.meta.url),
+  "utf8",
+);
+const shell = readFileSync(
+  new URL("../../src/features/facilitator-preparation/FacilitatedSessionApp.tsx", import.meta.url),
+  "utf8",
+);
+const qaSource = readFileSync(new URL("../../scripts/qa-decision-room.mjs", import.meta.url), "utf8");
+const app = readFileSync(new URL("../../src/App.tsx", import.meta.url), "utf8");
+const provider = readFileSync(
+  new URL("../../src/app/PaySimSessionProvider.tsx", import.meta.url),
+  "utf8",
+);
+const sessionTypes = readFileSync(
+  new URL("../../src/lib/hr-paysim/session/types.ts", import.meta.url),
+  "utf8",
+);
+
+test("the preparation component owns raw paste only until safe normalization", () => {
+  assert.match(preparation, /useState\(".*"\)/);
+  assert.match(preparation, /rawPaste/);
+  assert.match(preparation, /setRawPaste\(""\)/);
+  assert.match(preparation, /prepareProductEngineerRoster/);
+  assert.match(preparation, /confirmPiiColumnStripping/);
+  assert.match(preparation, /value=\{rawPaste\}/);
+  assert.match(preparation, /\uD655\uC778\uD55C \uC790\uB8CC\uB85C \uC138\uC158 \uC2DC\uC791/);
+
+  assert.doesNotMatch(preparation, /detectStructuralFindings|buildStructuralThemes|selectReviewSubjects/);
+  assert.doesNotMatch(preparation, /localStorage|sessionStorage|fetch\(|sendBeacon|XMLHttpRequest/);
+  assert.doesNotMatch(preparation, /rowId|rejectedValuePatterns|\.errors/);
+  assert.doesNotMatch(provider + sessionTypes, /rawPaste|confirmPiiColumnStripping/);
+});
+
+test("one provider shell owns start, unload warning, direct-load fallback, and explicit end", () => {
+  assert.match(shell, /type: "START_SESSION"/);
+  assert.match(shell, /mode: "facilitated"/);
+  assert.match(shell, /history\.replaceState/);
+  assert.match(shell, /beforeunload/);
+  assert.match(shell, /<DecisionRoomApp onSessionEnd=/);
+  assert.match(shell, /\/hr-paysim\/session\/new/);
+  assert.match(shell, /\/hr-paysim\/session/);
+  assert.match(shell, /data-no-active-session="true"/);
+  assert.doesNotMatch(shell, /localStorage|sessionStorage|fetch\(|sendBeacon|XMLHttpRequest/);
+
+  assert.match(app, /surface === "facilitator_preparation" \|\| surface === "facilitator_session"/);
+  assert.match(app, /<PaySimSessionProvider>/);
+  assert.match(app, /<FacilitatedSessionApp/);
+});
+
+test("browser QA owns facilitator privacy and lifecycle evidence", () => {
+  for (const measurement of [
+    "columnConsentRequired",
+    "rowPiiBlocksAll",
+    "rawTextareaCleared",
+    "facilitatedSampleLabelHidden",
+    "sessionUrlContainsRosterData",
+    "directSessionFailsClosed",
+    "explicitEndClearsRows",
+  ]) {
+    assert.match(qaSource, new RegExp(measurement));
+  }
+});

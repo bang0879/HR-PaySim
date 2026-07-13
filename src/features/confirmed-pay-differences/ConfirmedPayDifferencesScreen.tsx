@@ -48,6 +48,7 @@ export function ConfirmedPayDifferencesScreen({
 
       <SalaryDistribution
         distribution={model.distribution}
+        distributionKicker={model.distributionKicker}
         distributionHeading={model.distributionHeading}
       />
 
@@ -81,7 +82,7 @@ export function ConfirmedPayDifferencesScreen({
       <section className="dr-observations" aria-labelledby="supporting-observations-title">
         <div>
           <p className="dr-section-kicker">직원 A·B 외에 함께 확인한 연봉 비교</p>
-          <h2 id="supporting-observations-title">Product Engineer 6명 전체에서도 비슷한 차이가 반복되는지 확인했습니다.</h2>
+          <h2 id="supporting-observations-title">{model.supportingObservationsHeading}</h2>
         </div>
         <ul>
           {model.supportingObservations.map((item) => <li key={item}>{item}</li>)}
