@@ -1,8 +1,8 @@
 import type { Ref } from "react";
-import type { createProductEngineerDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
+import type { createDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
 
 type IntroductionModel = ReturnType<
-  typeof createProductEngineerDecisionRoomViewModel
+  typeof createDecisionRoomViewModel
 >["introduction"];
 
 export function SessionIntroductionScreen({

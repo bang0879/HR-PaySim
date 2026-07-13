@@ -1,7 +1,7 @@
-import type { createProductEngineerDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
+import type { createDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
 
 type EvidenceRows = ReturnType<
-  typeof createProductEngineerDecisionRoomViewModel
+  typeof createDecisionRoomViewModel
 >["evidence"]["evidenceRows"];
 
 export function EvidenceTable({ rows }: { rows: EvidenceRows }) {

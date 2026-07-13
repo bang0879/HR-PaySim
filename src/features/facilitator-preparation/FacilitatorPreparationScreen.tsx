@@ -1,5 +1,9 @@
 import { useState } from "react";
 import {
+  FOUNDER_COPY,
+  PREPARATION_ISSUE_COPY,
+} from "../../lib/hr-paysim/copy/founderCopy.ts";
+import {
   createEmptyPreparationResult,
   prepareProductEngineerRoster,
 } from "../../lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
@@ -14,13 +18,7 @@ export interface FacilitatorPreparationScreenProps {
   onStart: (draft: ProductEngineerSessionDraft) => void;
 }
 
-const issueLabels: Record<PreparationIssueCode, string> = {
-  PII_VALUE: "허용되지 않은 개인정보 형식이 있습니다. 원본을 수정한 뒤 다시 붙여넣어 주세요.",
-  MISSING_REQUIRED_FIELD: "필수 값이 비어 있거나 형식이 맞지 않습니다.",
-  UNSUPPORTED_ROLE: "현재 비공개 준비 흐름은 Product Engineer 행만 지원합니다.",
-  UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON:
-    "현재 자료에서는 이 흐름이 지원하는 Product Engineer 비교를 만들 수 없습니다.",
-};
+const issueLabels: Record<PreparationIssueCode, string> = PREPARATION_ISSUE_COPY;
 
 export function FacilitatorPreparationScreen({
   onStart,
@@ -51,41 +49,51 @@ export function FacilitatorPreparationScreen({
   return (
     <main className="fp-app" data-facilitator-preparation="true">
       <header className="fp-hero">
-        <p className="fp-eyebrow">HR PaySim · 비공개 진행자 준비</p>
-        <h1>Product Engineer 세션 자료를 안전하게 확인합니다.</h1>
-        <p>
-          이 화면은 붙여넣은 자료를 브라우저 안에서만 검사합니다. 이름·연락처·주민등록번호와
-          Product Engineer가 아닌 행은 분석하지 않습니다.
-        </p>
+        <p className="fp-eyebrow">{FOUNDER_COPY["preparation.eyebrow"]}</p>
+        <h1>{FOUNDER_COPY["preparation.heading"]}</h1>
+        <p>{FOUNDER_COPY["preparation.privacy"]}</p>
       </header>
 
       <section className="fp-panel" aria-labelledby="fp-paste-title">
         <div className="fp-panel-heading">
           <div>
-            <p className="fp-kicker">1. 자료 붙여넣기</p>
-            <h2 id="fp-paste-title">허용된 열만 있는 시트 범위를 붙여넣어 주세요.</h2>
+            <p className="fp-kicker">{FOUNDER_COPY["preparation.paste.kicker"]}</p>
+            <h2 id="fp-paste-title">{FOUNDER_COPY["preparation.paste.heading"]}</h2>
           </div>
-          <span>로컬 전용</span>
+          <span>{FOUNDER_COPY["preparation.paste.badge"]}</span>
+        </div>
+        <div className="fp-column-reference" aria-label="붙여넣을 수 있는 열 이름">
+          <strong>필수 열 이름</strong>
+          <div>
+            {["row_id", "role_group", "base_salary_krw"].map((header) => (
+              <code key={header}>{header}</code>
+            ))}
+          </div>
+          <span>
+            선택 열은 title, level_label, level_rank, start_date, tenure_months,
+            latest_raise_date, latest_raise_amount_krw, exception_flag, counter_offer_flag,
+            manager_label, team_label입니다.
+          </span>
         </div>
         <label className="fp-paste-field">
-          <span>Product Engineer roster</span>
+          <span>{FOUNDER_COPY["preparation.paste.label"]}</span>
           <textarea
             rows={9}
             value={rawPaste}
             onChange={(event) => changePaste(event.target.value)}
-            placeholder="헤더 행을 포함해 붙여넣어 주세요."
+            placeholder={FOUNDER_COPY["preparation.paste.helper"]}
             spellCheck={false}
           />
         </label>
         <div className="fp-input-actions">
-          <p>원본 텍스트는 안전 검사 또는 차단 직후 입력란에서 지워집니다.</p>
+          <p>확인하거나 차단한 원본 텍스트는 입력란에서 바로 지워집니다.</p>
           <button
             className="fp-primary"
             type="button"
             onClick={inspectPaste}
             disabled={rawPaste.trim().length === 0}
           >
-            붙여넣은 자료 확인
+            {FOUNDER_COPY["preparation.paste.action"]}
           </button>
         </div>
       </section>
@@ -93,22 +101,22 @@ export function FacilitatorPreparationScreen({
       <div aria-live="polite">
         {result.status === "needs_column_consent" ? (
           <section className="fp-panel fp-consent" data-column-consent-required="true">
-            <p className="fp-kicker">개인정보 열 제외 확인</p>
-            <h2>아래 열 이름을 제외한 뒤 나머지 허용 열만 확인합니다.</h2>
+            <p className="fp-kicker">{FOUNDER_COPY["preparation.consent.kicker"]}</p>
+            <h2>{FOUNDER_COPY["preparation.consent.heading"]}</h2>
             <ul className="fp-column-list">
               {result.prohibitedColumnHeaders.map((header) => <li key={header}>{header}</li>)}
             </ul>
-            <p>열 이름만 표시하며, 해당 열의 값은 읽거나 미리 보지 않습니다.</p>
+            <p>{FOUNDER_COPY["preparation.consent.support"]}</p>
             <button className="fp-primary" type="button" onClick={approveColumnStripping}>
-              표시된 열을 제외하고 다시 확인
+              {FOUNDER_COPY["preparation.consent.action"]}
             </button>
           </section>
         ) : null}
 
         {result.status === "blocked" ? (
           <section className="fp-panel fp-blocked" data-preparation-blocked="true">
-            <p className="fp-kicker">세션을 시작할 수 없습니다.</p>
-            <h2>안전하게 수정한 자료를 새로 붙여넣어 주세요.</h2>
+            <p className="fp-kicker">{FOUNDER_COPY["preparation.blocked.kicker"]}</p>
+            <h2>{FOUNDER_COPY["preparation.blocked.heading"]}</h2>
             <ul className="fp-issue-list">
               {result.issues.map((issue, index) => (
                 <li key={issue.code + "-" + index}>
@@ -135,21 +143,21 @@ export function FacilitatorPreparationScreen({
           <section className="fp-panel fp-confirmation" data-preparation-confirmation="true">
             <div className="fp-panel-heading">
               <div>
-                <p className="fp-kicker">2. 정규화 자료 확인</p>
-                <h2>아래 익명 자료가 이번 세션에만 사용됩니다.</h2>
+                <p className="fp-kicker">{FOUNDER_COPY["preparation.ready.kicker"]}</p>
+                <h2>{FOUNDER_COPY["preparation.ready.heading"]}</h2>
               </div>
               <span>{result.previewRows.length}명</span>
             </div>
             <PreparationPreview rows={result.previewRows} />
             <div className="fp-start-bar">
-              <p>관리자·팀 원문과 시스템 식별자는 화면에 표시하거나 저장하지 않습니다.</p>
+              <p>{FOUNDER_COPY["preparation.ready.support"]}</p>
               <button
                 className="fp-primary"
                 type="button"
                 onClick={() => onStart(result.draft!)}
                 data-start-facilitated-session="true"
               >
-                확인한 자료로 세션 시작
+                {FOUNDER_COPY["preparation.ready.action"]}
               </button>
             </div>
           </section>

@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  createProductEngineerDecisionRoomViewModel,
+  createDecisionRoomViewModel,
   DECISION_ROOM_PROGRESS,
 } from "../../src/features/decision-room/decisionRoomViewModel.ts";
 import { FOUNDER_COPY } from "../../src/lib/hr-paysim/copy/founderCopy.ts";
 import { createSyntheticDemoSession } from "../../src/lib/hr-paysim/contracts/demoContract.ts";
 
 test("builds the four founder screens with one concrete action each", () => {
-  const model = createProductEngineerDecisionRoomViewModel(createSyntheticDemoSession());
+  const model = createDecisionRoomViewModel(createSyntheticDemoSession());
 
   assert.deepEqual(
     DECISION_ROOM_PROGRESS.map((item) => item.label),
@@ -17,7 +17,7 @@ test("builds the four founder screens with one concrete action each", () => {
   );
   assert.deepEqual(
     [model.introduction.primaryAction, model.evidence.primaryAction, model.rule.primaryAction],
-    ["실제 연봉 분포와 비교 사례 보기", "같은 채용 방식을 다음에도 적용해 보기", "금번 진단에서 결정한 내용 정리하기"],
+    ["첫 번째 연봉 비교 보기", "같은 채용 방식을 다음에도 적용해 보기", "금번 진단에서 결정한 내용 정리하기"],
   );
   assert.equal(model.introduction.sectionLabel, "금번 진단에서 확인할 내용");
   assert.ok(model.introduction.outputs.every((output) => /[.?!]$/.test(output)));
@@ -25,7 +25,7 @@ test("builds the four founder screens with one concrete action each", () => {
 
 test("derives the Screen 2 title and action from the Product Engineer headline gap", () => {
   const demo = createSyntheticDemoSession();
-  const model = createProductEngineerDecisionRoomViewModel(demo);
+  const model = createDecisionRoomViewModel(demo);
 
   assert.equal(
     model.evidence.conclusion,
@@ -52,13 +52,13 @@ test("derives the Screen 2 title and action from the Product Engineer headline g
   product.metrics.headlineGapKRW = 5_000_000;
 
   assert.equal(
-    createProductEngineerDecisionRoomViewModel(changed).evidence.conclusion,
+    createDecisionRoomViewModel(changed).evidence.conclusion,
     "Product Engineer 6명 중 근속 64개월인 직원 A와 근속 14개월인 직원 B의 연봉은 500만원 차이납니다.",
   );
 });
 
 test("turns the Product Engineer evidence into anonymous founder-facing comparisons", () => {
-  const model = createProductEngineerDecisionRoomViewModel(createSyntheticDemoSession());
+  const model = createDecisionRoomViewModel(createSyntheticDemoSession());
 
   assert.match(model.evidence.supportingCopy, /직원 6명의 기본 연봉과 근속 개월/);
   assert.match(model.evidence.supportingCopy, /직원 A와 직원 B/);
@@ -90,7 +90,7 @@ test("turns the Product Engineer evidence into anonymous founder-facing comparis
 });
 
 test("keeps observed precedent, missing rule conditions, and the approved record distinct", () => {
-  const model = createProductEngineerDecisionRoomViewModel(createSyntheticDemoSession());
+  const model = createDecisionRoomViewModel(createSyntheticDemoSession());
 
   assert.equal(model.rule.observedRepeat.nextHireSalary, "9,500만원");
   assert.equal(model.rule.observedRepeat.affectedEmployees, "기존 Product Engineer 3명");
@@ -111,7 +111,12 @@ test("keeps observed precedent, missing rule conditions, and the approved record
   assert.equal(model.rule.decision.companyAction, "다음 채용 전 추가 보상 기준을 문서로 정합니다.");
   assert.equal(model.rule.decision.owner, "대표 · HR");
   assert.equal(model.rule.decision.due, "다음 채용 제안 전");
-  assert.equal(model.result.rows.length, 1);
+  assert.equal(model.result.rows.length, 3);
+  assert.deepEqual(model.result.rows.map((row) => row.roleGroup), [
+    "Product Engineer",
+    "Platform Engineer",
+    "GTM",
+  ]);
   assert.deepEqual(model.result.columns, [
     "확인된 내용",
     "확인한 설명",
@@ -127,7 +132,7 @@ test("keeps observed precedent, missing rule conditions, and the approved record
 });
 
 test("uses expanded founder language instead of compressed design shorthand", () => {
-  const model = createProductEngineerDecisionRoomViewModel(createSyntheticDemoSession());
+  const model = createDecisionRoomViewModel(createSyntheticDemoSession());
   const renderedModel = JSON.stringify(model);
 
   for (const compressed of [

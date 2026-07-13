@@ -1,4 +1,110 @@
 export const FOUNDER_COPY = {
+  "preparation.eyebrow": "HR PaySim · 진행자 준비",
+  "preparation.heading": "이번 세션에 사용할 익명 자료를 먼저 확인합니다.",
+  "preparation.privacy":
+    "붙여넣은 자료는 이 브라우저에서만 검사하며, 세션을 종료하면 지워집니다. 이름·연락처처럼 개인을 식별할 수 있는 정보는 사용하지 않습니다.",
+  "preparation.paste.kicker": "자료 준비",
+  "preparation.paste.heading": "첫 행에 열 이름이 포함된 표를 붙여넣어 주세요.",
+  "preparation.paste.label": "익명 직원 자료",
+  "preparation.paste.helper": "엑셀에서 열 이름을 포함한 전체 범위를 복사해 붙여넣습니다.",
+  "preparation.paste.badge": "브라우저 안에서만 확인",
+  "preparation.paste.action": "자료 형식 확인",
+  "preparation.consent.kicker": "제외할 열 확인",
+  "preparation.consent.heading": "개인을 식별할 수 있는 열은 제외한 뒤 계속합니다.",
+  "preparation.consent.support":
+    "아래에는 열 이름만 표시됩니다. 해당 열의 값은 미리 보거나 세션에 사용하지 않습니다.",
+  "preparation.consent.action": "표시된 열을 제외하고 확인",
+  "preparation.blocked.kicker": "자료 형식을 확인해 주세요",
+  "preparation.blocked.heading": "아래 항목을 수정한 뒤 표 전체를 다시 붙여넣어 주세요.",
+  "preparation.ready.kicker": "세션 자료 확인",
+  "preparation.ready.heading": "이번 세션에 사용할 익명 자료입니다.",
+  "preparation.ready.support":
+    "아래 항목만 세션에 사용하며 원본 이름이나 연락처는 표시하거나 저장하지 않습니다.",
+  "preparation.ready.action": "이 자료로 세션 시작",
+  "preparation.issue.pii_value":
+    "개인을 식별할 수 있는 값이 포함되어 있습니다. 원본을 수정한 뒤 다시 붙여넣어 주세요.",
+  "preparation.issue.missing_required_field": "필수 값이 없거나 형식이 맞지 않습니다.",
+  "preparation.issue.unsupported_role":
+    "이번 준비 화면은 Product Engineer 자료만 사용할 수 있습니다.",
+  "preparation.issue.unsupported_product_engineer_comparison":
+    "현재 자료에서는 Product Engineer 연봉 차이를 확인할 수 있는 비교가 없습니다.",
+
+  "screen.introduction.conclusion":
+    "이번 세션에서는 같은 역할 안에서 확인된 연봉 차이를 비교하고, 다음 채용과 인사평가 전에 회사가 정할 기준을 정리합니다.",
+  "screen.introduction.first_action": "첫 번째 연봉 비교 보기",
+  "screen.evidence.platform.review_focus":
+    "최근 채용 조건과 기존 직원의 연봉 검토 기준이 다르게 적용되었는지 확인합니다.",
+  "screen.evidence.platform.explanation_question":
+    "근속이 짧은 직원의 연봉이 더 높은 가장 가까운 이유를 하나 선택해 주세요.",
+  "screen.evidence.gtm.review_focus":
+    "직급별 역할 기준과 연봉 결정 기준이 같은 순서로 적용되는지 확인합니다.",
+  "screen.evidence.gtm.explanation_question":
+    "AE1과 AE2의 연봉 순서가 일부 다른 가장 가까운 이유를 하나 선택해 주세요.",
+  "screen.evidence.gtm.non_claim":
+    "이 계산은 현재 직급 순서와 기본 연봉을 비교하기 위한 가정입니다. 인상액, 권장 연봉 또는 회사가 승인한 기준이 아닙니다.",
+  "screen.evidence.designer.clean":
+    "Designer 2명은 현재 샘플 자료 범위에서 별도로 설명이 필요한 연봉 차이가 확인되지 않았습니다. 회사의 모든 보상 기준이 완전하다는 뜻은 아닙니다.",
+  "state.review_pending": "확인 필요",
+  "state.additional_review_required": "추가 확인 필요",
+  "state.rule_not_approved": "아직 승인하지 않았습니다.",
+  "state.company_action_pending": "회사 행동을 아직 정하지 않았습니다.",
+  "state.next_check_period": "다음 확인",
+  "screen.introduction.scope.multi":
+    "16명의 이름 없는 샘플 자료에서 Product Engineer, Platform Engineer, GTM의 실제 연봉 차이를 순서대로 확인합니다. Designer는 현재 자료에서 별도 검토가 필요한 차이가 확인되지 않은 비교 그룹으로 함께 표시합니다.",
+  "screen.introduction.output.multi.compare":
+    "Product Engineer, Platform Engineer, GTM에서 확인된 연봉 차이를 역할별로 비교합니다.",
+  "screen.introduction.output.multi.explanation":
+    "각 차이에 가장 가까운 설명과 확인할 기록을 역할별로 구분합니다.",
+  "screen.introduction.output.multi.action":
+    "확인된 결정과 아직 확인할 항목을 섞지 않고 다음 행동으로 정리합니다.",
+  "screen.introduction.next_step.multi":
+    "먼저 Product Engineer의 실제 연봉 분포와 직원 A·B 비교를 확인합니다.",
+  "screen.result.multi.conclusion":
+    "세 역할에서 확인된 내용과 아직 확인할 항목을 함께 정리했습니다.",
+  "screen.result.multi.summary":
+    "답변한 내용만 결과에 남기고, 확인하지 않은 설명과 결정은 확인 필요로 표시했습니다.",
+  "screen.rule.metric.next_hire": "다음 채용자의 가정 기본 연봉",
+  "screen.rule.metric.lower_paid_existing": "기본 연봉이 낮은 기존 직원",
+  "screen.rule.metric.maximum_gap": "가장 큰 기본 연봉 차이",
+  "screen.rule.metric.comparison_count": "전체 비교 수",
+  "screen.evidence.level_missing": "직급 확인 필요",
+  "screen.evidence.gtm.metric.headline": "직원 A와 직원 B의 현재 기본 연봉 차이",
+  "screen.evidence.gtm.metric.pair": "두 직원의 차이를 0원으로 놓는 계산",
+  "screen.evidence.gtm.metric.system":
+    "AE2 두 명을 가장 높은 AE1과 같은 금액으로 놓는 계산 합계",
+  "screen.evidence.gtm.supporting":
+    "AE2 직원 2명의 기본 연봉은 6,600만~6,900만원이고, AE1 직원 2명은 6,100만~7,000만원입니다. 현재 자료에서는 직급 순서와 기본 연봉 순서가 일부 비교에서 다릅니다.",
+  "screen.evidence.platform.supporting":
+    "근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원이고, 근속 17~19개월인 직원 2명은 9,800만~1억200만원입니다. 현재 기록만으로는 두 구간의 차이를 일관되게 설명할 기준을 확인하기 어렵습니다.",
+  "screen.evidence.gtm.observations_heading":
+    "GTM 전체에서 직급 순서와 기본 연봉 순서가 같은지 확인했습니다.",
+  "screen.evidence.gtm.observation":
+    "AE2 직원 2명 중 직원 A와 직원 D의 기본 연봉은 가장 높은 AE1 직원 B보다 각각 400만원, 100만원 낮습니다.",
+  "screen.evidence.platform.observation.long":
+    "근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원입니다.",
+  "screen.evidence.platform.observation.short":
+    "근속 17~19개월인 직원 2명의 기본 연봉은 9,800만~1억200만원입니다.",
+  "screen.evidence.remaining.evidence_question":
+    "선택한 설명을 같은 기준으로 확인할 수 있는 기록이나 업무 자료가 있습니까?",
+  "screen.rule.gtm.variant_heading":
+    "현재 직급 순서와 기본 연봉의 차이를 세 가지 금액으로 나누어 확인했습니다.",
+  "screen.rule.pending.heading":
+    "선택한 설명과 확인된 기록으로 계산할 수 있는 조건을 먼저 확인해야 합니다.",
+  "screen.rule.gtm.conclusion":
+    "GTM의 현재 직급 순서와 기본 연봉 차이를 확인했습니다. 앞으로 적용할 기준은 아직 승인하지 않았습니다.",
+  "screen.rule.gtm.observed_heading": "현재 직급 순서와 기본 연봉을 비교한 계산입니다.",
+  "screen.rule.pending.observed_heading": "설명과 근거를 확인한 뒤 계산할 수 있습니다.",
+  "screen.rule.condition.target": "적용 대상",
+  "screen.rule.condition.amount_range": "금액 또는 범위",
+  "screen.rule.condition.approver": "승인자",
+  "screen.rule.condition.review_time": "재검토 시점",
+  "action.next.product":
+    "Product Engineer의 설명과 확인 기록을 다시 확인한 뒤 회사 행동을 정합니다.",
+  "action.next.platform":
+    "Platform Engineer의 연봉 차이를 설명할 기록과 적용 조건을 확인합니다.",
+  "action.next.gtm":
+    "GTM의 직급별 역할 기준과 연봉 결정 기준이 같은 순서로 적용되는지 확인합니다.",
+
   "screen.introduction.heading": "금번 진단 안내",
   "screen.evidence.heading": "확인된 연봉 차이",
   "screen.rule.heading": "앞으로 적용할 회사 기준",
@@ -81,7 +187,87 @@ export const FOUNDER_COPY = {
     "AE1과 AE2를 구분하는 역할 기준이 실제 연봉 결정에도 동일하게 적용되고 있습니까?",
 } as const satisfies Record<string, string>;
 
+export const PREPARATION_ISSUE_COPY = {
+  PII_VALUE: FOUNDER_COPY["preparation.issue.pii_value"],
+  MISSING_REQUIRED_FIELD: FOUNDER_COPY["preparation.issue.missing_required_field"],
+  UNSUPPORTED_ROLE: FOUNDER_COPY["preparation.issue.unsupported_role"],
+  UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON:
+    FOUNDER_COPY["preparation.issue.unsupported_product_engineer_comparison"],
+} as const;
+
 export type FounderCopyKey = keyof typeof FOUNDER_COPY;
+
+export function formatRoleDistributionKicker(input: {
+  roleGroup: string;
+  employeeCount: number;
+}): string {
+  validateLabel(input.roleGroup);
+  validateCount(input.employeeCount);
+  return `${input.roleGroup} ${input.employeeCount}명의 기본 연봉과 근속 개월`;
+}
+
+export function formatRoleDistributionHeading(input: {
+  roleGroup: string;
+  employeeCount: number;
+}): string {
+  return `${formatRoleDistributionKicker(input)}을 함께 표시했습니다.`;
+}
+
+export function formatRoleObservationsHeading(input: {
+  roleGroup: string;
+  employeeCount: number;
+}): string {
+  validateLabel(input.roleGroup);
+  validateCount(input.employeeCount);
+  return `${input.roleGroup} ${input.employeeCount}명 전체에서도 비슷한 차이가 반복되는지 확인했습니다.`;
+}
+
+export function formatPendingRuleContext(roleGroup: string, label: string): string {
+  validateLabel(roleGroup);
+  validateLabel(label);
+  return `${roleGroup}에서 앞으로 적용할 ${label}을 정하지 않았습니다.`;
+}
+
+export function formatCurrentInputObservation(roleGroup: string): string {
+  validateLabel(roleGroup);
+  return `현재 입력한 ${roleGroup} 자료에서 확인된 기본 연봉 차이입니다.`;
+}
+
+export function formatTenureEvidenceTitle(input: {
+  roleGroup: string;
+  employeeCount: number;
+  lowerPaidLabel: string;
+  lowerPaidTenureMonths: number;
+  higherPaidLabel: string;
+  higherPaidTenureMonths: number;
+  headlineGapKRW: number;
+}): string {
+  validateLabel(input.roleGroup);
+  validateCount(input.employeeCount);
+  validateLabel(input.lowerPaidLabel);
+  validateLabel(input.higherPaidLabel);
+  validateTenure(input.lowerPaidTenureMonths);
+  validateTenure(input.higherPaidTenureMonths);
+  const amount = formatHeadlineGap(input.headlineGapKRW);
+  return `${input.roleGroup} ${input.employeeCount}명 중 근속 ${input.lowerPaidTenureMonths}개월인 ${input.lowerPaidLabel}와 근속 ${input.higherPaidTenureMonths}개월인 ${input.higherPaidLabel}의 기본 연봉은 ${amount}만원 차이 납니다.`;
+}
+
+export function formatGtmEvidenceTitle(input: {
+  employeeCount: number;
+  lowerPaidLabel: string;
+  lowerPaidLevel: string;
+  higherPaidLabel: string;
+  higherPaidLevel: string;
+  headlineGapKRW: number;
+}): string {
+  validateCount(input.employeeCount);
+  validateLabel(input.lowerPaidLabel);
+  validateLabel(input.lowerPaidLevel);
+  validateLabel(input.higherPaidLabel);
+  validateLabel(input.higherPaidLevel);
+  const amount = formatHeadlineGap(input.headlineGapKRW);
+  return `GTM ${input.employeeCount}명 중 ${input.lowerPaidLevel}인 ${input.lowerPaidLabel}의 기본 연봉은 ${input.higherPaidLevel}인 ${input.higherPaidLabel}보다 ${amount}만원 낮습니다.`;
+}
 
 export function formatProductEngineerEvidenceTitle(input: {
   employeeCount: number;

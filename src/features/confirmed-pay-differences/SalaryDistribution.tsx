@@ -1,4 +1,4 @@
-import type { createProductEngineerDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
+import type { EvidenceVisualization } from "../decision-room/decisionRoomViewModel.ts";
 import {
   FOUNDER_COPY,
   formatObservedTrendLabel,
@@ -6,18 +6,16 @@ import {
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
 import { createSalaryTenurePlot, type PlotCoordinate } from "./salaryTenurePlot.ts";
 
-type EvidenceModel = ReturnType<
-  typeof createProductEngineerDecisionRoomViewModel
->["evidence"];
+type TenureVisualization = Extract<EvidenceVisualization, { kind: "tenure" }>;
 
 export function SalaryDistribution({
   distribution,
   distributionKicker,
   distributionHeading,
 }: {
-  distribution: EvidenceModel["distribution"];
-  distributionKicker: EvidenceModel["distributionKicker"];
-  distributionHeading: EvidenceModel["distributionHeading"];
+  distribution: TenureVisualization["distribution"];
+  distributionKicker: TenureVisualization["kicker"];
+  distributionHeading: TenureVisualization["heading"];
 }) {
   const plot = createSalaryTenurePlot(distribution);
   const observedTrendLine = plot.observedTrend

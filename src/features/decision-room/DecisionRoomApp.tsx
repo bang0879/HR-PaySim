@@ -7,7 +7,8 @@ import { ConfirmedPayDifferencesScreen } from "../confirmed-pay-differences/Conf
 import { SessionIntroductionScreen } from "../session-introduction/SessionIntroductionScreen.tsx";
 import { SessionResultScreen } from "../session-result/SessionResultScreen.tsx";
 import {
-  createProductEngineerDecisionRoomViewModel,
+  createDecisionRoomViewModel,
+  createSubjectSelectionAction,
   DECISION_ROOM_PROGRESS,
   getActiveSubjectId,
 } from "./decisionRoomViewModel.ts";
@@ -42,11 +43,15 @@ export function DecisionRoomApp({ onSessionEnd }: DecisionRoomAppProps = {}) {
     );
   }
 
-  const model = createProductEngineerDecisionRoomViewModel(state);
+  const model = createDecisionRoomViewModel(state);
   const currentIndex = DECISION_ROOM_PROGRESS.findIndex((item) => item.id === state.screen);
   const goForward = () => {
     const target = nextScreen[state.screen];
     if (target) dispatch({ type: "GO_TO_SCREEN", screen: target });
+  };
+  const selectSubject = (roleGroup: string) => {
+    const selectionAction = createSubjectSelectionAction(state, roleGroup);
+    if (selectionAction) dispatch(selectionAction);
   };
   const endSession = () => {
     dispatch({ type: "END_SESSION" });
@@ -97,6 +102,7 @@ export function DecisionRoomApp({ onSessionEnd }: DecisionRoomAppProps = {}) {
             headingRef={conclusionRef}
             subjectId={currentSubjectId!}
             dispatch={dispatch}
+            onSubjectSelect={selectSubject}
             onNext={goForward}
           />
         ) : null}
@@ -104,6 +110,7 @@ export function DecisionRoomApp({ onSessionEnd }: DecisionRoomAppProps = {}) {
           <CompanyRuleScreen
             model={model.rule}
             headingRef={conclusionRef}
+            onSubjectSelect={selectSubject}
             onNext={goForward}
           />
         ) : null}

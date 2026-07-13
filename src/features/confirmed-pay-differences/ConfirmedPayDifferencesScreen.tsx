@@ -2,12 +2,14 @@ import type { Dispatch, Ref } from "react";
 import { FOUNDER_COPY } from "../../lib/hr-paysim/copy/founderCopy.ts";
 import type { EvidenceStatus, ExplanationBasis } from "../../lib/hr-paysim/review/types.ts";
 import type { DecisionRoomAction } from "../../lib/hr-paysim/session/types.ts";
-import type { createProductEngineerDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
+import type { createDecisionRoomViewModel } from "../decision-room/decisionRoomViewModel.ts";
+import { SubjectSelector } from "../decision-room/SubjectSelector.tsx";
 import { EvidenceTable } from "./EvidenceTable.tsx";
+import { LevelOrderDistribution } from "./LevelOrderDistribution.tsx";
 import { SalaryDistribution } from "./SalaryDistribution.tsx";
 
 type EvidenceModel = ReturnType<
-  typeof createProductEngineerDecisionRoomViewModel
+  typeof createDecisionRoomViewModel
 >["evidence"];
 
 export function ConfirmedPayDifferencesScreen({
@@ -15,25 +17,27 @@ export function ConfirmedPayDifferencesScreen({
   headingRef,
   subjectId,
   dispatch,
+  onSubjectSelect,
   onNext,
 }: {
   model: EvidenceModel;
   headingRef: Ref<HTMLHeadingElement>;
   subjectId: string;
   dispatch: Dispatch<DecisionRoomAction>;
+  onSubjectSelect(roleGroup: string): void;
   onNext(): void;
 }) {
   return (
     <section className="dr-screen" data-screen="confirmed_pay_differences">
-      <div className="dr-subject-row" aria-label="금번 화면에서 검토할 역할">
-        <button type="button" className="is-active" aria-pressed="true">Product Engineer</button>
-        <button type="button" disabled>Platform Engineer <small>금번 화면에서는 검토하지 않음</small></button>
-        <button type="button" disabled>GTM <small>금번 화면에서는 검토하지 않음</small></button>
-      </div>
+      <SubjectSelector
+        subjects={model.subjects}
+        activeId={model.activeRoleGroup}
+        onSelect={onSubjectSelect}
+      />
 
       <header className="dr-hero dr-evidence-hero">
         <div>
-          <p className="dr-eyebrow">{model.heading} · Product Engineer</p>
+          <p className="dr-eyebrow">{model.heading} · {model.activeRoleGroup}</p>
           <h1 ref={headingRef} tabIndex={-1} data-conclusion-heading="true">
             {model.conclusion}
           </h1>
@@ -46,11 +50,22 @@ export function ConfirmedPayDifferencesScreen({
         </div>
       </header>
 
-      <SalaryDistribution
-        distribution={model.distribution}
-        distributionKicker={model.distributionKicker}
-        distributionHeading={model.distributionHeading}
-      />
+      {model.visualization.kind === "tenure" ? (
+        <SalaryDistribution
+          distribution={model.visualization.distribution}
+          distributionKicker={model.visualization.kicker}
+          distributionHeading={model.visualization.heading}
+        />
+      ) : (
+        <LevelOrderDistribution model={model.visualization} />
+      )}
+
+      {model.cleanState ? (
+        <aside className="dr-clean-state" aria-label="현재 자료에서 별도 검토가 필요하지 않은 역할">
+          <strong>{model.cleanState.roleGroup}</strong>
+          <p>{model.cleanState.statement}</p>
+        </aside>
+      ) : null}
 
       <section className="dr-highlight-card" aria-labelledby="highlighted-comparison-title">
         <div>

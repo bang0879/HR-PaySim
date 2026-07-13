@@ -1,9 +1,6 @@
+@import "../decision-room/decisionRoomFoundation.css";
+
 .fp-app {
-  --fp-ink: #172033;
-  --fp-muted: #667085;
-  --fp-line: #dfe5ed;
-  --fp-soft: #f5f7fa;
-  --fp-blue: #2563eb;
   min-height: 100vh;
   display: grid;
   width: 100%;
@@ -12,7 +9,7 @@
   align-content: start;
   gap: 22px;
   padding: 48px clamp(18px, 5vw, 64px) 72px;
-  color: var(--fp-ink);
+  color: var(--dr-ink);
   background:
     radial-gradient(circle at 90% 0%, rgba(37, 99, 235, 0.09), transparent 360px),
     #f4f6f9;
@@ -47,7 +44,7 @@
 .fp-eyebrow,
 .fp-kicker {
   margin: 0 0 8px;
-  color: var(--fp-blue);
+  color: var(--dr-blue);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 0.02em;
@@ -74,7 +71,7 @@
 .fp-panel {
   min-width: 0;
   padding: 26px;
-  border: 1px solid var(--fp-line);
+  border: 1px solid var(--dr-line);
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 14px 36px rgba(16, 24, 40, 0.055);
@@ -102,10 +99,47 @@
   padding: 0 10px;
   border-radius: 999px;
   color: #475467;
-  background: var(--fp-soft);
+  background: var(--dr-soft);
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.fp-column-reference {
+  display: grid;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid var(--dr-line);
+  border-radius: 12px;
+  background: var(--dr-soft);
+}
+
+.fp-column-reference > strong {
+  color: #344054;
+  font-size: 12px;
+}
+
+.fp-column-reference > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fp-column-reference code {
+  padding: 5px 8px;
+  border: 1px solid #bfd2f7;
+  border-radius: 8px;
+  color: var(--dr-blue-deep);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fp-column-reference > span {
+  color: var(--dr-muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .fp-paste-field {
@@ -124,7 +158,7 @@
   padding: 15px;
   border: 1px solid #cfd7e3;
   border-radius: 12px;
-  color: var(--fp-ink);
+  color: var(--dr-ink);
   background: #fbfcfe;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
@@ -145,7 +179,7 @@
 .fp-consent > p,
 .fp-safe-note {
   margin: 0;
-  color: var(--fp-muted);
+  color: var(--dr-muted);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -238,7 +272,7 @@
 .fp-table-wrap {
   margin-top: 20px;
   overflow-x: auto;
-  border: 1px solid var(--fp-line);
+  border: 1px solid var(--dr-line);
   border-radius: 12px;
 }
 
@@ -276,7 +310,7 @@
 }
 
 .fp-table-wrap tbody th {
-  color: var(--fp-ink);
+  color: var(--dr-ink);
   font-weight: 850;
 }
 

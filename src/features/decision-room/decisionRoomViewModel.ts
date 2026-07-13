@@ -1,7 +1,14 @@
 import {
   FOUNDER_COPY,
+  formatCurrentInputObservation,
+  formatGtmEvidenceTitle,
+  formatPendingRuleContext,
   formatProductEngineerEvidenceSupporting,
   formatProductEngineerEvidenceTitle,
+  formatRoleDistributionHeading,
+  formatRoleDistributionKicker,
+  formatRoleObservationsHeading,
+  formatTenureEvidenceTitle,
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
 import type { DecisionRecord } from "../../lib/hr-paysim/decisions/types.ts";
 import { createEmployeeLabels } from "../../lib/hr-paysim/presentation/createEmployeeLabels.ts";
@@ -15,6 +22,14 @@ import type {
 
 export function getActiveSubjectId(state: DecisionRoomSessionState): string | undefined {
   return state.activeThemeId;
+}
+
+export function createSubjectSelectionAction(
+  state: DecisionRoomSessionState,
+  roleGroup: string,
+) {
+  const selectedId = state.selection.selected.find((item) => item.roleGroup === roleGroup)?.id;
+  return selectedId ? { type: "SELECT_THEME" as const, themeId: selectedId } : undefined;
 }
 
 export const DECISION_ROOM_PROGRESS: ReadonlyArray<{
@@ -273,6 +288,461 @@ export function createProductEngineerDecisionRoomViewModel(
     },
   };
 }
+
+
+export interface DecisionRoomSubjectOption {
+  id: string;
+  roleGroup: string;
+  reviewStatus: "answered" | "pending";
+}
+
+export type EvidenceVisualization =
+  | {
+      kind: "tenure";
+      distribution: Array<{
+        employeeLabel: string;
+        salary: string;
+        salaryKRW: number;
+        tenure: string;
+        tenureMonths: number | undefined;
+        highlighted: boolean;
+      }>;
+      kicker: string;
+      heading: string;
+    }
+  | {
+      kind: "level_order";
+      groups: Array<{
+        levelLabel: string;
+        employees: Array<{
+          employeeLabel: string;
+          salary: string;
+          salaryKRW: number;
+          highlighted: boolean;
+        }>;
+      }>;
+      metrics: Array<{ label: string; amount: string }>;
+      nonClaim: string;
+    };
+
+export type RuleVariant =
+  | {
+      kind: "observed_precedent";
+      heading: string;
+      metrics: Array<{ label: string; value: string }>;
+      nonClaim: string;
+    }
+  | {
+      kind: "level_order";
+      heading: string;
+      metrics: Array<{ label: string; amount: string }>;
+      nonClaim: string;
+    }
+  | {
+      kind: "pending";
+      heading: string;
+      missing: string[];
+    };
+
+export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
+  const activeTheme = state.selection.selected.find((item) => item.id === state.activeThemeId)
+    ?? state.selection.selected[0];
+  if (!activeTheme?.headlinePair) throw new Error("ACTIVE_COMPARISON_REQUIRED");
+
+  const subjects: DecisionRoomSubjectOption[] = state.selection.selected.map((theme) => ({
+    id: theme.roleGroup,
+    roleGroup: theme.roleGroup,
+    reviewStatus: state.reviews[theme.id]?.explanationBasis
+      && state.reviews[theme.id]?.explanationBasis !== "unanswered"
+      ? "answered"
+      : "pending",
+  }));
+  const hasPendingSubjects = subjects.some((subject) => subject.reviewStatus === "pending");
+  const isMultiSubjectDemo = state.mode === "demo" && state.selection.selected.length > 1;
+  const designerRows = state.rows.filter((row) => row.roleGroup === "Designer");
+  const cleanState = designerRows.length > 0
+    && !state.themes.some((theme) => theme.roleGroup === "Designer")
+    ? {
+        roleGroup: "Designer",
+        statement: FOUNDER_COPY["screen.evidence.designer.clean"],
+      }
+    : undefined;
+
+  const base = activeTheme.roleGroup === "Product Engineer"
+    ? createProductEngineerDecisionRoomViewModel(state)
+    : createRemainingSubjectViewModel(state, activeTheme);
+
+  return {
+    ...base,
+    subjects,
+    activeRoleGroup: activeTheme.roleGroup,
+    cleanState,
+    introduction: {
+      ...base.introduction,
+      conclusion: isMultiSubjectDemo
+        ? FOUNDER_COPY["screen.introduction.conclusion"]
+        : base.introduction.conclusion,
+      scope: isMultiSubjectDemo
+        ? FOUNDER_COPY["screen.introduction.scope.multi"]
+        : base.introduction.scope,
+      outputs: isMultiSubjectDemo
+        ? [
+            FOUNDER_COPY["screen.introduction.output.multi.compare"],
+            FOUNDER_COPY["screen.introduction.output.multi.explanation"],
+            FOUNDER_COPY["screen.introduction.output.multi.action"],
+          ]
+        : base.introduction.outputs,
+      nextStepSummary: isMultiSubjectDemo
+        ? FOUNDER_COPY["screen.introduction.next_step.multi"]
+        : base.introduction.nextStepSummary,
+      primaryAction: isMultiSubjectDemo
+        ? FOUNDER_COPY["screen.introduction.first_action"]
+        : base.introduction.primaryAction,
+    },
+    evidence: {
+      ...base.evidence,
+      visualization: activeTheme.roleGroup === "Product Engineer"
+        ? {
+            kind: "tenure" as const,
+            distribution: base.evidence.distribution,
+            kicker: base.evidence.distributionKicker,
+            heading: base.evidence.distributionHeading,
+          }
+        : (base.evidence as { visualization: EvidenceVisualization }).visualization,
+      subjects,
+      activeRoleGroup: activeTheme.roleGroup,
+      cleanState,
+    },
+    rule: {
+      ...base.rule,
+      variant: activeTheme.roleGroup === "Product Engineer"
+        ? {
+            kind: "observed_precedent" as const,
+            heading: base.rule.observedRepeat.heading,
+            metrics: [
+              { label: FOUNDER_COPY["screen.rule.metric.next_hire"], value: base.rule.observedRepeat.nextHireSalary },
+              { label: FOUNDER_COPY["screen.rule.metric.lower_paid_existing"], value: base.rule.observedRepeat.affectedEmployees },
+              { label: FOUNDER_COPY["screen.rule.metric.maximum_gap"], value: base.rule.observedRepeat.maximumDifference },
+              { label: FOUNDER_COPY["screen.rule.metric.comparison_count"], value: base.rule.observedRepeat.comparisonCount },
+            ],
+            nonClaim: base.rule.observedRepeat.nonClaim,
+          }
+        : (base.rule as { variant: RuleVariant }).variant,
+      subjects,
+      activeRoleGroup: activeTheme.roleGroup,
+    },
+    result: {
+      ...base.result,
+      conclusion: state.selection.selected.length > 1
+        ? FOUNDER_COPY["screen.result.multi.conclusion"]
+        : base.result.conclusion,
+      summary: state.selection.selected.length > 1
+        ? FOUNDER_COPY["screen.result.multi.summary"]
+        : base.result.summary,
+      approvalStatus: hasPendingSubjects
+        ? FOUNDER_COPY["state.additional_review_required"]
+        : base.result.approvalStatus,
+      rows: createResultRows(state),
+      nonClaims: state.selection.selected.some((theme) => theme.roleGroup === "GTM")
+        ? [...base.result.nonClaims, FOUNDER_COPY["screen.evidence.gtm.non_claim"]]
+        : base.result.nonClaims,
+      cleanState,
+      nextActions: hasPendingSubjects
+        ? createPendingNextActions(state)
+        : base.result.nextActions,
+      unselectedSubjects: state.selection.unselected.map((theme) => ({
+        id: theme.roleGroup,
+        roleGroup: theme.roleGroup,
+      })),
+    },
+  };
+}
+
+function createRemainingSubjectViewModel(
+  state: DecisionRoomSessionState,
+  selectedTheme: DecisionRoomSessionState["selection"]["selected"][number],
+) {
+  const template = createProductEngineerDecisionRoomViewModel(state);
+  const rows = state.rows
+    .filter((row) => row.roleGroup === selectedTheme.roleGroup)
+    .sort((a, b) => a.baseSalaryKRW - b.baseSalaryKRW || compareText(a.rowId, b.rowId));
+  if (!selectedTheme.headlinePair) throw new Error("ACTIVE_COMPARISON_REQUIRED");
+  const lowerPaid = requiredRow(rows, selectedTheme.headlinePair.underpaidRowId);
+  const higherPaid = requiredRow(rows, selectedTheme.headlinePair.comparatorRowId);
+  const labels = createEmployeeLabels(rows, lowerPaid.rowId, higherPaid.rowId);
+  const lowerPaidLabel = labels.get(lowerPaid.rowId)!;
+  const higherPaidLabel = labels.get(higherPaid.rowId)!;
+  const headlineGapKRW = selectedTheme.metrics.headlineGapKRW;
+  if (headlineGapKRW === undefined) throw new Error("ACTIVE_HEADLINE_GAP_REQUIRED");
+  const employeeCount = rows.length;
+  const review = state.reviews[selectedTheme.id];
+  const decision = state.decisions.find((item) => item.themeIds.includes(selectedTheme.id));
+  const isGtm = selectedTheme.roleGroup === "GTM";
+  const evidenceConclusion = isGtm
+    ? formatGtmEvidenceTitle({
+        employeeCount,
+        lowerPaidLabel,
+        lowerPaidLevel: lowerPaid.levelLabel ?? FOUNDER_COPY["screen.evidence.level_missing"],
+        higherPaidLabel,
+        higherPaidLevel: higherPaid.levelLabel ?? FOUNDER_COPY["screen.evidence.level_missing"],
+        headlineGapKRW,
+      })
+    : formatTenureEvidenceTitle({
+        roleGroup: selectedTheme.roleGroup,
+        employeeCount,
+        lowerPaidLabel,
+        lowerPaidTenureMonths: requiredTenure(lowerPaid),
+        higherPaidLabel,
+        higherPaidTenureMonths: requiredTenure(higherPaid),
+        headlineGapKRW,
+      });
+  const distribution = rows.map((row) => ({
+    employeeLabel: labels.get(row.rowId)!,
+    salary: formatManwon(row.baseSalaryKRW),
+    salaryKRW: row.baseSalaryKRW,
+    tenure: formatTenure(row.tenureMonths),
+    tenureMonths: row.tenureMonths,
+    highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
+  }));
+  const visualization: EvidenceVisualization = isGtm
+    ? {
+        kind: "level_order",
+        groups: ["AE1", "AE2"].map((levelLabel) => ({
+          levelLabel,
+          employees: rows
+            .filter((row) => row.levelLabel === levelLabel)
+            .map((row) => ({
+              employeeLabel: labels.get(row.rowId)!,
+              salary: formatManwon(row.baseSalaryKRW),
+              salaryKRW: row.baseSalaryKRW,
+              highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
+            })),
+        })),
+        metrics: [
+          {
+            label: FOUNDER_COPY["screen.evidence.gtm.metric.headline"],
+            amount: formatManwon(headlineGapKRW),
+          },
+          {
+            label: FOUNDER_COPY["screen.evidence.gtm.metric.pair"],
+            amount: formatManwon(selectedTheme.metrics.pairRepairFloorKRW ?? 0),
+          },
+          {
+            label: FOUNDER_COPY["screen.evidence.gtm.metric.system"],
+            amount: formatManwon(selectedTheme.metrics.systemRepairFloorKRW ?? 0),
+          },
+        ],
+        nonClaim: FOUNDER_COPY["screen.evidence.gtm.non_claim"],
+      }
+    : {
+        kind: "tenure",
+        distribution,
+        kicker: formatRoleDistributionKicker({
+          roleGroup: selectedTheme.roleGroup,
+          employeeCount,
+        }),
+        heading: formatRoleDistributionHeading({
+          roleGroup: selectedTheme.roleGroup,
+          employeeCount,
+        }),
+      };
+  const supportingCopy = isGtm
+    ? FOUNDER_COPY["screen.evidence.gtm.supporting"]
+    : FOUNDER_COPY["screen.evidence.platform.supporting"];
+  const reviewFocus = isGtm
+    ? FOUNDER_COPY["screen.evidence.gtm.review_focus"]
+    : FOUNDER_COPY["screen.evidence.platform.review_focus"];
+  const explanationQuestion = isGtm
+    ? FOUNDER_COPY["screen.evidence.gtm.explanation_question"]
+    : FOUNDER_COPY["screen.evidence.platform.explanation_question"];
+  const metrics = isGtm && visualization.kind === "level_order" ? visualization.metrics : [];
+  const ruleVariant = isGtm
+    ? {
+        kind: "level_order" as const,
+        heading: FOUNDER_COPY["screen.rule.gtm.variant_heading"],
+        metrics,
+        nonClaim: FOUNDER_COPY["screen.evidence.gtm.non_claim"],
+      }
+    : {
+        kind: "pending" as const,
+        heading: FOUNDER_COPY["screen.rule.pending.heading"],
+        missing: ruleConditionLabels(),
+      };
+  const pending = FOUNDER_COPY["state.review_pending"];
+
+  return {
+    ...template,
+    evidence: {
+      ...template.evidence,
+      heading: FOUNDER_COPY["screen.evidence.heading"],
+      conclusion: evidenceConclusion,
+      supportingCopy,
+      actionPrompt: reviewFocus,
+      distributionKicker: formatRoleDistributionKicker({
+        roleGroup: selectedTheme.roleGroup,
+        employeeCount,
+      }),
+      distributionHeading: formatRoleDistributionHeading({
+        roleGroup: selectedTheme.roleGroup,
+        employeeCount,
+      }),
+      distribution,
+      visualization,
+      highlightedPair: {
+        lowerPaidLabel,
+        higherPaidLabel,
+        lowerPaidSalary: formatManwon(lowerPaid.baseSalaryKRW),
+        higherPaidSalary: formatManwon(higherPaid.baseSalaryKRW),
+        difference: formatManwon(headlineGapKRW),
+        lowerPaidTenure: formatTenure(lowerPaid.tenureMonths),
+        higherPaidTenure: formatTenure(higherPaid.tenureMonths),
+        lowerPaidException: formatExceptionRecord(lowerPaid),
+        higherPaidException: formatExceptionRecord(higherPaid),
+      },
+      supportingObservationsHeading: isGtm
+        ? FOUNDER_COPY["screen.evidence.gtm.observations_heading"]
+        : formatRoleObservationsHeading({
+            roleGroup: selectedTheme.roleGroup,
+            employeeCount,
+          }),
+      supportingObservations: (isGtm
+        ? [
+            FOUNDER_COPY["screen.evidence.gtm.observation"],
+          ]
+        : [
+            FOUNDER_COPY["screen.evidence.platform.observation.long"],
+            FOUNDER_COPY["screen.evidence.platform.observation.short"],
+          ]).slice(0, 2),
+      explanationQuestion,
+      selectedExplanation: review?.explanationBasis ?? "unanswered",
+      evidenceQuestion: review?.explanationBasis && review.explanationBasis !== "unanswered"
+        ? FOUNDER_COPY["screen.evidence.remaining.evidence_question"]
+        : undefined,
+      selectedEvidence: review?.evidenceStatus ?? "unanswered",
+      evidenceRows: [lowerPaid, higherPaid].map((row) => ({
+        employeeLabel: labels.get(row.rowId)!,
+        role: row.roleGroup,
+        tenure: formatTenure(row.tenureMonths),
+        tenureMonths: row.tenureMonths,
+        salary: formatManwon(row.baseSalaryKRW),
+        documentedException: formatExceptionRecord(row),
+      })),
+      primaryAction: FOUNDER_COPY["action.repeat_practice"],
+    },
+    rule: {
+      ...template.rule,
+      conclusion: isGtm
+        ? FOUNDER_COPY["screen.rule.gtm.conclusion"]
+        : FOUNDER_COPY["screen.rule.pending.heading"],
+      selectedExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
+        ? explanationLabels[review.explanationBasis]
+        : pending,
+      selectedEvidence: review?.evidenceStatus && review.evidenceStatus !== "unanswered"
+        ? evidenceLabels[review.evidenceStatus]
+        : pending,
+      observedRepeat: {
+        heading: isGtm
+          ? FOUNDER_COPY["screen.rule.gtm.observed_heading"]
+          : FOUNDER_COPY["screen.rule.pending.observed_heading"],
+        nextHireSalary: pending,
+        affectedEmployees: pending,
+        maximumDifference: pending,
+        comparisonCount: pending,
+        nonClaim: isGtm
+          ? FOUNDER_COPY["screen.evidence.gtm.non_claim"]
+          : FOUNDER_COPY["state.repeat_insufficient"],
+      },
+      ruleConditions: createPendingRuleConditions(selectedTheme.roleGroup),
+      decision: {
+        heading: decision ? actionLabels[decision.actionKey] : FOUNDER_COPY["state.company_action_pending"],
+        companyAction: decision ? actionLabels[decision.actionKey] : pending,
+        owner: decision ? ownerLabels[decision.ownerRole] : pending,
+        due: decision ? dueLabels[decision.dueEvent] : pending,
+      },
+      variant: ruleVariant,
+    },
+    result: {
+      ...template.result,
+      conclusion: FOUNDER_COPY["screen.result.multi.conclusion"],
+      summary: FOUNDER_COPY["screen.result.multi.summary"],
+    },
+  };
+}
+
+function createResultRows(state: DecisionRoomSessionState) {
+  const pending = FOUNDER_COPY["state.review_pending"];
+  return state.selection.selected.map((theme) => {
+    const review = state.reviews[theme.id];
+    const decision = state.decisions.find((item) => item.themeIds.includes(theme.id));
+    return {
+      roleGroup: theme.roleGroup,
+      confirmed: observedResultStatement(state, theme.roleGroup),
+      founderExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
+        ? explanationLabels[review.explanationBasis]
+        : pending,
+      evidence: review?.evidenceStatus && review.evidenceStatus !== "unanswered"
+        ? evidenceLabels[review.evidenceStatus]
+        : pending,
+      decision: decision ? actionLabels[decision.actionKey] : pending,
+      owner: decision ? ownerLabels[decision.ownerRole] : pending,
+      due: decision ? dueLabels[decision.dueEvent] : pending,
+    };
+  });
+}
+
+function createPendingNextActions(state: DecisionRoomSessionState) {
+  return state.selection.selected.flatMap((theme) => {
+    const review = state.reviews[theme.id];
+    const decision = state.decisions.find((item) => item.themeIds.includes(theme.id));
+    const complete = review?.explanationBasis && review.explanationBasis !== "unanswered"
+      && review.evidenceStatus && review.evidenceStatus !== "unanswered"
+      && decision;
+    if (complete) return [];
+    const action = theme.roleGroup === "Product Engineer"
+      ? FOUNDER_COPY["action.next.product"]
+      : theme.roleGroup === "Platform Engineer"
+        ? FOUNDER_COPY["action.next.platform"]
+        : FOUNDER_COPY["action.next.gtm"];
+    return [{ period: FOUNDER_COPY["state.next_check_period"], action }];
+  });
+}
+
+function observedResultStatement(state: DecisionRoomSessionState, roleGroup: string): string {
+  if (roleGroup === "Product Engineer") {
+    return state.mode === "demo"
+      ? FOUNDER_COPY["interpretation.product_engineer.salary_observation"]
+      : formatCurrentInputObservation("Product Engineer");
+  }
+  if (roleGroup === "Platform Engineer") {
+    return FOUNDER_COPY["interpretation.platform_engineer.salary_observation"];
+  }
+  if (roleGroup === "GTM") return FOUNDER_COPY["interpretation.gtm.level_order_observation"];
+  return `${roleGroup}에서 확인된 기본 연봉 비교입니다.`;
+}
+
+function createPendingRuleConditions(roleGroup: string) {
+  const pending = FOUNDER_COPY["state.rule_not_approved"];
+  return ruleConditionLabels().map((label) => ({
+    label,
+    observedContext: formatPendingRuleContext(roleGroup, label),
+    approvalStatus: pending,
+  }));
+}
+
+function ruleConditionLabels(): string[] {
+  return [
+    FOUNDER_COPY["screen.rule.condition.target"],
+    FOUNDER_COPY["screen.rule.condition.amount_range"],
+    FOUNDER_COPY["screen.rule.condition.approver"],
+    FOUNDER_COPY["screen.rule.condition.review_time"],
+  ];
+}
+
+function requiredTenure(row: NormalizedRosterRow): number {
+  if (row.tenureMonths === undefined) throw new Error("ACTIVE_HEADLINE_TENURE_REQUIRED");
+  return row.tenureMonths;
+}
+
 
 function createRuleConditions(repeatAdditionalPayKRW: number | undefined) {
   const hasRepeat = repeatAdditionalPayKRW !== undefined;

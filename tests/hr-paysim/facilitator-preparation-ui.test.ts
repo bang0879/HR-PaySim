@@ -28,7 +28,7 @@ test("the preparation component owns raw paste only until safe normalization", (
   assert.match(preparation, /prepareProductEngineerRoster/);
   assert.match(preparation, /confirmPiiColumnStripping/);
   assert.match(preparation, /value=\{rawPaste\}/);
-  assert.match(preparation, /\uD655\uC778\uD55C \uC790\uB8CC\uB85C \uC138\uC158 \uC2DC\uC791/);
+  assert.match(preparation, /FOUNDER_COPY\[\"preparation\.ready\.action\"\]/);
 
   assert.doesNotMatch(preparation, /detectStructuralFindings|buildStructuralThemes|selectReviewSubjects/);
   assert.doesNotMatch(preparation, /localStorage|sessionStorage|fetch\(|sendBeacon|XMLHttpRequest/);

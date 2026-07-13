@@ -8,7 +8,7 @@ import {
   formatProductEngineerEvidenceTitle,
 } from "../../src/lib/hr-paysim/copy/founderCopy.ts";
 import { createSyntheticDemoSession } from "../../src/lib/hr-paysim/contracts/demoContract.ts";
-import { createProductEngineerDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
+import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
 
 test("describes the highlighted pair with factual tenure months", () => {
   assert.equal(
@@ -33,7 +33,7 @@ test("describes the highlighted pair with factual tenure months", () => {
 });
 
 test("exposes numeric tenure for every synthetic Product Engineer", () => {
-  const model = createProductEngineerDecisionRoomViewModel(createSyntheticDemoSession());
+  const model = createDecisionRoomViewModel(createSyntheticDemoSession());
   assert.deepEqual(
     model.evidence.distribution.map(({ employeeLabel, tenureMonths }) => ({ employeeLabel, tenureMonths })),
     [

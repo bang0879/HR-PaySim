@@ -89,6 +89,8 @@ const result = {
   pointAlignment: {},
   trendGuide: {},
   visualHierarchy: {},
+  subjectSwitch: {},
+  screen3SubjectSwitch: {},
   invalidation: {},
   copySucceeded: false,
   sessionCleared: false,
@@ -319,11 +321,57 @@ async function inspectScreen2(viewport) {
   if (!cuesFullyVisible) {
     throw new Error(`${viewport.name} hides a Screen 2 comprehension cue`);
   }
-  const disabledSubjects = await page.locator(".dr-subject-row button:disabled").count();
-  if (disabledSubjects !== 2) throw new Error("Platform and GTM must remain visibly unavailable");
+  const subjectButtons = page.locator(".dr-subject-row button");
+  const enabledSubjectCount = await subjectButtons.count();
+  const disabledSubjectCount = await page.locator(".dr-subject-row button:disabled").count();
+  if (enabledSubjectCount !== 3 || disabledSubjectCount !== 0) {
+    throw new Error("all three selected subjects must be enabled");
+  }
+  await subjectButtons.filter({ hasText: "Platform Engineer" }).click();
+  await page.waitForFunction(() =>
+    document.activeElement?.getAttribute("data-conclusion-heading") === "true"
+  );
+  const platformText = await page.locator('[data-screen="confirmed_pay_differences"]').innerText();
+  await subjectButtons.filter({ hasText: "GTM" }).click();
+  await page.waitForFunction(() =>
+    document.activeElement?.getAttribute("data-conclusion-heading") === "true"
+  );
+  const gtmText = await page.locator('[data-screen="confirmed_pay_differences"]').innerText();
+  const switched = platformText.includes("1,800만원")
+    && platformText.includes("60개월")
+    && platformText.includes("17개월")
+    && gtmText.includes("400만원")
+    && gtmText.includes("500만원")
+    && gtmText.includes("권장 연봉 또는 회사가 승인한 기준이 아닙니다")
+    && gtmText.includes("Designer 2명");
+  result.subjectSwitch[viewport.name] = switched;
+  if (!switched) throw new Error(`${viewport.name} remaining-subject switch failed`);
+  await subjectButtons.filter({ hasText: "Product Engineer" }).click();
   if (!(await page.locator(".dr-evidence-question").isVisible())) {
     throw new Error("the conditional evidence question is not visible for the prefilled explanation");
   }
+}
+
+async function inspectScreen3(viewport) {
+  const subjectButtons = page.locator(".dr-subject-row button");
+  await subjectButtons.filter({ hasText: "Platform Engineer" }).click();
+  await page.waitForFunction(() =>
+    document.activeElement?.getAttribute("data-conclusion-heading") === "true"
+  );
+  const platformText = await page.locator('[data-screen="company_rule"]').innerText();
+  await subjectButtons.filter({ hasText: "GTM" }).click();
+  await page.waitForFunction(() =>
+    document.activeElement?.getAttribute("data-conclusion-heading") === "true"
+  );
+  const gtmText = await page.locator('[data-screen="company_rule"]').innerText();
+  const switched = platformText.includes("계산 전에 확인할 내용")
+    && platformText.includes("확인 필요")
+    && (gtmText.match(/400만원/g) ?? []).length >= 2
+    && gtmText.includes("500만원")
+    && gtmText.includes("권장 연봉 또는 회사가 승인한 기준이 아닙니다");
+  result.screen3SubjectSwitch[viewport.name] = switched;
+  if (!switched) throw new Error(`${viewport.name} Screen 3 subject switch failed`);
+  await subjectButtons.filter({ hasText: "Product Engineer" }).click();
 }
 
 async function runFacilitatorQa(viewport) {
@@ -347,6 +395,19 @@ async function runFacilitatorQa(viewport) {
   };
 
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  const preparationCopy = await facilitatorPage.locator("body").innerText();
+  for (const required of [
+    "이번 세션에 사용할 익명 자료를 먼저 확인합니다",
+    "첫 행에 열 이름이 포함된 표",
+    "브라우저에서만 검사",
+    "row_id",
+    "role_group",
+    "base_salary_krw",
+  ]) {
+    if (!preparationCopy.includes(required)) {
+      throw new Error(`${viewport.name} preparation copy is missing: ${required}`);
+    }
+  }
   await inspect(piiColumnPaste);
   const consentVisible = await facilitatorPage.locator('[data-column-consent-required="true"]').isVisible();
   const consentText = await facilitatorPage.locator('[data-column-consent-required="true"]').innerText();
@@ -536,6 +597,8 @@ try {
           });
         }
       }
+
+      if (screen === "company_rule") await inspectScreen3(viewport);
 
       if (index === expectedScreens.length - 1) break;
       await current.locator('[data-primary-action="true"]').click();

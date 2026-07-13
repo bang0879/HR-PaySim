@@ -12,7 +12,7 @@ test("downstream screens render invalidatable headings and status from the view 
     "utf8",
   );
 
-  assert.match(rule, /model\.observedRepeat\.heading/);
+  assert.match(rule, /model\.variant\.heading/);
   assert.match(rule, /model\.decision\.heading/);
   assert.doesNotMatch(rule, /기본 연봉이 9,500만원이라고 가정/);
   assert.match(result, /model\.approvalStatus/);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createProductEngineerDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
+import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
 import { prepareProductEngineerRoster } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
 import { createEmptyDecisionRoomSession } from "../../src/lib/hr-paysim/session/decisionRoomReducer.ts";
 
@@ -18,7 +18,7 @@ test("facilitated copy derives every roster fact from the current Product Engine
   assert.equal(prepared.status, "ready_for_confirmation");
   assert.ok(prepared.draft);
 
-  const model = createProductEngineerDecisionRoomViewModel({
+  const model = createDecisionRoomViewModel({
     ...createEmptyDecisionRoomSession("facilitated"),
     ...prepared.draft,
   });
@@ -41,6 +41,8 @@ test("facilitated copy derives every roster fact from the current Product Engine
     "9,500\uB9CC\uC6D0",
     "2,700\uB9CC\uC6D0",
     "700\uB9CC\uC6D0\uC774 \uCD94\uAC00\uB410\uC9C0\uB9CC",
+    "Platform Engineer",
+    "GTM",
   ]) {
     assert.equal(rendered.includes(syntheticOnly), false, syntheticOnly);
   }
