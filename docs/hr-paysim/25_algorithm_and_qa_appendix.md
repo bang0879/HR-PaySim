@@ -73,12 +73,42 @@ The public manifest reported `PUBLIC_DEMO`, 54 total manifest modules, and zero 
 
 Static reverse-reference inspection found the removed runtime APIs only in the obsolete source cluster, obsolete tests, and boundary strings that intentionally forbid reintroduction. No canonical feature, provider, preparation, session reducer, theme, report, or current QA module imported the cluster.
 
-The cleanup deleted the alternate `src/App.tsx`, prototype and roster apps, nine-step router, shell, session, aggregate CEI/CED scenario modules, replaced paste runtime, and their exclusive tests. It retained:
+The deletion decision is recorded per production/runtime file below. "Absent" means the file was absent from both post-convergence build manifests; "none" means no canonical source or type/build dependency remained before deletion.
 
-- `prototypes/**` and historical documents;
-- canonical `NormalizedRosterRow`, structural finding, theme, review, report, and session types;
-- `correctionFloorKRW`, because canonical structural finding code still uses it;
-- public-boundary strings that reject reintroduction of old components.
+| Removed path | Reverse references before deletion | Public / facilitator manifests | Canonical type/build dependency | Disposition |
+|---|---|---|---|---|
+| `scripts/qa-hr-paysim-step1.mjs` | standalone obsolete QA command | absent / absent | none | removed |
+| `src/App.tsx` | alternate runtime entry and legacy tests only | absent / absent | none | removed |
+| `src/components/hr-paysim/PrototypePaySimApp.tsx` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/components/hr-paysim/RosterDiagnosticApp.tsx` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/components/hr-paysim/PaySimShell.tsx` | alternate runtime cluster only | absent / absent | none | removed |
+| `src/components/hr-paysim/PaySimStepper.tsx` | alternate runtime cluster only | absent / absent | none | removed |
+| `src/components/hr-paysim/screens/index.tsx` | alternate runtime cluster only | absent / absent | none | removed |
+| `src/routes/hr-paysim/appRoute.ts` | alternate runtime entry and legacy tests only | absent / absent | none | removed |
+| `src/routes/hr-paysim/router.ts` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/routes/hr-paysim/stepRegistry.ts` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/calculations.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/consent.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/copy.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/fixtures.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/memo.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/recommendations.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/session.ts` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/prototypeViewModel.ts` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/rosterDiagnosticViewModel.ts` | alternate runtime cluster and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/rosterParser.ts` | replaced paste runtime and legacy tests only | absent / absent | none | removed |
+| `src/lib/hr-paysim/validation.ts` | legacy nine-step modules and legacy tests only | absent / absent | none | removed |
+
+Retained boundaries were checked separately so type-only reachability was not mistaken for dead code:
+
+| Retained path or boundary | Evidence for keeping it |
+|---|---|
+| `prototypes/**` and historical documents | explicitly preserved historical artifacts, outside runtime convergence |
+| `src/lib/hr-paysim/domain.ts` | canonical roster and structural-finding imports remain; `correctionFloorKRW` is used by canonical finding code |
+| canonical feature, provider, preparation, session reducer, theme, review, and report modules | reachable from `DecisionRoomApp` or `PaySimSessionProvider`, including type-only imports |
+| `src/lib/hr-paysim/copy/forbiddenFounderTerms.ts` | current copy-governance tests and canonical copy boundaries |
+| `src/lib/hr-paysim/access/buildSurface.ts` and thin public/facilitator entries | active build-surface isolation and fail-closed route resolution |
+| public-boundary strings naming removed components | intentional regression guards that reject reintroduction |
 
 After cleanup:
 
@@ -142,25 +172,27 @@ Screenshots produced by the current QA script:
 
 These screenshots contain the repository's synthetic demo, not participant or company data.
 
-## Final verification contract
+## Final post-documentation verification
 
-Task 5 reruns every command below after this documentation commit and reconciles this appendix if any value changes:
+The implementation and evidence state at commit `55905db` was rerun from a clean worktree after the four evidence documents were added:
 
-```powershell
-npm.cmd run lint
-npm.cmd test
-npm.cmd run typecheck
-npm.cmd run build
-npm.cmd run build:facilitator
-node scripts/qa-decision-room.mjs --surface=public
-node scripts/qa-decision-room.mjs --surface=facilitator-local
-node scripts/verify-route-exposure.mjs
-node --experimental-strip-types scripts/verify-facilitator-privacy.ts
-python "$HOME/.codex/skills/diagnostic-product-governance/scripts/verify_diagnostic_governance.py" --project-root .
-git diff --check
-```
+| Command or gate | Fresh result |
+|---|---|
+| `npm.cmd run lint` | exit 0 |
+| `npm.cmd test` | 209 tests, 209 pass, 0 fail |
+| `npm.cmd run typecheck` | exit 0 |
+| `npm.cmd run build` | exit 0; 54 modules transformed; public manifest 54 modules |
+| `npm.cmd run build:facilitator` | exit 0; 106 modules transformed; facilitator manifest 92 modules |
+| `node scripts/verify-route-exposure.mjs` | exit 0 |
+| `node --experimental-strip-types scripts/verify-facilitator-privacy.ts` | exit 0 |
+| `python "$HOME/.codex/skills/diagnostic-product-governance/scripts/verify_diagnostic_governance.py" --project-root .` | exit 0 |
+| `git diff --check` | exit 0 |
+| public browser QA on port 5174 | exit 0; three viewports, four screens, mouse and keyboard paths, blocked unsupported routes, storage 0, console/errors 0 |
+| facilitator browser QA on port 5175 | exit 0; desktop/mobile privacy lifecycle, blocked direct session, storage/emissions/console/errors 0 |
 
-Status at document creation: pre-cleanup and post-cleanup automated, build, and verifier gates passed; final post-documentation rerun and independent review are pending.
+The independent review initially reported 0 critical, 2 important, and 0 minor findings. Both important findings concerned this evidence appendix: the missing per-file deletion inventory and stale pending-verification wording. After the current reconciliation, the same reviewer confirmed 0 unresolved critical, important, or minor findings and returned `Ready to merge: Yes` for the reviewed scope.
+
+The final branch-level verification reruns the same gates after this documentation/test-only reconciliation. The reconciliation commit cannot truthfully embed its own Git SHA; the final branch SHA and rerun results are reported in the handoff instead.
 
 ## Known limitations and non-claims
 
