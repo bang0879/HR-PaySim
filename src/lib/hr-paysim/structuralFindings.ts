@@ -4,7 +4,7 @@ import type {
   StructuralFinding,
   StructuralFindingPair,
 } from "./domain.ts";
-import { buildMaterialTenurePairs } from "./detectors/tenurePairs.ts";
+import { buildMaterialCareerPairs } from "./detectors/careerComparablePairs.ts";
 import {
   calculateMinimumOrdinalRestoration,
   calculatePairRepairFloor,
@@ -23,7 +23,7 @@ export function detectStructuralFindings(rows: NormalizedRosterRow[]): Structura
 }
 
 function detectShadowBand(roleGroup: string, rows: NormalizedRosterRow[]): StructuralFinding[] {
-  if (rows.length < 4 || hasFormalLevels(rows)) return [];
+  if (rows.length < 4) return [];
 
   const sorted = [...rows].sort((a, b) => a.baseSalaryKRW - b.baseSalaryKRW || a.rowId.localeCompare(b.rowId));
   const gaps = sorted.slice(1).map((row, index) => ({
@@ -74,8 +74,7 @@ function detectShadowBand(roleGroup: string, rows: NormalizedRosterRow[]): Struc
 }
 
 function detectPayInversion(roleGroup: string, rows: NormalizedRosterRow[]): StructuralFinding[] {
-  if (hasFormalLevels(rows)) return [];
-  const pairs = buildMaterialTenurePairs(rows, (underpaid, comparator) => underpaid.tenureMonths! > comparator.tenureMonths!);
+  const pairs = buildMaterialCareerPairs(rows);
   if (pairs.length === 0) return [];
 
   const headlinePair = pickHeadlinePair(pairs);
@@ -108,16 +107,21 @@ function detectPayInversion(roleGroup: string, rows: NormalizedRosterRow[]): Str
 }
 
 function detectLoyaltyTax(roleGroup: string, rows: NormalizedRosterRow[]): StructuralFinding[] {
-  if (hasFormalLevels(rows)) return [];
   const longTenureRows = rows.filter((row) => (row.tenureMonths ?? 0) >= 48);
   const recentRows = rows.filter((row) => (row.tenureMonths ?? Number.POSITIVE_INFINITY) <= 24);
   if (longTenureRows.length < 2 || recentRows.length < 2) return [];
 
-  const pairs = buildMaterialTenurePairs(rows, (underpaid, comparator) =>
-    longTenureRows.includes(underpaid) && recentRows.includes(comparator),
+  const longTenureRowIds = new Set(longTenureRows.map((row) => row.rowId));
+  const recentRowIds = new Set(recentRows.map((row) => row.rowId));
+  const pairs = buildMaterialCareerPairs(rows).filter((pair) =>
+    longTenureRowIds.has(pair.underpaidRowId) && recentRowIds.has(pair.comparatorRowId)
   );
-  if (pairs.length === 0) return [];
+  const supportedLongRowIds = new Set(pairs.map((pair) => pair.underpaidRowId));
+  const supportedRecentRowIds = new Set(pairs.map((pair) => pair.comparatorRowId));
+  if (supportedLongRowIds.size < 2 || supportedRecentRowIds.size < 2) return [];
 
+  const supportedLongRows = rows.filter((row) => supportedLongRowIds.has(row.rowId));
+  const supportedRecentRows = rows.filter((row) => supportedRecentRowIds.has(row.rowId));
   const headlinePair = pickHeadlinePair(pairs);
   const underpaidRowIds = uniqueSorted(pairs.map((pair) => pair.underpaidRowId));
   const metrics = relationshipMetrics(headlinePair, rows);
@@ -134,8 +138,8 @@ function detectLoyaltyTax(roleGroup: string, rows: NormalizedRosterRow[]): Struc
     additionalUnderpaidRowCount: Math.max(0, underpaidRowIds.length - 1),
     comparisonPairs: pairs,
     evidence: [
-      `long-tenure average: ${formatKRW(averageSalary(longTenureRows))}`,
-      `recent-hire average: ${formatKRW(averageSalary(recentRows))}`,
+      `long-tenure average: ${formatKRW(averageSalary(supportedLongRows))}`,
+      `recent-hire average: ${formatKRW(averageSalary(supportedRecentRows))}`,
     ],
     metrics,
     riskModel: riskModel({

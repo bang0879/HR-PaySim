@@ -271,7 +271,7 @@ function normalizeHeadlineGap(
 function tenureDataStatus(rows: NormalizedRosterRow[], affectedRowIds: Set<string>): ThemeDataStatus {
   const affectedRows = rows.filter((row) => affectedRowIds.has(row.rowId));
   return affectedRows.length === affectedRowIds.size
-    && affectedRows.every((row) => row.tenureMonths !== undefined)
+    && affectedRows.every((row) => row.tenureMonths !== undefined && row.relevantExperienceMonths !== undefined)
     ? "sufficient"
     : "partial";
 }
