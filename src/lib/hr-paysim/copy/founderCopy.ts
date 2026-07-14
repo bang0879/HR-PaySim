@@ -1,4 +1,8 @@
 export const FOUNDER_COPY = {
+  "route.unavailable.eyebrow": "HR PaySim · 공개 데모",
+  "route.unavailable.heading": "이 주소에서는 화면을 열 수 없습니다.",
+  "route.unavailable.support": "공개 데모에서 확인할 수 있는 화면으로 돌아가 주세요.",
+  "route.unavailable.action": "공개 데모로 돌아가기",
   "preparation.eyebrow": "HR PaySim · 진행자 준비",
   "preparation.heading": "이번 세션에 사용할 익명 자료를 먼저 확인합니다.",
   "preparation.privacy":

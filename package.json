@@ -14,9 +14,12 @@
     },
     "type": "module",
     "scripts": {
-        "dev": "vite --host 127.0.0.1",
-        "build": "vite build",
-        "start": "vite preview --host 127.0.0.1",
+        "dev": "vite --mode public-demo --host 127.0.0.1",
+        "dev:facilitator": "vite --mode facilitator-local --host 127.0.0.1",
+        "build": "vite build --mode public-demo",
+        "build:facilitator": "vite build --mode facilitator-local",
+        "start": "vite preview --mode public-demo --host 127.0.0.1",
+        "start:facilitator": "vite preview --mode facilitator-local --host 127.0.0.1",
         "typecheck": "tsc --noEmit",
         "lint": "node --experimental-strip-types scripts/check-forbidden-copy.ts",
         "test": "node --experimental-strip-types --test tests/hr-paysim/*.test.ts"

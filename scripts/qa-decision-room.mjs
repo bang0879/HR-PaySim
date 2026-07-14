@@ -1,4 +1,15 @@
 import { chromium } from "playwright";
+import {
+  collectSensitiveTokens,
+  findBlockedPaySimHrefs,
+  findSensitivePayloadTokens,
+} from "./qa-evidence-policy.mjs";
+
+const surfaceArgument = process.argv.find((value) => value.startsWith("--surface="));
+const qaSurface = surfaceArgument?.slice("--surface=".length) ?? "public";
+if (!["public", "facilitator-local"].includes(qaSurface)) {
+  throw new Error(`UNKNOWN_QA_SURFACE: ${qaSurface}`);
+}
 
 const url = process.env.HR_PAYSIM_URL
   ?? "http://127.0.0.1:5173/hr-paysim/decision-room-preview";
@@ -31,6 +42,14 @@ const mixedRolePaste = [
     index === 1 ? row.replace("Product Engineer\tProduct Engineer", "Platform Engineer\tProduct Engineer") : row
   ),
 ].join("\n");
+const sensitiveRequestTokens = collectSensitiveTokens(
+  facilitatorHeader,
+  ...facilitatorRows,
+  piiColumnPaste,
+  rowPiiPaste,
+  mixedRolePaste,
+  "timing_context\tdocumented",
+);
 const viewports = [
   { name: "desktop-1280", width: 1280, height: 720 },
   { name: "desktop-1440", width: 1440, height: 900 },
@@ -77,6 +96,9 @@ page.on("console", (message) => {
 page.on("pageerror", (error) => consoleIssues.push(`pageerror: ${error.message}`));
 
 const result = {
+  qaSurface,
+  publicFacilitatorRoutesBlocked: false,
+  externalRosterEmissions: [],
   screensByViewport: {},
   clicksToResult: 0,
   focusMoves: [],
@@ -108,10 +130,22 @@ const result = {
   explicitEndClearsRows: {},
 };
 
+async function assertNoBlockedPaySimLinks(targetPage, label) {
+  if (qaSurface !== "public") return;
+  const hrefs = await targetPage.locator("a[href]").evaluateAll((anchors) =>
+    anchors.map((anchor) => anchor.getAttribute("href") ?? "")
+  );
+  const blocked = findBlockedPaySimHrefs(hrefs, origin);
+  if (blocked.length > 0) {
+    throw new Error(`${label} advertises blocked PaySim links: ${blocked.join(", ")}`);
+  }
+}
+
 async function openFresh(viewport) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.goto(url, { waitUntil: "networkidle" });
   await page.locator('[data-decision-room="true"]').waitFor({ timeout: 5000 });
+  await assertNoBlockedPaySimLinks(page, `${viewport.name}/initial`);
 }
 
 function ensureNoFounderLeaks(visibleText) {
@@ -375,8 +409,48 @@ async function inspectScreen3(viewport) {
 }
 
 async function runFacilitatorQa(viewport) {
+  if (qaSurface !== "facilitator-local") return;
   const facilitatorContext = await browser.newContext({ viewport });
   const facilitatorPage = await facilitatorContext.newPage();
+  const requestInspectionTasks = [];
+  const recordSensitiveEmission = (channel, metadata, payload) => {
+    const matches = findSensitivePayloadTokens(payload, sensitiveRequestTokens);
+    if (matches.length > 0) {
+      result.externalRosterEmissions.push({ channel, ...metadata, matches });
+    }
+  };
+  facilitatorPage.on("request", (request) => {
+    const inspection = (async () => {
+      const headers = await request.allHeaders();
+      const metadataPayload = `${request.url()}\n${JSON.stringify(headers)}`;
+      const bodyPayload = request.postData() ?? "";
+      const matches = [
+        ...findSensitivePayloadTokens(
+          metadataPayload,
+          sensitiveRequestTokens,
+          false,
+        ),
+        ...findSensitivePayloadTokens(bodyPayload, sensitiveRequestTokens, true),
+      ];
+      if (matches.length > 0) {
+        result.externalRosterEmissions.push({
+          channel: "request",
+          method: request.method(),
+          url: request.url(),
+          matches: [...new Set(matches)],
+        });
+      }
+    })();
+    requestInspectionTasks.push(inspection);
+  });
+  facilitatorPage.on("websocket", (socket) => {
+    socket.on("framesent", (event) => {
+      const payload = typeof event.payload === "string"
+        ? event.payload
+        : event.payload.toString("utf8");
+      recordSensitiveEmission("websocket", { url: socket.url() }, payload);
+    });
+  });
   facilitatorPage.on("console", (message) => {
     if (["error", "warning"].includes(message.type())) {
       consoleIssues.push("facilitator/" + viewport.name + "/" + message.type() + ": " + message.text());
@@ -555,12 +629,43 @@ async function runFacilitatorQa(viewport) {
     directSessionFailsClosed,
     explicitEndClearsRows,
   };
+  await Promise.all(requestInspectionTasks);
+  if (result.externalRosterEmissions.length > 0) {
+    throw new Error(
+      "facilitator roster data entered an external request or WebSocket frame: "
+        + JSON.stringify(result.externalRosterEmissions),
+    );
+  }
   await facilitatorContext.close();
+}
+async function inspectPublicBlockedRoutes(viewport) {
+  if (qaSurface !== "public") return;
+  const blockedContext = await browser.newContext({ viewport });
+  const blockedPage = await blockedContext.newPage();
+  for (const path of ["/hr-paysim/session/new", "/hr-paysim/session"]) {
+    await blockedPage.goto(origin + path, { waitUntil: "networkidle" });
+    await assertNoBlockedPaySimLinks(blockedPage, `blocked route ${path}`);
+    const unavailable = await blockedPage
+      .locator('[data-route-unavailable="true"]')
+      .isVisible();
+    const textareaCount = await blockedPage.locator("textarea").count();
+    const body = await blockedPage.locator("body").innerText();
+    if (
+      !unavailable
+      || textareaCount !== 0
+      || /row_id|role_group|base_salary_krw|data-no-active-session/.test(body)
+    ) {
+      throw new Error(`public route did not fail closed: ${path}`);
+    }
+  }
+  await blockedContext.close();
+  result.publicFacilitatorRoutesBlocked = true;
 }
 try {
   for (const viewport of facilitatorViewports) {
     await runFacilitatorQa(viewport);
   }
+  await inspectPublicBlockedRoutes(viewports[0]);
   for (const viewport of viewports) {
     await openFresh(viewport);
     const visited = [];
@@ -571,6 +676,7 @@ try {
       const current = page.locator(`[data-screen="${screen}"]`);
       await current.waitFor({ state: "visible" });
       visited.push(screen);
+      await assertNoBlockedPaySimLinks(page, `${viewport.name}/${screen}`);
 
       const primaryCount = await current.locator('[data-primary-action="true"]').count();
       if (primaryCount !== 1) throw new Error(`${screen} must expose exactly one primary action`);

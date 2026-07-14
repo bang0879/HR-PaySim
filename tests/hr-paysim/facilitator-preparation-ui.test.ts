@@ -11,7 +11,7 @@ const shell = readFileSync(
   "utf8",
 );
 const qaSource = readFileSync(new URL("../../scripts/qa-decision-room.mjs", import.meta.url), "utf8");
-const app = readFileSync(new URL("../../src/App.tsx", import.meta.url), "utf8");
+const app = readFileSync(new URL("../../src/surfaces/FacilitatorLocalApp.tsx", import.meta.url), "utf8");
 const provider = readFileSync(
   new URL("../../src/app/PaySimSessionProvider.tsx", import.meta.url),
   "utf8",
@@ -47,7 +47,7 @@ test("one provider shell owns start, unload warning, direct-load fallback, and e
   assert.match(shell, /data-no-active-session="true"/);
   assert.doesNotMatch(shell, /localStorage|sessionStorage|fetch\(|sendBeacon|XMLHttpRequest/);
 
-  assert.match(app, /surface === "facilitator_preparation" \|\| surface === "facilitator_session"/);
+  assert.match(app, /resolveSurfaceRoute\(\s*"FACILITATOR_LOCAL"/);
   assert.match(app, /<PaySimSessionProvider>/);
   assert.match(app, /<FacilitatedSessionApp/);
 });
