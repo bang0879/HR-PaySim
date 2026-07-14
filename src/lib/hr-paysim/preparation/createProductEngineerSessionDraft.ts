@@ -8,7 +8,10 @@ export type ProductEngineerSessionDraftResult =
   | { supported: true; draft: ProductEngineerSessionDraft }
   | {
     supported: false;
-    reason: "NO_HEADLINE_PAIR" | "NO_HEADLINE_GAP" | "MISSING_HEADLINE_TENURE";
+    reason: "NO_HEADLINE_PAIR"
+      | "NO_HEADLINE_GAP"
+      | "MISSING_HEADLINE_RELEVANT_EXPERIENCE"
+      | "MISSING_HEADLINE_TENURE";
   };
 
 export function createProductEngineerSessionDraft(
@@ -26,6 +29,12 @@ export function createProductEngineerSessionDraft(
 
   const lowerPaid = rows.find((row) => row.rowId === productTheme.headlinePair?.underpaidRowId);
   const higherPaid = rows.find((row) => row.rowId === productTheme.headlinePair?.comparatorRowId);
+  if (
+    lowerPaid?.relevantExperienceMonths === undefined
+    || higherPaid?.relevantExperienceMonths === undefined
+  ) {
+    return { supported: false, reason: "MISSING_HEADLINE_RELEVANT_EXPERIENCE" };
+  }
   if (lowerPaid?.tenureMonths === undefined || higherPaid?.tenureMonths === undefined) {
     return { supported: false, reason: "MISSING_HEADLINE_TENURE" };
   }

@@ -27,7 +27,11 @@ export const FOUNDER_COPY = {
   "preparation.ready.action": "이 자료로 세션 시작",
   "preparation.issue.pii_value":
     "개인을 식별할 수 있는 값이 포함되어 있습니다. 원본을 수정한 뒤 다시 붙여넣어 주세요.",
-  "preparation.issue.missing_required_field": "필수 값이 없거나 형식이 맞지 않습니다.",
+  "preparation.issue.missing_required_field": "필수 값이 비어 있습니다.",
+  "preparation.issue.missing_header": "입력 양식의 필수 열이 없습니다.",
+  "preparation.issue.duplicate_header": "같은 열 이름이 두 번 이상 있습니다.",
+  "preparation.issue.invalid_field_value": "허용된 형식이나 범위를 확인해 주세요.",
+  "preparation.issue.too_few_rows": "Product Engineer 직원 자료를 최소 4행 준비해 주세요.",
   "preparation.issue.unsupported_role":
     "이번 준비 화면은 Product Engineer 자료만 사용할 수 있습니다.",
   "preparation.issue.unsupported_product_engineer_comparison":
@@ -191,6 +195,10 @@ export const FOUNDER_COPY = {
 export const PREPARATION_ISSUE_COPY = {
   PII_VALUE: FOUNDER_COPY["preparation.issue.pii_value"],
   MISSING_REQUIRED_FIELD: FOUNDER_COPY["preparation.issue.missing_required_field"],
+  MISSING_HEADER: FOUNDER_COPY["preparation.issue.missing_header"],
+  DUPLICATE_HEADER: FOUNDER_COPY["preparation.issue.duplicate_header"],
+  INVALID_FIELD_VALUE: FOUNDER_COPY["preparation.issue.invalid_field_value"],
+  TOO_FEW_ROWS: FOUNDER_COPY["preparation.issue.too_few_rows"],
   UNSUPPORTED_ROLE: FOUNDER_COPY["preparation.issue.unsupported_role"],
   UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON:
     FOUNDER_COPY["preparation.issue.unsupported_product_engineer_comparison"],

@@ -7,6 +7,7 @@ import {
   createEmptyPreparationResult,
   prepareProductEngineerRoster,
 } from "../../lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
+import type { KoreanRosterField } from "../../lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 import type {
   PreparationIssueCode,
   PreparationPreviewRow,
@@ -19,6 +20,15 @@ export interface FacilitatorPreparationScreenProps {
 }
 
 const issueLabels: Record<PreparationIssueCode, string> = PREPARATION_ISSUE_COPY;
+const fieldLabels: Record<KoreanRosterField, string> = {
+  salary: "기본연봉(원)",
+  relevant_experience: "관련 경력년수",
+  company_tenure: "회사 근속개월",
+  title: "직함",
+  level: "레벨",
+  documented_exception: "문서화된 예외",
+  counteroffer: "카운터오퍼 여부",
+};
 
 export function FacilitatorPreparationScreen({
   onStart,
@@ -123,7 +133,7 @@ export function FacilitatorPreparationScreen({
                   {issue.sourceLineNumber === undefined ? null : (
                     <strong>입력 {issue.sourceLineNumber}행</strong>
                   )}
-                  <span>{issueLabels[issue.code]}</span>
+                  <span>{issue.field ? fieldLabels[issue.field] + " · " : ""}{issueLabels[issue.code]}</span>
                 </li>
               ))}
             </ul>
@@ -176,7 +186,8 @@ function PreparationPreview({ rows }: { rows: PreparationPreviewRow[] }) {
             <th>세션 라벨</th>
             <th>역할</th>
             <th>기본 연봉</th>
-            <th>근속</th>
+            <th>관련 경력</th>
+            <th>회사 근속</th>
             <th>직함·레벨</th>
             <th>문서화된 예외</th>
           </tr>
@@ -187,6 +198,11 @@ function PreparationPreview({ rows }: { rows: PreparationPreviewRow[] }) {
               <th scope="row">{item.employeeLabel}</th>
               <td>{item.roleGroup}</td>
               <td>{formatManwon(item.salaryKRW)}</td>
+              <td>
+                {item.relevantExperienceMonths === undefined
+                  ? "확인 필요"
+                  : formatExperienceYears(item.relevantExperienceMonths)}
+              </td>
               <td>{item.tenureMonths === undefined ? "확인 필요" : item.tenureMonths + "개월"}</td>
               <td>{[item.title, item.levelLabel].filter(Boolean).join(" · ") || "없음"}</td>
               <td>{item.documentedException ? "있음" : "없음"}</td>
@@ -196,6 +212,10 @@ function PreparationPreview({ rows }: { rows: PreparationPreviewRow[] }) {
       </table>
     </div>
   );
+}
+
+function formatExperienceYears(months: number): string {
+  return (months / 12).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "년";
 }
 
 function formatManwon(amountKRW: number): string {
