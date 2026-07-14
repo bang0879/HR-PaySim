@@ -5,6 +5,7 @@
   width: 100%;
   min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 24px;
   padding: 52px clamp(18px, 5vw, 68px) 80px;

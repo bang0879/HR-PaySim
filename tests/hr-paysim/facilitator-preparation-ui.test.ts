@@ -77,6 +77,9 @@ test("browser QA owns facilitator privacy and lifecycle evidence", () => {
   for (const measurement of [
     "columnConsentRequired",
     "rowPiiBlocksAll",
+    "preparationHierarchy",
+    "fileInputReset",
+    "sourceDataAbsent",
     "rawTextareaCleared",
     "facilitatedSampleLabelHidden",
     "sessionUrlContainsRosterData",

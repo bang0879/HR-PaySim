@@ -236,11 +236,13 @@ test("screen components render model-owned evidence and centralized result feedb
   assert.match(decisionRoomQa, /observedStrokeWidth/);
   assert.match(decisionRoomQa, /highlightedPointDiameter/);
   assert.match(decisionRoomQa, /standardPointDiameter/);
-  assert.match(decisionRoomQa, /guideStrokeDasharray/);
+  assert.match(decisionRoomQa, /careerCoverage/);
+  assert.match(decisionRoomQa, /missingCareerCount/);
+  assert.match(decisionRoomQa, /directionGuideLineCount/);
+  assert.match(decisionRoomQa, /gtmLevelVisualization/);
   assert.match(decisionRoomQa, /observedLineStartXPercent/);
   assert.match(decisionRoomQa, /observedLineEndXPercent/);
-  assert.match(decisionRoomQa, /guideLineStartXPercent/);
-  assert.match(decisionRoomQa, /guideLineEndXPercent/);
+  assert.doesNotMatch(decisionRoomQa, /guideStrokeDasharray|guideLineStartXPercent|guideLineEndXPercent/);
 
 
   const evidenceOrder = [
