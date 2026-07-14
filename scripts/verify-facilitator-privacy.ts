@@ -12,6 +12,17 @@ if (manifest.surface !== "FACILITATOR_LOCAL") {
   throw new Error(`unexpected surface: ${manifest.surface}`);
 }
 
+const requiredPrivacyOwners = [
+  "src/features/facilitator-preparation/FacilitatorPreparationScreen.tsx",
+  "src/features/facilitator-preparation/readProductEngineerWorkbook.ts",
+  "src/lib/hr-paysim/preparation/koreanRosterAdapter.ts",
+];
+const missingOwners = requiredPrivacyOwners.filter(
+  (owner) => !manifest.modules.includes(owner),
+);
+if (missingOwners.length > 0) {
+  throw new Error(`facilitator-local module graph is missing privacy owners:\n${missingOwners.join("\n")}`);
+}
 const reachableSources = Object.fromEntries(
   manifest.modules
     .filter((modulePath) => modulePath.startsWith("src/"))

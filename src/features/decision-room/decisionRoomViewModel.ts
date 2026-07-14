@@ -1,5 +1,6 @@
 import {
   FOUNDER_COPY,
+  formatCareerEvidenceTitle,
   formatCurrentInputObservation,
   formatGtmEvidenceTitle,
   formatPendingRuleContext,
@@ -7,9 +8,10 @@ import {
   formatProductEngineerEvidenceTitle,
   formatRoleDistributionHeading,
   formatRoleDistributionKicker,
+  formatRelevantExperience,
   formatRoleObservationsHeading,
-  formatTenureEvidenceTitle,
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
+import { resolveOrderedLevelPolicy } from "../../lib/hr-paysim/detectors/careerComparablePairs.ts";
 import type { DecisionRecord } from "../../lib/hr-paysim/decisions/types.ts";
 import { createEmployeeLabels } from "../../lib/hr-paysim/presentation/createEmployeeLabels.ts";
 import { findObservedPrecedentCandidates } from "../../lib/hr-paysim/repeat/selectObservedPrecedent.ts";
@@ -94,6 +96,7 @@ export function createProductEngineerDecisionRoomViewModel(
   const rows = state.rows
     .filter((row) => row.roleGroup === selectedTheme.roleGroup)
     .sort((a, b) => a.baseSalaryKRW - b.baseSalaryKRW || compareText(a.rowId, b.rowId));
+  const showLevelEvidence = resolveOrderedLevelPolicy(rows) === "complete";
   const labels = createEmployeeLabels(
     rows,
     selectedTheme.headlinePair.underpaidRowId,
@@ -101,6 +104,12 @@ export function createProductEngineerDecisionRoomViewModel(
   );
   const lowerPaid = requiredRow(rows, selectedTheme.headlinePair.underpaidRowId);
   const higherPaid = requiredRow(rows, selectedTheme.headlinePair.comparatorRowId);
+  if (
+    lowerPaid.relevantExperienceMonths === undefined
+    || higherPaid.relevantExperienceMonths === undefined
+  ) {
+    throw new Error("PRODUCT_ENGINEER_HEADLINE_RELEVANT_EXPERIENCE_REQUIRED");
+  }
   if (lowerPaid.tenureMonths === undefined || higherPaid.tenureMonths === undefined) {
     throw new Error("PRODUCT_ENGINEER_HEADLINE_TENURE_REQUIRED");
   }
@@ -113,8 +122,10 @@ export function createProductEngineerDecisionRoomViewModel(
   const evidenceConclusion = formatProductEngineerEvidenceTitle({
     employeeCount,
     lowerPaidLabel,
+    lowerPaidRelevantExperienceMonths: lowerPaid.relevantExperienceMonths,
     lowerPaidTenureMonths: lowerPaid.tenureMonths,
     higherPaidLabel,
+    higherPaidRelevantExperienceMonths: higherPaid.relevantExperienceMonths,
     higherPaidTenureMonths: higherPaid.tenureMonths,
     headlineGapKRW,
   });
@@ -129,8 +140,8 @@ export function createProductEngineerDecisionRoomViewModel(
       heading: FOUNDER_COPY["screen.introduction.heading"],
       conclusion: "금번 진단에서는 같은 역할을 맡은 직원들의 실제 연봉 차이를 확인하고, 다음 채용 전에 회사가 정해야 할 기준을 정리합니다.",
       scope: state.mode === "demo"
-        ? "16명의 이름 없는 샘플 자료 중 Product Engineer 6명의 역할, 기본 연봉, 근속 기간과 채용 예외 기록을 먼저 살펴봅니다."
-        : `${employeeCount}명의 이름 없는 입력 자료에서 Product Engineer ${employeeCount}명의 역할, 기본 연봉, 근속 기간과 채용 예외 기록을 먼저 살펴봅니다.`,
+        ? "16명의 이름 없는 샘플 자료 중 Product Engineer 6명의 역할, 기본 연봉, 관련 경력, 회사 근속과 채용 예외 기록을 먼저 살펴봅니다."
+        : `${employeeCount}명의 이름 없는 입력 자료에서 Product Engineer ${employeeCount}명의 역할, 기본 연봉, 관련 경력, 회사 근속과 채용 예외 기록을 먼저 살펴봅니다.`,
       sectionLabel: FOUNDER_COPY["screen.introduction.scope_label"],
       nonClaims: [
         "개인의 적정 연봉이나 인상액을 추천하지 않습니다.",
@@ -157,15 +168,18 @@ export function createProductEngineerDecisionRoomViewModel(
       actionPrompt: FOUNDER_COPY["screen.evidence.product_engineer.action_prompt"],
       nonClaim: FOUNDER_COPY["non_claim.higher_salary"],
       distributionKicker:
-        `Product Engineer ${employeeCount}명의 기본 연봉과 근속 개월`,
+        `Product Engineer ${employeeCount}명의 기본 연봉과 관련 경력`,
       distributionHeading:
-        `Product Engineer ${employeeCount}명의 기본 연봉과 근속 개월을 함께 표시했습니다.`,
+        `Product Engineer ${employeeCount}명의 기본 연봉과 관련 경력을 함께 표시했습니다.`,
       distribution: rows.map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         salary: formatManwon(row.baseSalaryKRW),
         salaryKRW: row.baseSalaryKRW,
+        relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+        relevantExperienceMonths: row.relevantExperienceMonths,
         tenure: formatTenure(row.tenureMonths),
         tenureMonths: row.tenureMonths,
+        levelLabel: row.levelLabel,
         highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
       })),
       highlightedPair: {
@@ -174,6 +188,8 @@ export function createProductEngineerDecisionRoomViewModel(
         lowerPaidSalary: formatManwon(lowerPaid.baseSalaryKRW),
         higherPaidSalary: formatManwon(higherPaid.baseSalaryKRW),
         difference: formatManwon(higherPaid.baseSalaryKRW - lowerPaid.baseSalaryKRW),
+        lowerPaidRelevantExperience: formatRelevantExperience(lowerPaid.relevantExperienceMonths),
+        higherPaidRelevantExperience: formatRelevantExperience(higherPaid.relevantExperienceMonths),
         lowerPaidTenure: formatTenure(lowerPaid.tenureMonths),
         higherPaidTenure: formatTenure(higherPaid.tenureMonths),
         lowerPaidException: formatExceptionRecord(lowerPaid),
@@ -182,7 +198,7 @@ export function createProductEngineerDecisionRoomViewModel(
       supportingObservationsHeading:
         `Product Engineer ${employeeCount}명 전체에서도 비슷한 차이가 반복되는지 확인했습니다.`,
       supportingObservations: [
-        `Product Engineer ${employeeCount}명의 근속 개월과 기본 연봉을 함께 놓았을 때, 근속 ${lowerPaid.tenureMonths}개월인 ${lowerPaidLabel}는 ${formatManwon(lowerPaid.baseSalaryKRW)}이고 근속 ${higherPaid.tenureMonths}개월인 ${higherPaidLabel}는 ${formatManwon(higherPaid.baseSalaryKRW)}입니다.`,
+        `Product Engineer ${employeeCount}명의 관련 경력과 기본 연봉을 함께 놓았을 때, ${formatRelevantExperience(lowerPaid.relevantExperienceMonths)}·회사 근속 ${lowerPaid.tenureMonths}개월인 ${lowerPaidLabel}는 ${formatManwon(lowerPaid.baseSalaryKRW)}이고 ${formatRelevantExperience(higherPaid.relevantExperienceMonths)}·회사 근속 ${higherPaid.tenureMonths}개월인 ${higherPaidLabel}는 ${formatManwon(higherPaid.baseSalaryKRW)}입니다.`,
         `${lowerPaidLabel}와 ${higherPaidLabel} 사이의 ${formatManwon(headlineGapKRW)} 차이가 가장 큽니다. 현재 기록만으로 이 차이를 모두 설명할 공통 기준은 확인되지 않았습니다.`,
       ],
       explanationQuestion:
@@ -197,6 +213,9 @@ export function createProductEngineerDecisionRoomViewModel(
       evidenceRows: [lowerPaid, higherPaid].map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         role: row.roleGroup,
+        level: showLevelEvidence ? row.levelLabel : undefined,
+        relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+        relevantExperienceMonths: row.relevantExperienceMonths,
         tenure: formatTenure(row.tenureMonths),
         tenureMonths: row.tenureMonths,
         salary: formatManwon(row.baseSalaryKRW),
@@ -298,13 +317,16 @@ export interface DecisionRoomSubjectOption {
 
 export type EvidenceVisualization =
   | {
-      kind: "tenure";
+      kind: "career";
       distribution: Array<{
         employeeLabel: string;
         salary: string;
         salaryKRW: number;
+        relevantExperience: string;
+        relevantExperienceMonths: number | undefined;
         tenure: string;
         tenureMonths: number | undefined;
+        levelLabel: string | undefined;
         highlighted: boolean;
       }>;
       kicker: string;
@@ -403,7 +425,7 @@ export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
       ...base.evidence,
       visualization: activeTheme.roleGroup === "Product Engineer"
         ? {
-            kind: "tenure" as const,
+            kind: "career" as const,
             distribution: base.evidence.distribution,
             kicker: base.evidence.distributionKicker,
             heading: base.evidence.distributionHeading,
@@ -478,6 +500,7 @@ function createRemainingSubjectViewModel(
   const review = state.reviews[selectedTheme.id];
   const decision = state.decisions.find((item) => item.themeIds.includes(selectedTheme.id));
   const isGtm = selectedTheme.roleGroup === "GTM";
+  const showLevelEvidence = isGtm || resolveOrderedLevelPolicy(rows) === "complete";
   const evidenceConclusion = isGtm
     ? formatGtmEvidenceTitle({
         employeeCount,
@@ -487,12 +510,14 @@ function createRemainingSubjectViewModel(
         higherPaidLevel: higherPaid.levelLabel ?? FOUNDER_COPY["screen.evidence.level_missing"],
         headlineGapKRW,
       })
-    : formatTenureEvidenceTitle({
+    : formatCareerEvidenceTitle({
         roleGroup: selectedTheme.roleGroup,
         employeeCount,
         lowerPaidLabel,
+        lowerPaidRelevantExperienceMonths: requiredRelevantExperience(lowerPaid),
         lowerPaidTenureMonths: requiredTenure(lowerPaid),
         higherPaidLabel,
+        higherPaidRelevantExperienceMonths: requiredRelevantExperience(higherPaid),
         higherPaidTenureMonths: requiredTenure(higherPaid),
         headlineGapKRW,
       });
@@ -500,8 +525,11 @@ function createRemainingSubjectViewModel(
     employeeLabel: labels.get(row.rowId)!,
     salary: formatManwon(row.baseSalaryKRW),
     salaryKRW: row.baseSalaryKRW,
+    relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+    relevantExperienceMonths: row.relevantExperienceMonths,
     tenure: formatTenure(row.tenureMonths),
     tenureMonths: row.tenureMonths,
+    levelLabel: row.levelLabel,
     highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
   }));
   const visualization: EvidenceVisualization = isGtm
@@ -535,7 +563,7 @@ function createRemainingSubjectViewModel(
         nonClaim: FOUNDER_COPY["screen.evidence.gtm.non_claim"],
       }
     : {
-        kind: "tenure",
+        kind: "career",
         distribution,
         kicker: formatRoleDistributionKicker({
           roleGroup: selectedTheme.roleGroup,
@@ -594,6 +622,8 @@ function createRemainingSubjectViewModel(
         lowerPaidSalary: formatManwon(lowerPaid.baseSalaryKRW),
         higherPaidSalary: formatManwon(higherPaid.baseSalaryKRW),
         difference: formatManwon(headlineGapKRW),
+        lowerPaidRelevantExperience: formatRelevantExperience(lowerPaid.relevantExperienceMonths),
+        higherPaidRelevantExperience: formatRelevantExperience(higherPaid.relevantExperienceMonths),
         lowerPaidTenure: formatTenure(lowerPaid.tenureMonths),
         higherPaidTenure: formatTenure(higherPaid.tenureMonths),
         lowerPaidException: formatExceptionRecord(lowerPaid),
@@ -622,6 +652,9 @@ function createRemainingSubjectViewModel(
       evidenceRows: [lowerPaid, higherPaid].map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         role: row.roleGroup,
+        level: showLevelEvidence ? row.levelLabel : undefined,
+        relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+        relevantExperienceMonths: row.relevantExperienceMonths,
         tenure: formatTenure(row.tenureMonths),
         tenureMonths: row.tenureMonths,
         salary: formatManwon(row.baseSalaryKRW),
@@ -738,6 +771,13 @@ function ruleConditionLabels(): string[] {
   ];
 }
 
+function requiredRelevantExperience(row: NormalizedRosterRow): number {
+  if (row.relevantExperienceMonths === undefined) {
+    throw new Error("ACTIVE_HEADLINE_RELEVANT_EXPERIENCE_REQUIRED");
+  }
+  return row.relevantExperienceMonths;
+}
+
 function requiredTenure(row: NormalizedRosterRow): number {
   if (row.tenureMonths === undefined) throw new Error("ACTIVE_HEADLINE_TENURE_REQUIRED");
   return row.tenureMonths;
@@ -786,8 +826,8 @@ function formatManwon(amountKRW: number): string {
 }
 
 function formatTenure(tenureMonths: number | undefined): string {
-  if (tenureMonths === undefined) return "근속 기간 확인 필요";
-  return `${tenureMonths}개월 근속`;
+  if (tenureMonths === undefined) return "회사 근속 확인 필요";
+  return `회사 근속 ${tenureMonths}개월`;
 }
 
 function formatExceptionRecord(row: NormalizedRosterRow): string {

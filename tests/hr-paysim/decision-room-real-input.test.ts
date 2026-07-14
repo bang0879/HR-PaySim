@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
 import { prepareProductEngineerRoster } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
+import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 import { createEmptyDecisionRoomSession } from "../../src/lib/hr-paysim/session/decisionRoomReducer.ts";
 
 const actualRosterPaste = [
-  "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel",
-  "actual_001\tProduct Engineer\tProduct Engineer\tnone\t\t73000000\t2021-06-01\t61\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_002\tProduct Engineer\tProduct Engineer\tnone\t\t77000000\t2022-05-01\t50\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_003\tProduct Engineer\tProduct Engineer\tnone\t\t81000000\t2023-04-01\t39\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_004\tProduct Engineer\tProduct Engineer\tnone\t\t91000000\t2025-06-01\t13\ttrue\tfalse\tmanager_private\tteam_private",
-  "actual_005\tProduct Engineer\tProduct Engineer\tnone\t\t88000000\t2024-11-01\t20\tfalse\ttrue\tmanager_private\tteam_private",
+  KOREAN_ROSTER_HEADERS.join("\t"),
+  "73000000\t10\t61\tProduct Engineer\t\t아니오\t아니오",
+  "77000000\t9\t50\tProduct Engineer\t\t아니오\t아니오",
+  "81000000\t8\t39\tProduct Engineer\t\t아니오\t아니오",
+  "91000000\t7\t13\tSenior Product Engineer\t\t예\t아니오",
+  "88000000\t6\t20\tProduct Engineer\t\t아니오\t예",
 ].join("\n");
 
 test("facilitated copy derives every roster fact from the current Product Engineer session", () => {
@@ -25,22 +26,24 @@ test("facilitated copy derives every roster fact from the current Product Engine
   const rendered = JSON.stringify(model);
 
   for (const expected of [
-    "Product Engineer 5\uBA85",
-    "7,300\uB9CC\uC6D0",
-    "9,100\uB9CC\uC6D0",
-    "1,800\uB9CC\uC6D0",
-    "61\uAC1C\uC6D4",
-    "13\uAC1C\uC6D4",
+    "Product Engineer 5명",
+    "7,300만원",
+    "9,100만원",
+    "1,800만원",
+    "관련 경력 10년",
+    "관련 경력 7년",
+    "회사 근속 61개월",
+    "회사 근속 13개월",
   ]) {
     assert.equal(rendered.includes(expected), true, expected);
   }
 
   for (const syntheticOnly of [
-    "Product Engineer 6\uBA85",
-    "6,800\uB9CC\uC6D0",
-    "9,500\uB9CC\uC6D0",
-    "2,700\uB9CC\uC6D0",
-    "700\uB9CC\uC6D0\uC774 \uCD94\uAC00\uB410\uC9C0\uB9CC",
+    "Product Engineer 6명",
+    "6,800만원",
+    "9,500만원",
+    "2,700만원",
+    "700만원이 추가됐지만",
     "Platform Engineer",
     "GTM",
   ]) {

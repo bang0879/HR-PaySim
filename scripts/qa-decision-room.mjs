@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import {
   collectSensitiveTokens,
@@ -15,17 +16,17 @@ const url = process.env.HR_PAYSIM_URL
   ?? "http://127.0.0.1:5173/hr-paysim/decision-room-preview";
 const origin = new URL(url).origin;
 const facilitatorHeader =
-  "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel";
+  "기본연봉(원)\t관련 경력년수\t회사 근속개월\t직함\t레벨\t문서화된 예외\t카운터오퍼 여부";
 const facilitatorRows = [
-  "actual_001\tProduct Engineer\tProduct Engineer\tnone\t\t73000000\t2021-06-01\t61\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_002\tProduct Engineer\tProduct Engineer\tnone\t\t77000000\t2022-05-01\t50\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_003\tProduct Engineer\tProduct Engineer\tnone\t\t81000000\t2023-04-01\t39\tfalse\tfalse\tmanager_private\tteam_private",
-  "actual_004\tProduct Engineer\tProduct Engineer\tnone\t\t91000000\t2025-06-01\t13\ttrue\tfalse\tmanager_private\tteam_private",
-  "actual_005\tProduct Engineer\tProduct Engineer\tnone\t\t88000000\t2024-11-01\t20\tfalse\ttrue\tmanager_private\tteam_private",
+  "73000000\t10\t61\tProduct Engineer\t\t아니오\t아니오",
+  "77000000\t9\t50\tProduct Engineer\t\t아니오\t아니오",
+  "81000000\t8\t39\tProduct Engineer\t\t아니오\t아니오",
+  "91000000\t7\t13\tSenior Product Engineer\t\t예\t아니오",
+  "88000000\t7.5\t20\tProduct Engineer\t\t아니오\t예",
 ];
 const supportedFacilitatorPaste = [facilitatorHeader, ...facilitatorRows].join("\n");
 const piiColumnPaste = [
-  "name\temail\tnotes\t" + facilitatorHeader,
+  "이름\t이메일\t메모\t" + facilitatorHeader,
   ...facilitatorRows.map((row, index) =>
     "Private " + index + "\tprivate" + index + "@example.com\tunapproved" + index + "@example.com\t" + row
   ),
@@ -33,24 +34,26 @@ const piiColumnPaste = [
 const rowPiiPaste = [
   facilitatorHeader,
   ...facilitatorRows.map((row, index) =>
-    index === 1 ? row.replace("Product Engineer\tnone", "person@example.com\tnone") : row
+    index === 1 ? row.replace("Product Engineer", "person@example.com") : row
   ),
 ].join("\n");
-const mixedRolePaste = [
+const invalidCareerPaste = [
   facilitatorHeader,
   ...facilitatorRows.map((row, index) =>
-    index === 1 ? row.replace("Product Engineer\tProduct Engineer", "Platform Engineer\tProduct Engineer") : row
+    index === 1 ? row.replace("77000000\t9\t50", "77000000\t경력 9년\t50") : row
   ),
 ].join("\n");
+const blankTemplateBuffer = readFileSync(
+  new URL("../src/features/facilitator-preparation/assets/HR-PaySim-Product-Engineer-input-template.xlsx", import.meta.url),
+);
 const sensitiveRequestTokens = collectSensitiveTokens(
   facilitatorHeader,
   ...facilitatorRows,
   piiColumnPaste,
   rowPiiPaste,
-  mixedRolePaste,
-  "timing_context\tdocumented",
-);
-const viewports = [
+  invalidCareerPaste,
+  "private-roster.xlsx\ttiming_context\tdocumented",
+);const viewports = [
   { name: "desktop-1280", width: 1280, height: 720 },
   { name: "desktop-1440", width: 1440, height: 900 },
   { name: "mobile-390", width: 390, height: 844 },
@@ -109,9 +112,11 @@ const result = {
   screen2GazeOrder: {},
   screen2FirstViewport: {},
   pointAlignment: {},
-  trendGuide: {},
+  careerCoverage: {},
+  trendEvidence: {},
   visualHierarchy: {},
   subjectSwitch: {},
+  gtmLevelVisualization: {},
   screen3SubjectSwitch: {},
   invalidation: {},
   copySucceeded: false,
@@ -123,6 +128,9 @@ const result = {
   facilitatorByViewport: {},
   columnConsentRequired: {},
   rowPiiBlocksAll: {},
+  preparationHierarchy: {},
+  fileInputReset: {},
+  sourceDataAbsent: {},
   rawTextareaCleared: {},
   facilitatedSampleLabelHidden: {},
   sessionUrlContainsRosterData: {},
@@ -175,37 +183,44 @@ async function inspectScreen2(viewport) {
   const taskText = await taskPrompt.innerText();
   for (const required of [
     "Product Engineer 6명",
-    "근속 64개월인 직원 A",
-    "근속 14개월인 직원 B",
+    "관련 경력 10년·회사 근속 64개월인 직원 A",
+    "관련 경력 7년·회사 근속 14개월인 직원 B",
     "2,700만원",
   ]) {
     if (!conclusionText.includes(required)) {
       throw new Error(`screen 2 title is missing: ${required}`);
     }
   }
-  for (const required of ["직원 6명의 기본 연봉과 근속 개월", "직원 A와 직원 B"]) {
+  for (const required of ["직원 6명의 기본 연봉을 관련 경력과 함께 비교", "직원 A와 직원 B"]) {
     if (!supportingText.includes(required)) {
       throw new Error(`screen 2 supporting copy is missing: ${required}`);
     }
   }
   const distributionText = await distribution.innerText();
   for (const required of [
-    "가로축 · 근속 개월",
+    "가로축 · 관련 경력년수",
     "세로축 · 기본 연봉",
-    "현재 6명의 관찰 추세",
-    "근속 개월과 기본 연봉이 함께 증가하는 방향",
-    "시장 평균이나 권장 연봉, 회사의 연봉 기준이 아닙니다",
+    "현재 자료의 관찰 추세 · 직원 6명",
+    "관련 경력이 늘어나는 쪽에서 기본 연봉이 낮아지는 방향입니다",
+    "이 자료만으로 원인이나 적정 연봉을 판단할 수는 없습니다",
   ]) {
     if (!distributionText.includes(required)) {
       throw new Error(`screen 2 distribution is missing: ${required}`);
     }
   }
-  for (const oldOrientation of ["가로축 · 기본 연봉", "세로축 · 근속 개월"]) {
-    if (distributionText.includes(oldOrientation)) {
-      throw new Error(`screen 2 distribution retains the old orientation: ${oldOrientation}`);
+  for (const removed of [
+    "가로축 · 근속 개월",
+    "세로축 · 관련 경력년수",
+    "파란 점선",
+    "시장 평균",
+    "통상 인상률",
+    "권장 연봉",
+    "승인된 회사 기준",
+  ]) {
+    if (distributionText.includes(removed)) {
+      throw new Error(`screen 2 distribution retains removed guidance: ${removed}`);
     }
-  }
-  const pointAlignment = await page.evaluate(() => {
+  }  const pointAlignment = await page.evaluate(() => {
     const plot = document.querySelector(".dr-salary-plot");
     if (!(plot instanceof HTMLElement)) {
       return { checked: 0, maximumDeltaPx: null, aligned: false };
@@ -244,20 +259,32 @@ async function inspectScreen2(viewport) {
       `screen 2 point alignment failed: ${pointAlignment.checked} points, ${pointAlignment.maximumDeltaPx}px`,
     );
   }
-  const trendGuide = {
+  const missingCareerCount = await page.locator(".dr-missing-career li").count();
+  const careerCoverage = {
+    pointCount: pointAlignment.checked,
+    missingCareerCount,
+    accountedEmployeeCount: pointAlignment.checked + missingCareerCount,
+  };
+  result.careerCoverage[viewport.name] = careerCoverage;
+  if (careerCoverage.accountedEmployeeCount !== 6) {
+    throw new Error(`screen 2 career coverage mismatch: ${JSON.stringify(careerCoverage)}`);
+  }
+  const trendEvidence = {
     observedLineCount: await page.locator(".dr-observed-trend-line").count(),
     directionGuideLineCount: await page.locator(".dr-direction-guide-line").count(),
-    nonClaimVisible: await page.locator(".dr-trend-non-claim").isVisible(),
+    observedLegendCount: await page.locator(".dr-trend-legend .is-observed").count(),
   };
-  result.trendGuide[viewport.name] = trendGuide;
-  if (trendGuide.observedLineCount !== 1 || trendGuide.directionGuideLineCount !== 1) {
-    throw new Error("screen 2 observed trend or direction guide line is missing");
+  result.trendEvidence[viewport.name] = trendEvidence;
+  if (
+    trendEvidence.observedLineCount !== 1
+    || trendEvidence.directionGuideLineCount !== 0
+    || trendEvidence.observedLegendCount !== 1
+  ) {
+    throw new Error(`screen 2 trend evidence mismatch: ${JSON.stringify(trendEvidence)}`);
   }
-  if (!trendGuide.nonClaimVisible) throw new Error("screen 2 direction-guide non-claim is hidden");
   const visualHierarchy = await page.evaluate(() => {
     const plot = document.querySelector(".dr-salary-plot");
     const observed = document.querySelector(".dr-observed-trend-line");
-    const guide = document.querySelector(".dr-direction-guide-line");
     const standardPoint = document.querySelector(
       ".dr-salary-person:not(.is-highlighted) .dr-salary-person-dot",
     );
@@ -266,20 +293,16 @@ async function inspectScreen2(viewport) {
     );
     const label = document.querySelector(".dr-salary-person-label");
     const observedKey = document.querySelector(".dr-trend-legend .is-observed");
-    const guideKey = document.querySelector(".dr-trend-legend .is-guide");
     if (!(plot instanceof HTMLElement)
       || !(observed instanceof SVGElement)
-      || !(guide instanceof SVGElement)
       || !(standardPoint instanceof HTMLElement)
       || !(highlightedPoint instanceof HTMLElement)
       || !(label instanceof HTMLElement)
-      || !(observedKey instanceof HTMLElement)
-      || !(guideKey instanceof HTMLElement)) {
+      || !(observedKey instanceof HTMLElement)) {
       return { complete: false };
     }
     const plotStyle = getComputedStyle(plot);
     const observedStyle = getComputedStyle(observed);
-    const guideStyle = getComputedStyle(guide);
     const standardRect = standardPoint.getBoundingClientRect();
     const highlightedRect = highlightedPoint.getBoundingClientRect();
     const labelStyle = getComputedStyle(label);
@@ -287,42 +310,27 @@ async function inspectScreen2(viewport) {
       complete: true,
       observedLineStartXPercent: Number.parseFloat(observed.getAttribute("x1") ?? "NaN"),
       observedLineEndXPercent: Number.parseFloat(observed.getAttribute("x2") ?? "NaN"),
-      guideLineStartXPercent: Number.parseFloat(guide.getAttribute("x1") ?? "NaN"),
-      guideLineEndXPercent: Number.parseFloat(guide.getAttribute("x2") ?? "NaN"),
       plotRadiusPx: Number.parseFloat(plotStyle.borderTopLeftRadius),
       observedStrokeWidth: Number.parseFloat(observedStyle.strokeWidth),
       observedStrokeLinecap: observedStyle.strokeLinecap,
-      guideStrokeWidth: Number.parseFloat(guideStyle.strokeWidth),
-      guideStrokeDasharray: guideStyle.strokeDasharray,
-      guideStrokeLinecap: guideStyle.strokeLinecap,
-      guideOpacity: Number.parseFloat(guideStyle.opacity),
       standardPointDiameter: standardRect.width,
       highlightedPointDiameter: highlightedRect.width,
       labelBackgroundColor: labelStyle.backgroundColor,
       observedKeyVisible: observedKey.getBoundingClientRect().width > 0,
-      guideKeyVisible: guideKey.getBoundingClientRect().width > 0,
     };
   });
   result.visualHierarchy[viewport.name] = visualHierarchy;
   if (!visualHierarchy.complete
-    || Math.abs(visualHierarchy.observedLineStartXPercent - 12) > 0.01
-    || Math.abs(visualHierarchy.observedLineEndXPercent - 88) > 0.01
-    || Math.abs(visualHierarchy.guideLineStartXPercent - 23.12) > 0.01
-    || Math.abs(visualHierarchy.guideLineEndXPercent - 76.88) > 0.01
+    || Math.abs(visualHierarchy.observedLineStartXPercent - 15) > 0.01
+    || Math.abs(visualHierarchy.observedLineEndXPercent - 85) > 0.01
     || visualHierarchy.plotRadiusPx !== 14
     || visualHierarchy.observedStrokeWidth !== 3
-    || visualHierarchy.guideStrokeWidth !== 2
     || visualHierarchy.observedStrokeLinecap !== "round"
-    || visualHierarchy.guideStrokeLinecap !== "round"
-    || !visualHierarchy.guideStrokeDasharray.includes("7")
-    || Math.abs(visualHierarchy.guideOpacity - 0.72) > 0.01
     || visualHierarchy.highlightedPointDiameter <= visualHierarchy.standardPointDiameter
     || visualHierarchy.labelBackgroundColor === "rgba(0, 0, 0, 0)"
-    || !visualHierarchy.observedKeyVisible
-    || !visualHierarchy.guideKeyVisible) {
+    || !visualHierarchy.observedKeyVisible) {
     throw new Error(`screen 2 visual hierarchy mismatch: ${JSON.stringify(visualHierarchy)}`);
-  }
-  for (const required of ["지금 확인해 봐야 할 기준", "이유를 하나 선택", "확인할 기록"]) {
+  }  for (const required of ["지금 확인해 봐야 할 기준", "이유를 하나 선택", "확인할 기록"]) {
     if (!taskText.includes(required)) {
       throw new Error(`screen 2 task prompt is missing: ${required}`);
     }
@@ -371,7 +379,10 @@ async function inspectScreen2(viewport) {
     document.activeElement?.getAttribute("data-conclusion-heading") === "true"
   );
   const gtmText = await page.locator('[data-screen="confirmed_pay_differences"]').innerText();
-  const switched = platformText.includes("1,800만원")
+  const gtmLevelVisualization = await page.locator(".dr-level-order").count() === 1;
+  result.gtmLevelVisualization[viewport.name] = gtmLevelVisualization;
+  const switched = gtmLevelVisualization
+    && platformText.includes("1,800만원")
     && platformText.includes("60개월")
     && platformText.includes("17개월")
     && gtmText.includes("400만원")
@@ -463,33 +474,68 @@ async function runFacilitatorQa(viewport) {
   const preparationUrl = origin + "/hr-paysim/session/new";
   const sessionUrl = origin + "/hr-paysim/session";
   const inspect = async (paste) => {
-    const textarea = facilitatorPage.locator("textarea");
+    const fallback = facilitatorPage.locator(".fp-paste-fallback");
+    if (!(await fallback.evaluate((element) => element.open))) {
+      await fallback.locator("summary").click();
+    }
+    const textarea = fallback.locator("textarea");
     await textarea.fill(paste);
-    await facilitatorPage.locator(".fp-input-actions .fp-primary").click();
+    await fallback.locator(".fp-input-actions .fp-primary").click();
   };
 
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
   const preparationCopy = await facilitatorPage.locator("body").innerText();
-  for (const required of [
-    "이번 세션에 사용할 익명 자료를 먼저 확인합니다",
-    "첫 행에 열 이름이 포함된 표",
-    "브라우저에서만 검사",
-    "row_id",
-    "role_group",
-    "base_salary_krw",
-  ]) {
-    if (!preparationCopy.includes(required)) {
-      throw new Error(`${viewport.name} preparation copy is missing: ${required}`);
-    }
+  const preparationOrder = [
+    "필수 항목",
+    "작성 예시",
+    "1. Excel 입력 양식 내려받기",
+    "2. 작성한 Excel 파일 불러오기",
+    "파일을 사용하지 않고 표 붙여넣기",
+  ].map((copy) => preparationCopy.indexOf(copy));
+  const pasteClosed = !(await facilitatorPage.locator(".fp-paste-fallback").evaluate((element) => element.open));
+  const downloadHref = await facilitatorPage.locator(".fp-secondary-action").getAttribute("href");
+  const fileAccept = await facilitatorPage.locator('input[type="file"]').getAttribute("accept");
+  const preparationHierarchy = preparationOrder.every((position) => position >= 0)
+    && preparationOrder.every((position, index) => index === 0 || position > preparationOrder[index - 1])
+    && pasteClosed
+    && downloadHref?.includes(".xlsx")
+    && fileAccept === ".xlsx"
+    && preparationCopy.includes("관련 경력년수")
+    && preparationCopy.includes("형식만 보여주는 합성 자료")
+    && !/row_id|role_group|base_salary_krw/.test(preparationCopy);
+  result.preparationHierarchy[viewport.name] = preparationHierarchy;
+  if (!preparationHierarchy) {
+    throw new Error(`${viewport.name} preparation hierarchy failed: ${JSON.stringify({ preparationOrder, pasteClosed, downloadHref, fileAccept })}`);
   }
+
+  const fileInput = facilitatorPage.locator('input[type="file"]');
+  await fileInput.setInputFiles({
+    name: "private-roster.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: blankTemplateBuffer,
+  });
+  await facilitatorPage.locator('[data-preparation-blocked="true"]').waitFor();
+  const fileInputReset = (await fileInput.inputValue()) === "";
+  const fileBody = await facilitatorPage.locator("body").innerText();
+  const sourceDataAbsent = fileInputReset
+    && !fileBody.includes("private-roster.xlsx")
+    && !/file_row_\d+/.test(fileBody)
+    && !facilitatorPage.url().includes("private-roster");
+  result.fileInputReset[viewport.name] = fileInputReset;
+  result.sourceDataAbsent[viewport.name] = sourceDataAbsent;
+  if (!fileInputReset || !sourceDataAbsent) {
+    throw new Error(`${viewport.name} file source did not clear safely`);
+  }
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
   await inspect(piiColumnPaste);
   const consentVisible = await facilitatorPage.locator('[data-column-consent-required="true"]').isVisible();
   const consentText = await facilitatorPage.locator('[data-column-consent-required="true"]').innerText();
   const consentBody = await facilitatorPage.locator("body").innerText();
   const columnConsentRequired = consentVisible
-    && consentText.includes("name")
-    && consentText.includes("email")
-    && consentText.includes("notes")
+    && consentText.includes("이름")
+    && consentText.includes("이메일")
+    && consentText.includes("메모")
     && !consentBody.includes("Private 0")
     && !consentBody.includes("private0@example.com")
     && !consentBody.includes("unapproved0@example.com");
@@ -504,18 +550,19 @@ async function runFacilitatorQa(viewport) {
   const rowPiiBlocksAll = blockedVisible
     && await facilitatorPage.locator('[data-start-facilitated-session="true"]').count() === 0
     && !rowPiiBody.includes("person@example.com")
-    && !rowPiiBody.includes("actual_002");
+    && !rowPiiBody.includes("file_row_002");
   result.rowPiiBlocksAll[viewport.name] = rowPiiBlocksAll;
   if (!rowPiiBlocksAll || !rowPiiRawCleared) {
     throw new Error(viewport.name + " row PII did not block and clear all");
   }
 
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
-  await inspect(mixedRolePaste);
-  const mixedRoleText = await facilitatorPage.locator('[data-preparation-blocked="true"]').innerText();
-  if (!mixedRoleText.includes("\uC785\uB825 3\uD589")
+  await inspect(invalidCareerPaste);
+  const invalidCareerText = await facilitatorPage.locator('[data-preparation-blocked="true"]').innerText();
+  if (!invalidCareerText.includes("입력 3행")
+    || !invalidCareerText.includes("관련 경력년수")
     || await facilitatorPage.locator('[data-start-facilitated-session="true"]').count() !== 0) {
-    throw new Error(viewport.name + " mixed role did not fail closed");
+    throw new Error(viewport.name + " invalid career row did not fail closed");
   }
 
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
@@ -550,7 +597,7 @@ async function runFacilitatorQa(viewport) {
 
   await facilitatorPage.locator('[data-start-facilitated-session="true"]').click();
   await facilitatorPage.locator('[data-decision-room="true"]').waitFor();
-  const rosterDataInUrl = /actual_|73000000|manager_private|team_private/.test(facilitatorPage.url());
+  const rosterDataInUrl = /73000000|private-roster|file_row|Product%20Engineer/.test(facilitatorPage.url());
   result.sessionUrlContainsRosterData[viewport.name] = rosterDataInUrl;
   if (new URL(facilitatorPage.url()).pathname !== "/hr-paysim/session" || rosterDataInUrl) {
     throw new Error(viewport.name + " session URL leaked roster data");
@@ -623,6 +670,9 @@ async function runFacilitatorQa(viewport) {
   result.facilitatorByViewport[viewport.name] = {
     columnConsentRequired,
     rowPiiBlocksAll,
+    preparationHierarchy,
+    fileInputReset,
+    sourceDataAbsent,
     rawTextareaCleared: result.rawTextareaCleared[viewport.name],
     facilitatedSampleLabelHidden: sampleLabelHidden,
     sessionUrlContainsRosterData: rosterDataInUrl,

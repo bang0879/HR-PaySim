@@ -29,6 +29,8 @@ This design supersedes the following runtime and user-experience contracts:
 
 Existing prototypes remain in the repository as design references only. They are not production architecture.
 
+The approved `2026-07-14-hr-paysim-career-aware-comparison-design.md` supplements this source of truth and supersedes tenure-only comparison eligibility, the Screen 2 salary-tenure plot, and facilitator input assumptions that omit relevant career experience.
+
 ## Product Definition
 
 > HR PaySim helps a founder examine pay differences inside a de-identified employee roster, explain why those differences exist, see what would happen if the same hiring or raise practice were repeated, and record the company rules that should guide the next similar decision.
@@ -69,10 +71,10 @@ This step happens before the founder-facing session and is not counted in the fo
 
 The facilitator:
 
-1. Pastes a de-identified roster.
+1. Imports the guided local Excel template or uses the subordinate de-identified table-paste fallback.
 2. Runs header- and value-level personal-information checks.
 3. Reviews the accepted fields and blocked rows.
-4. Confirms the role, salary, tenure, level, and documented-exception inputs used by the calculation.
+4. Confirms the role, salary, relevant career, company tenure, level, and documented-exception inputs used by the calculation.
 5. Starts the founder session.
 
 When parsing succeeds, the raw pasted string is cleared immediately. Founder-facing screens use `직원 A`, `직원 B`, and similar session-local labels. System IDs such as `row_001` never render to the founder.
@@ -191,7 +193,7 @@ Additional transition rules:
 ## Internal Data Flow
 
 ```text
-Roster paste
+Roster file import or paste
   -> privacy scan and normalization
   -> NormalizedRosterRow[]
   -> DetectorFinding[]
@@ -218,6 +220,8 @@ The deterministic engine retains four detector types:
 - `level_fiction_band_overlap`
 
 Raw findings are allowed to be non-orthogonal. They are internal evidence lenses, not founder-facing cards.
+
+Tenure-based `pay_inversion` and `loyalty_tax` findings evaluate role, complete shared level evidence when available, relevant career, and company tenure through one comparable-pair predicate. The existing formal-level early return is removed; partial level evidence fails closed. Exception and counteroffer flags remain explanation evidence and never delete raw pairs. Company tenure alone never establishes that two salaries should be ordered.
 
 ### Explicit Subsumption Rules
 
@@ -473,8 +477,8 @@ The following terms are forbidden in founder-facing UI unless they appear inside
 - `finding` -> `이번 자료에서 확인된 연봉 차이`
 - `relationship` -> `직원 A와 직원 B의 구체적인 연봉 비교`
 - `shadow_band` -> `같은 역할인데 연봉이 두 그룹으로 나뉜 상태`
-- `pay_inversion` -> `오래 근무한 직원이 최근 입사한 직원보다 낮은 연봉을 받는 사례`
-- `loyalty_tax` -> `오래 근무한 직원들이 최근 입사자보다 낮은 연봉을 받는 사례가 반복되는 상태`
+- `pay_inversion` -> `같은 역할에서 관련 경력과 확인 가능한 직무 수준이 낮지 않은 장기근속 직원이 최근 입사자보다 낮은 연봉을 받는 사례`
+- `loyalty_tax` -> `비교 가능한 관련 경력과 직무 수준의 장기근속 직원들이 최근 입사자보다 낮은 연봉을 받는 사례가 반복되는 상태`
 - `replay` -> `같은 채용 또는 인상 방식을 다음에도 적용했을 때 생기는 결과`
 - `memo` -> `금번 진단 결과와 대표님이 결정한 사항`
 
@@ -621,6 +625,9 @@ No detector may import founder report rendering. No report renderer may infer a 
 - Duplicate visible headline pairs equal zero.
 - Designer remains a clean group.
 - `unanswered`, `founder_cannot_explain`, and `insufficient_data` remain distinct.
+- Every headline and supporting pair in a tenure-based finding includes relevant career evidence and satisfies the approved role, materiality, tenure, and active ordered-level rules.
+- Screen 2 relationship subjects map relevant career to the horizontal axis, keep company tenure as secondary evidence, and contain no fixed direction guide; GTM retains its ordered-level visualization.
+- Every selected-role employee appears either as a career-salary point or in `관련 경력 확인 필요`; no missing-career row receives a fabricated coordinate.
 - A vague explanation cannot trigger invented repeat parameters.
 - Headline gap, pair repair floor, and system repair floor have distinct fields and tests.
 - System repair floor does not double-count overlapping ordinal repairs.

@@ -1,7 +1,10 @@
 import type { NormalizedRosterRow } from "../domain.ts";
 import type { ReviewSubjectSelection } from "../themes/selectReviewSubjects.ts";
 import type { StructuralTheme } from "../themes/types.ts";
-import type { RosterParseIssue } from "../rosterParser.ts";
+import type {
+  KoreanRosterAdapterIssueCode,
+  KoreanRosterField,
+} from "./koreanRosterAdapter.ts";
 
 export type PreparationStatus =
   | "empty"
@@ -10,19 +13,26 @@ export type PreparationStatus =
   | "ready_for_confirmation";
 
 export type PreparationIssueCode =
-  | RosterParseIssue["code"]
+  | KoreanRosterAdapterIssueCode
+  | "UNSUPPORTED_FILE_TYPE"
+  | "FILE_TOO_LARGE"
+  | "EMPTY_WORKBOOK"
+  | "AMBIGUOUS_WORKBOOK"
+  | "UNREADABLE_WORKBOOK"
   | "UNSUPPORTED_ROLE"
   | "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON";
 
 export interface SafePreparationIssue {
   sourceLineNumber?: number;
   code: PreparationIssueCode;
+  field?: KoreanRosterField;
 }
 
 export interface PreparationPreviewRow {
   employeeLabel: string;
   roleGroup: "Product Engineer";
   salaryKRW: number;
+  relevantExperienceMonths?: number;
   tenureMonths?: number;
   title?: string;
   levelLabel?: string;

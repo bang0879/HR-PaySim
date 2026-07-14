@@ -29,11 +29,11 @@ test("derives the Screen 2 title and action from the Product Engineer headline g
 
   assert.equal(
     model.evidence.conclusion,
-    "Product Engineer 6명 중 근속 64개월인 직원 A와 근속 14개월인 직원 B의 연봉은 2,700만원 차이납니다.",
+    "Product Engineer 6명 중 관련 경력 10년·회사 근속 64개월인 직원 A와 관련 경력 7년·회사 근속 14개월인 직원 B의 기본 연봉은 2,700만원 차이 납니다.",
   );
   assert.equal(
     model.evidence.supportingCopy,
-    "직원 6명의 기본 연봉과 근속 개월을 함께 비교했습니다. 현재 자료에 기록된 역할·근속 기간·채용 예외 기록만으로는 직원 A와 직원 B의 차이를 일관되게 설명할 기준을 확인하기 어렵습니다.",
+    "직원 6명의 기본 연봉을 관련 경력과 함께 비교하고, 회사 근속과 채용 예외 기록을 보조 근거로 확인했습니다. 현재 자료만으로는 직원 A와 직원 B의 차이를 일관되게 설명할 회사 기준이나 기록을 확인하기 어렵습니다.",
   );
   assert.equal(
     model.evidence.actionPrompt,
@@ -53,22 +53,22 @@ test("derives the Screen 2 title and action from the Product Engineer headline g
 
   assert.equal(
     createDecisionRoomViewModel(changed).evidence.conclusion,
-    "Product Engineer 6명 중 근속 64개월인 직원 A와 근속 14개월인 직원 B의 연봉은 500만원 차이납니다.",
+    "Product Engineer 6명 중 관련 경력 10년·회사 근속 64개월인 직원 A와 관련 경력 7년·회사 근속 14개월인 직원 B의 기본 연봉은 500만원 차이 납니다.",
   );
 });
 
 test("turns the Product Engineer evidence into anonymous founder-facing comparisons", () => {
   const model = createDecisionRoomViewModel(createSyntheticDemoSession());
 
-  assert.match(model.evidence.supportingCopy, /직원 6명의 기본 연봉과 근속 개월/);
+  assert.match(model.evidence.supportingCopy, /직원 6명의 기본 연봉을 관련 경력과 함께 비교/);
   assert.match(model.evidence.supportingCopy, /직원 A와 직원 B/);
   assert.match(
     model.evidence.supportingCopy,
-    /직원 A와 직원 B의 차이.*일관되게 설명할 기준.*확인하기 어렵습니다/,
+    /직원 A와 직원 B의 차이.*회사 기준이나 기록.*확인하기 어렵습니다/,
   );
   assert.equal(
     model.evidence.distributionHeading,
-    "Product Engineer 6명의 기본 연봉과 근속 개월을 함께 표시했습니다.",
+    "Product Engineer 6명의 기본 연봉과 관련 경력을 함께 표시했습니다.",
   );
   assert.deepEqual(model.evidence.highlightedPair, {
     lowerPaidLabel: "직원 A",
@@ -76,11 +76,34 @@ test("turns the Product Engineer evidence into anonymous founder-facing comparis
     lowerPaidSalary: "6,800만원",
     higherPaidSalary: "9,500만원",
     difference: "2,700만원",
-    lowerPaidTenure: "64개월 근속",
-    higherPaidTenure: "14개월 근속",
+    lowerPaidRelevantExperience: "관련 경력 10년",
+    higherPaidRelevantExperience: "관련 경력 7년",
+    lowerPaidTenure: "회사 근속 64개월",
+    higherPaidTenure: "회사 근속 14개월",
     lowerPaidException: "별도 채용 예외 기록 없음",
     higherPaidException: "채용 예외 기록 있음",
   });
+  assert.deepEqual(
+    model.evidence.evidenceRows.map(({ employeeLabel, level, relevantExperience, tenure }) => ({
+      employeeLabel,
+      level,
+      relevantExperience,
+      tenure,
+    })),
+    [
+      { employeeLabel: "직원 A", level: undefined, relevantExperience: "관련 경력 10년", tenure: "회사 근속 64개월" },
+      { employeeLabel: "직원 B", level: undefined, relevantExperience: "관련 경력 7년", tenure: "회사 근속 14개월" },
+    ],
+  );
+  const ranked = createSyntheticDemoSession();
+  for (const row of ranked.rows.filter((item) => item.roleGroup === "Product Engineer")) {
+    row.levelLabel = "PE2";
+    row.levelRank = 2;
+  }
+  assert.deepEqual(
+    createDecisionRoomViewModel(ranked).evidence.evidenceRows.map((row) => row.level),
+    ["PE2", "PE2"],
+  );
   assert.ok(model.evidence.supportingObservations.every((item) => /만원/.test(item)));
   assert.deepEqual(
     model.evidence.distribution.map((item) => item.employeeLabel),
@@ -157,6 +180,10 @@ test("screen components render model-owned evidence and centralized result feedb
     new URL("../../src/features/confirmed-pay-differences/ConfirmedPayDifferencesScreen.tsx", import.meta.url),
     "utf8",
   );
+  const evidenceTable = readFileSync(
+    new URL("../../src/features/confirmed-pay-differences/EvidenceTable.tsx", import.meta.url),
+    "utf8",
+  );
   const distribution = readFileSync(
     new URL("../../src/features/confirmed-pay-differences/SalaryDistribution.tsx", import.meta.url),
     "utf8",
@@ -188,24 +215,14 @@ test("screen components render model-owned evidence and centralized result feedb
   assert.match(evidence, /dr-screen-task/);
   assert.match(distribution, /formatObservedTrendLabel/);
   assert.match(distribution, /formatObservedTrendSummary/);
-  assert.match(distribution, /screen\.evidence\.trend\.guide_non_claim/);
   assert.match(distribution, /dr-observed-trend-line/);
-  assert.match(distribution, /dr-direction-guide-line/);
-  assert.match(
-    distribution,
-    /const observedTrendLine = plot\.observedTrend\s*\?\s*insetPlotLine\(plot\.observedTrend, 0\.12\)/s,
-  );
-  assert.match(
-    distribution,
-    /const directionGuideLine = insetPlotLine\(plot\.directionGuide, 0\.18\)/,
-  );
+  assert.match(distribution, /const observedTrendLine = plot\.observedTrend/);
   assert.match(distribution, /x1=\{observedTrendLine\.start\.xPercent\}/);
-  assert.match(distribution, /x1=\{directionGuideLine\.start\.xPercent\}/);
-  assert.match(distribution, /가로축 · 근속 개월/);
+  assert.match(distribution, /가로축 · 관련 경력년수/);
   assert.match(distribution, /세로축 · 기본 연봉/);
-  assert.doesNotMatch(distribution, /시장 평균이나 권장 연봉/);
-  assert.match(distribution, /className="is-observed"/);
-  assert.match(distribution, /className="is-guide"/);
+  assert.match(distribution, /실제 직원/);
+  assert.match(distribution, /이번 비교/);
+  assert.doesNotMatch(distribution, /directionGuide|dr-direction-guide-line|is-guide/);
 
   assert.match(
     decisionRoomStyles,
@@ -215,10 +232,8 @@ test("screen components render model-owned evidence and centralized result feedb
     decisionRoomStyles,
     /\.dr-observed-trend-line\s*\{[^}]*stroke:\s*var\(--dr-ink\)[^}]*stroke-width:\s*3[^}]*stroke-linecap:\s*round/s,
   );
-  assert.match(
-    decisionRoomStyles,
-    /\.dr-direction-guide-line\s*\{[^}]*stroke:\s*var\(--dr-blue\)[^}]*stroke-width:\s*2[^}]*stroke-dasharray:\s*7 6[^}]*stroke-linecap:\s*round[^}]*opacity:\s*0\.72/s,
-  );
+  assert.doesNotMatch(decisionRoomStyles, /\.dr-direction-guide-line/);
+
   assert.match(
     decisionRoomStyles,
     /\.dr-salary-person-label\s*\{[^}]*padding:\s*5px 7px[^}]*border:\s*1px solid var\(--dr-line\)[^}]*border-radius:\s*9px[^}]*background:\s*rgba\(255, 255, 255, 0\.94\)/s,
@@ -235,11 +250,13 @@ test("screen components render model-owned evidence and centralized result feedb
   assert.match(decisionRoomQa, /observedStrokeWidth/);
   assert.match(decisionRoomQa, /highlightedPointDiameter/);
   assert.match(decisionRoomQa, /standardPointDiameter/);
-  assert.match(decisionRoomQa, /guideStrokeDasharray/);
+  assert.match(decisionRoomQa, /careerCoverage/);
+  assert.match(decisionRoomQa, /missingCareerCount/);
+  assert.match(decisionRoomQa, /directionGuideLineCount/);
+  assert.match(decisionRoomQa, /gtmLevelVisualization/);
   assert.match(decisionRoomQa, /observedLineStartXPercent/);
   assert.match(decisionRoomQa, /observedLineEndXPercent/);
-  assert.match(decisionRoomQa, /guideLineStartXPercent/);
-  assert.match(decisionRoomQa, /guideLineEndXPercent/);
+  assert.doesNotMatch(decisionRoomQa, /guideStrokeDasharray|guideLineStartXPercent|guideLineEndXPercent/);
 
 
   const evidenceOrder = [
@@ -257,6 +274,9 @@ test("screen components render model-owned evidence and centralized result feedb
   ));
   assert.match(evidence, /lowerPaidTenure/);
   assert.match(evidence, /higherPaidException/);
+  assert.match(evidenceTable, />레벨</);
+  assert.match(evidenceTable, /hasLevel/);
+  assert.match(evidenceTable, /row\.level/);
   assert.doesNotMatch(evidence, />64개월 근속<|>14개월 근속/);
   assert.match(rule, /condition\.observedContext/);
   assert.match(rule, /condition\.approvalStatus/);

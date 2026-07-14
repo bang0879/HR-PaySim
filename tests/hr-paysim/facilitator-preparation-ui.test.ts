@@ -36,6 +36,31 @@ test("the preparation component owns raw paste only until safe normalization", (
   assert.doesNotMatch(provider + sessionTypes, /rawPaste|confirmPiiColumnStripping/);
 });
 
+test("the preparation screen leads with one guided Excel workflow", () => {
+  const requiredFields = preparation.indexOf("기본연봉(원)");
+  const example = preparation.indexOf("작성 예시");
+  const download = preparation.indexOf('FOUNDER_COPY["preparation.download.action"]');
+  const importFile = preparation.indexOf('FOUNDER_COPY["preparation.file.action"]');
+  assert.ok(requiredFields >= 0);
+  assert.ok(example > requiredFields);
+  assert.ok(download > example);
+  assert.ok(importFile > download);
+  assert.match(preparation, /관련 경력년수/);
+  assert.match(preparation, /FOUNDER_COPY\["preparation\.guide\.career_definition"\]/);
+  assert.match(preparation, /합성/);
+  assert.match(preparation, /\.xlsx · 최대 5 MB/);
+  assert.match(preparation, /accept="\.xlsx"/);
+  assert.match(preparation, /readProductEngineerWorkbook/);
+  assert.match(preparation, /createWorkbookReadCoordinator/);
+  assert.match(preparation, /requestConsent/);
+  assert.match(preparation, /disabled={isFileReading}/);
+  assert.doesNotMatch(preparation, /confirmedFileHeaders|setConfirmedFileHeaders|fileConsentResolverRef/);
+  assert.match(preparation, /finally\s*\{[\s\S]*input\.value\s*=\s*""/);
+  assert.match(preparation, /<details/);
+  assert.match(preparation, /FOUNDER_COPY\["preparation\.paste\.heading"\]/);
+  assert.doesNotMatch(preparation, /row_id|role_group|base_salary_krw/);
+  assert.doesNotMatch(preparation, /file\.name|selected\.sheet/);
+});
 test("one provider shell owns start, unload warning, direct-load fallback, and explicit end", () => {
   assert.match(shell, /type: "START_SESSION"/);
   assert.match(shell, /mode: "facilitated"/);
@@ -56,6 +81,9 @@ test("browser QA owns facilitator privacy and lifecycle evidence", () => {
   for (const measurement of [
     "columnConsentRequired",
     "rowPiiBlocksAll",
+    "preparationHierarchy",
+    "fileInputReset",
+    "sourceDataAbsent",
     "rawTextareaCleared",
     "facilitatedSampleLabelHidden",
     "sessionUrlContainsRosterData",

@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import test from "node:test";
 import { parseRosterPaste } from "../../src/lib/hr-paysim/rosterParser.ts";
 import { detectStructuralFindings } from "../../src/lib/hr-paysim/structuralFindings.ts";
@@ -103,4 +103,15 @@ test("parseRosterPaste output can feed the structural findings detector", () => 
 
   assert.equal(parsed.rows.length, 6);
   assert.ok(findings.some((finding) => finding.type === "shadow_band" && finding.roleGroup === "Product Engineer"));
+});
+test("parseRosterPaste normalizes relevant experience months as canonical evidence", () => {
+  const result = parseRosterPaste([
+    "rowId\troleGroup\tbaseSalaryKRW\trelevantExperienceMonths\ttenureMonths",
+    "row_001\tProduct Engineer\t68000000\t96\t64",
+  ].join("\n"));
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0]?.relevantExperienceMonths, 96);
+  assert.equal(result.rows[0]?.tenureMonths, 64);
 });

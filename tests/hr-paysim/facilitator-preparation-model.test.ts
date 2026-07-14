@@ -5,15 +5,16 @@ import {
   prepareProductEngineerRoster,
 } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
 import { createProductEngineerSessionDraft } from "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts";
+import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 
-const header = "rowId\troleGroup\ttitle\tlevelLabel\tlevelRank\tbaseSalaryKRW\tstartDate\ttenureMonths\texceptionFlag\tcounterOfferFlag\tmanagerLabel\tteamLabel";
+const header = KOREAN_ROSTER_HEADERS.join("\t");
 const productRows = [
-  "row_001\tProduct Engineer\tProduct Engineer\tnone\t\t68000000\t2021-11-01\t56\tfalse\tfalse\tmanager_a\tteam_a",
-  "row_002\tProduct Engineer\tProduct Engineer\tnone\t\t72000000\t2022-03-01\t52\tfalse\tfalse\tmanager_a\tteam_a",
-  "row_003\tProduct Engineer\tProduct Engineer\tnone\t\t76000000\t2022-08-01\t47\tfalse\tfalse\tmanager_a\tteam_a",
-  "row_004\tProduct Engineer\tProduct Engineer\tnone\t\t95000000\t2025-04-01\t15\ttrue\tfalse\tmanager_a\tteam_a",
-  "row_005\tProduct Engineer\tProduct Engineer\tnone\t\t92000000\t2024-10-01\t21\tfalse\ttrue\tmanager_a\tteam_a",
-  "row_006\tProduct Engineer\tProduct Engineer\tnone\t\t88000000\t2024-03-01\t28\tfalse\tfalse\tmanager_a\tteam_a",
+  "68000000\t10\t56\tProduct Engineer\t\t아니오\t아니오",
+  "72000000\t9\t52\tProduct Engineer\t\t아니오\t아니오",
+  "76000000\t8\t47\tProduct Engineer\t\t아니오\t아니오",
+  "95000000\t7\t15\tSenior Product Engineer\t\t예\t아니오",
+  "92000000\t6.7\t21\tProduct Engineer\t\t아니오\t예",
+  "88000000\t6.3\t28\tProduct Engineer\t\t아니오\t아니오",
 ];
 
 const cleanPaste = [header, ...productRows].join("\n");
@@ -23,12 +24,14 @@ test("empty input returns a non-startable empty result", () => {
 });
 
 test("prohibited columns require current-paste consent before rows are parsed", () => {
-  const piiHeader = `name\temail\t${header}`;
-  const piiRows = productRows.map((row, index) => `Employee ${index + 1}\temployee${index + 1}@example.com\t${row}`);
+  const piiHeader = ["이름", "이메일", ...KOREAN_ROSTER_HEADERS].join("\t");
+  const piiRows = productRows.map((row, index) =>
+    ["직원 " + (index + 1), "employee" + (index + 1) + "@example.com", row].join("\t")
+  );
   const blocked = prepareProductEngineerRoster([piiHeader, ...piiRows].join("\n"));
 
   assert.equal(blocked.status, "needs_column_consent");
-  assert.deepEqual(blocked.prohibitedColumnHeaders, ["name", "email"]);
+  assert.deepEqual(blocked.prohibitedColumnHeaders, ["이름", "이메일"]);
   assert.deepEqual(blocked.rows, []);
   assert.equal(blocked.shouldClearRaw, false);
 
@@ -37,13 +40,13 @@ test("prohibited columns require current-paste consent before rows are parsed", 
   });
   assert.equal(stripped.status, "ready_for_confirmation");
   assert.equal(stripped.rows.length, 6);
-  assert.equal(JSON.stringify(stripped).includes("Employee 1"), false);
+  assert.equal(JSON.stringify(stripped).includes("직원 1"), false);
   assert.equal(JSON.stringify(stripped).includes("employee1@example.com"), false);
 });
 
 test("one row-level PII value blocks every row and requests raw clearing", () => {
-  const piiRow = productRows[1]!.replace("Product Engineer\tnone", "person@example.com\tnone");
-  const result = prepareProductEngineerRoster([header, productRows[0]!, piiRow].join("\n"));
+  const piiRow = productRows[1]!.replace("Product Engineer", "person@example.com");
+  const result = prepareProductEngineerRoster([header, productRows[0]!, piiRow, ...productRows.slice(2)].join("\n"));
 
   assert.equal(result.status, "blocked");
   assert.deepEqual(result.rows, []);
@@ -51,26 +54,37 @@ test("one row-level PII value blocks every row and requests raw clearing", () =>
   assert.equal(result.shouldClearRaw, true);
   assert.deepEqual(result.issues, [{ sourceLineNumber: 3, code: "PII_VALUE" }]);
   assert.equal(JSON.stringify(result).includes("person@example.com"), false);
-  assert.equal(JSON.stringify(result).includes("row_002"), false);
+  assert.equal(JSON.stringify(result).includes("file_row_002"), false);
 });
 
-test("one non-Product Engineer row blocks the whole pilot input", () => {
-  const mixedRow = productRows[1]!.replaceAll("Product Engineer", "Platform Engineer");
-  const result = prepareProductEngineerRoster([header, productRows[0]!, mixedRow].join("\n"));
+test("the guided path generates internal IDs and fixes the role", () => {
+  const result = prepareProductEngineerRoster(cleanPaste);
 
-  assert.equal(result.status, "blocked");
-  assert.deepEqual(result.rows, []);
-  assert.deepEqual(result.issues, [{ sourceLineNumber: 3, code: "UNSUPPORTED_ROLE" }]);
-  assert.equal(result.shouldClearRaw, false);
+  assert.equal(result.status, "ready_for_confirmation");
+  assert.deepEqual(result.rows.map((row) => row.rowId), [
+    "file_row_001",
+    "file_row_002",
+    "file_row_003",
+    "file_row_004",
+    "file_row_005",
+    "file_row_006",
+  ]);
+  assert.ok(result.rows.every((row) => row.roleGroup === "Product Engineer"));
+  assert.equal(cleanPaste.includes("rowId"), false);
+  assert.equal(cleanPaste.includes("roleGroup"), false);
 });
 
 test("one malformed required row blocks otherwise valid rows", () => {
   const missingSalary = productRows[1]!.replace("72000000", "");
-  const result = prepareProductEngineerRoster([header, productRows[0]!, missingSalary].join("\n"));
+  const result = prepareProductEngineerRoster([header, productRows[0]!, missingSalary, ...productRows.slice(2)].join("\n"));
 
   assert.equal(result.status, "blocked");
   assert.deepEqual(result.rows, []);
-  assert.deepEqual(result.issues, [{ sourceLineNumber: 3, code: "MISSING_REQUIRED_FIELD" }]);
+  assert.deepEqual(result.issues, [{
+    sourceLineNumber: 3,
+    code: "MISSING_REQUIRED_FIELD",
+    field: "salary",
+  }]);
 });
 
 test("clean Product Engineer input reaches normalized confirmation without raw text", () => {
@@ -79,8 +93,9 @@ test("clean Product Engineer input reaches normalized confirmation without raw t
   assert.equal(result.status, "ready_for_confirmation");
   assert.equal(result.rows.length, 6);
   assert.equal(result.draft?.selection.selected[0]?.roleGroup, "Product Engineer");
-  assert.equal(result.previewRows.find((row) => row.salaryKRW === 68_000_000)?.employeeLabel, "\uC9C1\uC6D0 A");
-  assert.equal(result.previewRows.find((row) => row.salaryKRW === 95_000_000)?.employeeLabel, "\uC9C1\uC6D0 B");
+  assert.equal(result.previewRows.find((row) => row.salaryKRW === 68_000_000)?.employeeLabel, "직원 A");
+  assert.equal(result.previewRows.find((row) => row.salaryKRW === 95_000_000)?.employeeLabel, "직원 B");
+  assert.equal(result.previewRows[0]?.relevantExperienceMonths, 120);
   assert.equal(result.shouldClearRaw, true);
   assert.equal(JSON.stringify(result).includes(cleanPaste), false);
 });
@@ -99,21 +114,27 @@ test("supported Product Engineer rows create one owned session draft", () => {
   assert.equal(result.draft.rows[0]!.baseSalaryKRW, originalSalary);
 });
 
-test("rows without a supported comparison cannot start a session", () => {
-  const sparsePaste = [header, productRows[0]!, productRows[1]!].join("\n");
-  const prepared = prepareProductEngineerRoster(sparsePaste);
+test("fewer than four rows and rows without a supported comparison fail differently", () => {
+  const tooFew = prepareProductEngineerRoster([header, ...productRows.slice(0, 3)].join("\n"));
+  assert.equal(tooFew.status, "blocked");
+  assert.deepEqual(tooFew.issues, [{ code: "TOO_FEW_ROWS" }]);
 
-  assert.equal(prepared.status, "blocked");
-  assert.deepEqual(prepared.rows, []);
-  assert.deepEqual(prepared.issues, [{ code: "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON" }]);
+  const closeSalaryRows = productRows.slice(0, 4).map((row, index) => {
+    const cells = row.split("\t");
+    cells[0] = String(68_000_000 + index * 1_000_000);
+    return cells.join("\t");
+  });
+  const unsupported = prepareProductEngineerRoster([header, ...closeSalaryRows].join("\n"));
+  assert.equal(unsupported.status, "blocked");
+  assert.deepEqual(unsupported.issues, [{ code: "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON" }]);
 });
 
-test("a headline pair without tenure is rejected explicitly", () => {
+test("a level headline pair without tenure is rejected explicitly", () => {
   const rows = prepareProductEngineerRoster(cleanPaste).rows.map((row) => ({ ...row }));
-  const lowerRank = rows.find((row) => row.rowId === "row_004")!;
+  const lowerRank = rows.find((row) => row.rowId === "file_row_004")!;
   lowerRank.levelLabel = "L1";
   lowerRank.levelRank = 1;
-  const higherRank = rows.find((row) => row.rowId === "row_001")!;
+  const higherRank = rows.find((row) => row.rowId === "file_row_001")!;
   higherRank.levelLabel = "L2";
   higherRank.levelRank = 2;
   delete higherRank.tenureMonths;

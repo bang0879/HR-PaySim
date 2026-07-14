@@ -1,6 +1,10 @@
-import { parseRosterPaste } from "../rosterParser.ts";
+import type { NormalizedRosterRow } from "../domain.ts";
 import { createEmployeeLabels } from "../presentation/createEmployeeLabels.ts";
 import { createProductEngineerSessionDraft } from "./createProductEngineerSessionDraft.ts";
+import {
+  adaptKoreanRosterTable,
+  type KoreanRosterAdapterOptions,
+} from "./koreanRosterAdapter.ts";
 import type {
   PreparationPreviewRow,
   ProductEngineerPreparationResult,
@@ -20,48 +24,49 @@ export function createEmptyPreparationResult(): ProductEngineerPreparationResult
 
 export function prepareProductEngineerRoster(
   rawText: string,
-  options: { confirmPiiColumnStripping?: boolean } = {},
+  options: KoreanRosterAdapterOptions = {},
 ): ProductEngineerPreparationResult {
   if (rawText.trim().length === 0) return createEmptyPreparationResult();
+  return prepareProductEngineerKoreanTable(parseKoreanPaste(rawText), options);
+}
 
-  const parsed = parseRosterPaste(rawText, options);
-  if (parsed.requiresPiiColumnConfirmation) {
+export function prepareProductEngineerKoreanTable(
+  table: readonly (readonly unknown[])[],
+  options: KoreanRosterAdapterOptions = {},
+): ProductEngineerPreparationResult {
+  if (table.length === 0 || table.every((row) => row.every(isBlankCell))) {
+    return createEmptyPreparationResult();
+  }
+
+  const adapted = adaptKoreanRosterTable(table, options);
+  if (adapted.status === "needs_column_consent") {
     return {
       ...createEmptyPreparationResult(),
       status: "needs_column_consent",
-      prohibitedColumnHeaders: [...parsed.report.rejectedColumnHeaders],
+      prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
     };
   }
 
-  const issues: SafePreparationIssue[] = [
-    ...parsed.issues.map(({ sourceLineNumber, code }) => ({ sourceLineNumber, code })),
-    ...parsed.records
-      .filter(({ row }) => row.roleGroup !== "Product Engineer")
-      .map(({ sourceLineNumber }) => ({
-        sourceLineNumber,
-        code: "UNSUPPORTED_ROLE" as const,
-      })),
-  ];
-
-  if (issues.length > 0) {
+  if (adapted.status === "blocked") {
+    const issues: SafePreparationIssue[] = adapted.issues.map((issue) => ({ ...issue }));
     return {
       ...createEmptyPreparationResult(),
       status: "blocked",
-      prohibitedColumnHeaders: [...parsed.report.rejectedColumnHeaders],
+      prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
       issues,
       shouldClearRaw: issues.some(({ code }) => code === "PII_VALUE"),
     };
   }
 
-  const rows = parsed.rows.map((row) => ({ ...row }));
+  const rows = adapted.rows.map((row) => ({ ...row }));
   const draftResult = createProductEngineerSessionDraft(rows);
   if (!draftResult.supported) {
     return {
       status: "blocked",
-      prohibitedColumnHeaders: [...parsed.report.rejectedColumnHeaders],
+      prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
       issues: [{ code: "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON" }],
-      previewRows: parsed.records.map(({ row }, index) =>
-        toPreviewRow(row, `\uC9C1\uC6D0 ${String.fromCharCode(65 + index)}`),
+      previewRows: adapted.records.map(({ row }, index) =>
+        toPreviewRow(row, "직원 " + String.fromCharCode(65 + index)),
       ),
       rows: [],
       shouldClearRaw: true,
@@ -77,26 +82,44 @@ export function prepareProductEngineerRoster(
 
   return {
     status: "ready_for_confirmation",
-    prohibitedColumnHeaders: [...parsed.report.rejectedColumnHeaders],
+    prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
     issues: [],
-    previewRows: parsed.records.map(({ row }) => toPreviewRow(row, labels.get(row.rowId)!)),
+    previewRows: adapted.records.map(({ row }) =>
+      toPreviewRow(row, labels.get(row.rowId)!),
+    ),
     rows: draftResult.draft.rows,
     draft: draftResult.draft,
     shouldClearRaw: true,
   };
 }
 
+function parseKoreanPaste(rawText: string): unknown[][] {
+  return rawText
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.split("\t"));
+}
+
 function toPreviewRow(
-  row: ReturnType<typeof parseRosterPaste>["rows"][number],
+  row: NormalizedRosterRow,
   employeeLabel: string,
 ): PreparationPreviewRow {
   return {
     employeeLabel,
     roleGroup: "Product Engineer",
     salaryKRW: row.baseSalaryKRW,
+    ...(row.relevantExperienceMonths === undefined
+      ? {}
+      : { relevantExperienceMonths: row.relevantExperienceMonths }),
     ...(row.tenureMonths === undefined ? {} : { tenureMonths: row.tenureMonths }),
     ...(row.title === undefined ? {} : { title: row.title }),
     ...(row.levelLabel === undefined ? {} : { levelLabel: row.levelLabel }),
     documentedException: row.exceptionFlag === true || row.counterOfferFlag === true,
   };
+}
+
+function isBlankCell(value: unknown): boolean {
+  return value === undefined
+    || value === null
+    || (typeof value === "string" && value.trim().length === 0);
 }
