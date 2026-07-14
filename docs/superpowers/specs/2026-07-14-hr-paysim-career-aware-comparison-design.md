@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved product direction, pending written-spec review before implementation planning.
+Approved written specification for implementation as of 2026-07-14.
 
 This design records the user's 2026-07-14 correction that company tenure alone is not a sufficient salary-comparison basis. It supplements the canonical four-screen design and supersedes its tenure-only pair eligibility, Screen 2 salary-tenure plot, and facilitator input assumptions that omit relevant career experience. It does not authorize product code changes by itself.
 
