@@ -78,6 +78,7 @@ const screens = new Set([
 const rowKeys = new Set([
   "rowId", "roleGroup", "title", "levelLabel", "levelRank", "baseSalaryKRW",
   "startDate", "tenureMonths", "latestRaiseDate", "latestRaiseAmountKRW",
+  "relevantExperienceMonths",
   "exceptionFlag", "counterOfferFlag", "managerLabel", "teamLabel",
 ]);
 const themeKeys = new Set([
@@ -341,7 +342,7 @@ function isNormalizedRosterRow(value: unknown): value is NormalizedRosterRow {
   }
   return optionalStringsValid(value, [
     "title", "levelLabel", "startDate", "latestRaiseDate", "managerLabel", "teamLabel",
-  ]) && optionalNumbersValid(value, ["levelRank", "tenureMonths", "latestRaiseAmountKRW"])
+  ]) && optionalNumbersValid(value, ["levelRank", "tenureMonths", "relevantExperienceMonths", "latestRaiseAmountKRW"])
     && optionalBooleansValid(value, ["exceptionFlag", "counterOfferFlag"]);
 }
 

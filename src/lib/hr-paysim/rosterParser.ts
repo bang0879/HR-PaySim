@@ -1,4 +1,4 @@
-﻿import type { DeidentificationReport, NormalizedRosterRow } from "./domain.ts";
+import type { DeidentificationReport, NormalizedRosterRow } from "./domain.ts";
 
 export interface RosterParseOptions {
   confirmPiiColumnStripping?: boolean;
@@ -40,6 +40,7 @@ const headerAliases: Record<string, RosterField> = {
   salary: "baseSalaryKRW",
   startdate: "startDate",
   tenuremonths: "tenureMonths",
+  relevantexperiencemonths: "relevantExperienceMonths",
   latestraisedate: "latestRaiseDate",
   latestraiseamountkrw: "latestRaiseAmountKRW",
   exceptionflag: "exceptionFlag",
@@ -158,6 +159,7 @@ function normalizeRow(
     baseSalaryKRW,
     startDate: optionalText(rawRow.startDate),
     tenureMonths: parseNumber(rawRow.tenureMonths),
+    relevantExperienceMonths: parseNumber(rawRow.relevantExperienceMonths),
     latestRaiseDate: optionalText(rawRow.latestRaiseDate),
     latestRaiseAmountKRW: parseNumber(rawRow.latestRaiseAmountKRW),
     exceptionFlag: parseBoolean(rawRow.exceptionFlag),

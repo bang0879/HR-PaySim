@@ -76,6 +76,7 @@ export interface NormalizedRosterRow {
   baseSalaryKRW: number;
   startDate?: string;
   tenureMonths?: number;
+  relevantExperienceMonths?: number;
   latestRaiseDate?: string;
   latestRaiseAmountKRW?: number;
   exceptionFlag?: boolean;

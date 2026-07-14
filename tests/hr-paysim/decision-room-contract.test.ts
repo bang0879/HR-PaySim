@@ -52,3 +52,16 @@ test("decision-room contract fixture preserves the agreed values", () => {
     },
   });
 });
+import { sampleRosterRows } from "../../src/lib/hr-paysim/rosterFixtures.ts";
+
+test("synthetic roster owns explicit relevant career evidence without dropping exceptions", () => {
+  assert.equal(sampleRosterRows.length, 16);
+  assert.ok(sampleRosterRows.every((row) =>
+    Number.isSafeInteger(row.relevantExperienceMonths)
+    && row.relevantExperienceMonths! >= 0
+  ));
+
+  assert.equal(sampleRosterRows.find((row) => row.rowId === "row_004")?.exceptionFlag, true);
+  assert.equal(sampleRosterRows.find((row) => row.rowId === "row_009")?.exceptionFlag, true);
+  assert.equal(sampleRosterRows.find((row) => row.rowId === "row_009")?.counterOfferFlag, true);
+});

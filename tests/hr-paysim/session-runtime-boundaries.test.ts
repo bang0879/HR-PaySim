@@ -211,3 +211,28 @@ test("provider initializes through a cloning initializer and session modules exp
   assert.doesNotMatch(source, /telemetry|fetch\(|sendBeacon|XMLHttpRequest/);
   assert.doesNotMatch(source, /export\s+(?:function|const)\s+(?:serialize|deserialize|restore|hydrate|persist|refresh)/i);
 });
+
+test("START_SESSION owns canonical relevant-experience evidence", () => {
+  const demo = createSyntheticDemoSession();
+  const rows = structuredClone(demo.rows).map((row, index) => ({
+    ...row,
+    relevantExperienceMonths: 96 - index,
+  }));
+  const themes = structuredClone(demo.themes);
+  const selection = structuredClone(demo.selection);
+
+  const started = decisionRoomReducer(createEmptyDecisionRoomSession(), {
+    type: "START_SESSION",
+    mode: "facilitated",
+    rows,
+    themes,
+    selection,
+    activeThemeId: selection.selected[0]!.id,
+  });
+
+  assert.equal(started.rows.length, rows.length);
+  assert.equal(started.rows[0]?.relevantExperienceMonths, 96);
+
+  rows[0]!.relevantExperienceMonths = 1;
+  assert.equal(started.rows[0]?.relevantExperienceMonths, 96);
+});
