@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import {
@@ -73,4 +74,17 @@ test("privacy API detector covers the full first-party source map", () => {
       "src/d.ts: localStorage",
     ],
   );
+});
+
+test("the workbook reader and parser stay behind the facilitator-local boundary", () => {
+  const reader = readFileSync(
+    new URL("../../src/features/facilitator-preparation/readProductEngineerWorkbook.ts", import.meta.url),
+    "utf8",
+  );
+  const publicEntry = readFileSync(
+    new URL("../../src/surfaces/PublicDemoApp.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(reader, /read-excel-file\/browser/);
+  assert.doesNotMatch(publicEntry, /readProductEngineerWorkbook|read-excel-file|\.xlsx/);
 });

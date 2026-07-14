@@ -5,14 +5,17 @@ import { FOUNDER_COPY } from "../../src/lib/hr-paysim/copy/founderCopy.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-test("preparation copy states what is used, where it is checked, and that headers are required", () => {
+test("preparation copy states the guided local Excel workflow and privacy boundary", () => {
   const copy = FOUNDER_COPY as Record<string, string>;
 
   assert.equal(copy["preparation.heading"], "이번 세션에 사용할 익명 자료를 먼저 확인합니다.");
-  assert.equal(copy["preparation.paste.heading"], "첫 행에 열 이름이 포함된 표를 붙여넣어 주세요.");
+  assert.equal(copy["preparation.guide.heading"], "Product Engineer 직원 자료를 준비해 주세요.");
+  assert.equal(copy["preparation.download.action"], "1. Excel 입력 양식 내려받기");
+  assert.equal(copy["preparation.file.action"], "2. 작성한 Excel 파일 불러오기");
+  assert.equal(copy["preparation.paste.heading"], "파일을 사용하지 않고 표 붙여넣기");
   assert.equal(copy["preparation.paste.action"], "자료 형식 확인");
   assert.equal(copy["preparation.ready.action"], "이 자료로 세션 시작");
-  assert.match(copy["preparation.privacy"] ?? "", /브라우저.*세션을 종료하면 지워집니다/);
+  assert.match(copy["preparation.privacy"] ?? "", /브라우저.*파일은 전송하거나 저장하지 않/);
 });
 
 test("preparation and Decision Room import one scoped visual foundation", () => {
@@ -37,14 +40,15 @@ test("preparation and Decision Room import one scoped visual foundation", () => 
   assert.doesNotMatch(preparation, /--fp-/);
 });
 
-test("preparation renders centralized copy and the exact parser header reference", () => {
+test("preparation renders centralized copy and only the Korean field contract", () => {
   const preparation = read("../../src/features/facilitator-preparation/FacilitatorPreparationScreen.tsx");
 
   assert.match(preparation, /FOUNDER_COPY\["preparation\.heading"\]/);
-  assert.match(preparation, /필수 열 이름/);
-  assert.match(preparation, /row_id/);
-  assert.match(preparation, /role_group/);
-  assert.match(preparation, /base_salary_krw/);
+  assert.match(preparation, /FOUNDER_COPY\["preparation\.download\.action"\]/);
+  assert.match(preparation, /기본연봉\(원\)/);
+  assert.match(preparation, /관련 경력년수/);
+  assert.match(preparation, /회사 근속개월/);
+  assert.doesNotMatch(preparation, /row_id|role_group|base_salary_krw/);
   assert.doesNotMatch(preparation, /Product Engineer roster/);
 });
 

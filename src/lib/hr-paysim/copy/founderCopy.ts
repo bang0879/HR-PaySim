@@ -6,11 +6,19 @@ export const FOUNDER_COPY = {
   "preparation.eyebrow": "HR PaySim · 진행자 준비",
   "preparation.heading": "이번 세션에 사용할 익명 자료를 먼저 확인합니다.",
   "preparation.privacy":
-    "붙여넣은 자료는 이 브라우저에서만 검사하며, 세션을 종료하면 지워집니다. 이름·연락처처럼 개인을 식별할 수 있는 정보는 사용하지 않습니다.",
-  "preparation.paste.kicker": "자료 준비",
-  "preparation.paste.heading": "첫 행에 열 이름이 포함된 표를 붙여넣어 주세요.",
+    "선택하거나 붙여넣은 자료는 이 브라우저에서만 확인합니다. 파일은 전송하거나 저장하지 않으며, 세션을 종료하면 확인한 내용도 지워집니다.",
+  "preparation.guide.kicker": "준비할 자료",
+  "preparation.guide.heading": "Product Engineer 직원 자료를 준비해 주세요.",
+  "preparation.guide.lead":
+    "직원 최소 4명의 기본연봉, 관련 경력년수, 회사 근속개월이 필요합니다. 이름과 사번은 입력하지 않습니다.",
+  "preparation.guide.career_definition":
+    "관련 경력년수는 현재와 이전 회사에서 Product Engineer 업무와 직접 관련된 경력을 합한 기간입니다. 회사명, 재직기간, 학력, 나이는 필요하지 않습니다.",
+  "preparation.download.action": "1. Excel 입력 양식 내려받기",
+  "preparation.file.action": "2. 작성한 Excel 파일 불러오기",
+  "preparation.paste.kicker": "표 붙여넣기",
+  "preparation.paste.heading": "파일을 사용하지 않고 표 붙여넣기",
   "preparation.paste.label": "익명 직원 자료",
-  "preparation.paste.helper": "엑셀에서 열 이름을 포함한 전체 범위를 복사해 붙여넣습니다.",
+  "preparation.paste.helper": "같은 일곱 열을 준비했다면 Excel에서 열 이름을 포함한 표 전체를 복사해 붙여넣습니다.",
   "preparation.paste.badge": "브라우저 안에서만 확인",
   "preparation.paste.action": "자료 형식 확인",
   "preparation.consent.kicker": "제외할 열 확인",
@@ -18,8 +26,11 @@ export const FOUNDER_COPY = {
   "preparation.consent.support":
     "아래에는 열 이름만 표시됩니다. 해당 열의 값은 미리 보거나 세션에 사용하지 않습니다.",
   "preparation.consent.action": "표시된 열을 제외하고 확인",
+  "preparation.consent.file.action": "표시된 열을 제외할 파일 다시 선택",
   "preparation.blocked.kicker": "자료 형식을 확인해 주세요",
-  "preparation.blocked.heading": "아래 항목을 수정한 뒤 표 전체를 다시 붙여넣어 주세요.",
+  "preparation.blocked.heading": "아래 항목을 수정한 뒤 파일을 다시 불러오거나 표를 붙여넣어 주세요.",
+  "preparation.blocked.preview_support":
+    "개인정보가 없는 확인용 표만 남겼습니다. 현재 비교 조건을 충족하지 않아 세션에는 사용하지 않습니다.",
   "preparation.ready.kicker": "세션 자료 확인",
   "preparation.ready.heading": "이번 세션에 사용할 익명 자료입니다.",
   "preparation.ready.support":
@@ -32,6 +43,14 @@ export const FOUNDER_COPY = {
   "preparation.issue.duplicate_header": "같은 열 이름이 두 번 이상 있습니다.",
   "preparation.issue.invalid_field_value": "허용된 형식이나 범위를 확인해 주세요.",
   "preparation.issue.too_few_rows": "Product Engineer 직원 자료를 최소 4행 준비해 주세요.",
+  "preparation.issue.unsupported_file_type":
+    "제공된 .xlsx 입력 양식을 사용하거나 아래 표 붙여넣기를 이용해 주세요.",
+  "preparation.issue.file_too_large": "Excel 파일은 5 MB 이하로 준비해 주세요.",
+  "preparation.issue.empty_workbook": "입력 양식에 Product Engineer 직원 자료를 최소 4행 입력해 주세요.",
+  "preparation.issue.ambiguous_workbook":
+    "여러 시트 중 사용할 표를 정할 수 없습니다. 입력 양식 시트에 필요한 표만 옮겨 주세요.",
+  "preparation.issue.unreadable_workbook":
+    "파일을 읽을 수 없습니다. 암호나 매크로가 없는 .xlsx 입력 양식을 사용해 주세요.",
   "preparation.issue.unsupported_role":
     "이번 준비 화면은 Product Engineer 자료만 사용할 수 있습니다.",
   "preparation.issue.unsupported_product_engineer_comparison":
@@ -199,6 +218,11 @@ export const PREPARATION_ISSUE_COPY = {
   DUPLICATE_HEADER: FOUNDER_COPY["preparation.issue.duplicate_header"],
   INVALID_FIELD_VALUE: FOUNDER_COPY["preparation.issue.invalid_field_value"],
   TOO_FEW_ROWS: FOUNDER_COPY["preparation.issue.too_few_rows"],
+  UNSUPPORTED_FILE_TYPE: FOUNDER_COPY["preparation.issue.unsupported_file_type"],
+  FILE_TOO_LARGE: FOUNDER_COPY["preparation.issue.file_too_large"],
+  EMPTY_WORKBOOK: FOUNDER_COPY["preparation.issue.empty_workbook"],
+  AMBIGUOUS_WORKBOOK: FOUNDER_COPY["preparation.issue.ambiguous_workbook"],
+  UNREADABLE_WORKBOOK: FOUNDER_COPY["preparation.issue.unreadable_workbook"],
   UNSUPPORTED_ROLE: FOUNDER_COPY["preparation.issue.unsupported_role"],
   UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON:
     FOUNDER_COPY["preparation.issue.unsupported_product_engineer_comparison"],

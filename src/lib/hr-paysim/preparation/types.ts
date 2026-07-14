@@ -14,6 +14,11 @@ export type PreparationStatus =
 
 export type PreparationIssueCode =
   | KoreanRosterAdapterIssueCode
+  | "UNSUPPORTED_FILE_TYPE"
+  | "FILE_TOO_LARGE"
+  | "EMPTY_WORKBOOK"
+  | "AMBIGUOUS_WORKBOOK"
+  | "UNREADABLE_WORKBOOK"
   | "UNSUPPORTED_ROLE"
   | "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON";
 
