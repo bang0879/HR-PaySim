@@ -28,6 +28,14 @@ A salary calculator typically produces a number based on role, level, market dat
 
 Instead, it simulates governance-level consequences: explainability, consistency, exception accumulation, budget pressure, and decision quality. The unit of analysis is the compensation system, not the individual employee.
 
+## 3A. Core Facilitated Interaction
+
+The core v1 facilitated interaction is the **Relationship Review Beat**.
+
+HR PaySim should help a founder review a visible compensation relationship or distribution, surface the founder's natural explanation criteria, reveal the roster-based evidence, capture a structured explanation reason, classify the finding, and carry the result into a memo preview.
+
+This is not a quiz or prediction flow. The product should not ask the founder to guess who earns more, reveal whether the founder was right or wrong, or use surprise as the purpose of the interaction. Founder intuition is useful only as explanation context: which criterion would the founder expect to use here, and can the roster evidence support that explanation?
+
 ## 4. Why This Is Not a Standalone AI Workforce Simulator
 
 HR PaySim is not an AI substitution calculator or a standalone Human-AI workforce simulator.

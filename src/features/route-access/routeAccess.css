@@ -1,0 +1,50 @@
+.route-access-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f4f6f8;
+  color: #18202a;
+}
+
+.route-access-card {
+  width: min(100%, 640px);
+  padding: clamp(28px, 5vw, 48px);
+  border: 1px solid #dfe4ea;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(28, 39, 54, 0.08);
+}
+
+.route-access-eyebrow {
+  margin: 0 0 12px;
+  color: #536273;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.route-access-card h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  line-height: 1.18;
+}
+
+.route-access-card > p:not(.route-access-eyebrow) {
+  margin: 18px 0 28px;
+  color: #536273;
+  line-height: 1.65;
+}
+
+.route-access-card a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 20px;
+  background: #173f73;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}

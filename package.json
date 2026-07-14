@@ -1,9 +1,27 @@
-﻿{
-  "name": "hr-paysim-planning",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "test": "node --experimental-strip-types --test tests/hr-paysim/*.test.ts"
-  }
+{
+    "dependencies": {
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7"
+    },
+    "devDependencies": {
+        "@types/node": "^26.1.0",
+        "@types/react": "^19.2.17",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.3",
+        "playwright": "^1.61.1",
+        "typescript": "^6.0.3",
+        "vite": "^8.1.3"
+    },
+    "type": "module",
+    "scripts": {
+        "dev": "vite --mode public-demo --host 127.0.0.1",
+        "dev:facilitator": "vite --mode facilitator-local --host 127.0.0.1",
+        "build": "vite build --mode public-demo",
+        "build:facilitator": "vite build --mode facilitator-local",
+        "start": "vite preview --mode public-demo --host 127.0.0.1",
+        "start:facilitator": "vite preview --mode facilitator-local --host 127.0.0.1",
+        "typecheck": "tsc --noEmit",
+        "lint": "node --experimental-strip-types scripts/check-forbidden-copy.ts",
+        "test": "node --experimental-strip-types --test tests/hr-paysim/*.test.ts"
+    }
 }
