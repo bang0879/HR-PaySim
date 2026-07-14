@@ -84,15 +84,25 @@ test("turns the Product Engineer evidence into anonymous founder-facing comparis
     higherPaidException: "채용 예외 기록 있음",
   });
   assert.deepEqual(
-    model.evidence.evidenceRows.map(({ employeeLabel, relevantExperience, tenure }) => ({
+    model.evidence.evidenceRows.map(({ employeeLabel, level, relevantExperience, tenure }) => ({
       employeeLabel,
+      level,
       relevantExperience,
       tenure,
     })),
     [
-      { employeeLabel: "직원 A", relevantExperience: "관련 경력 10년", tenure: "회사 근속 64개월" },
-      { employeeLabel: "직원 B", relevantExperience: "관련 경력 7년", tenure: "회사 근속 14개월" },
+      { employeeLabel: "직원 A", level: undefined, relevantExperience: "관련 경력 10년", tenure: "회사 근속 64개월" },
+      { employeeLabel: "직원 B", level: undefined, relevantExperience: "관련 경력 7년", tenure: "회사 근속 14개월" },
     ],
+  );
+  const ranked = createSyntheticDemoSession();
+  for (const row of ranked.rows.filter((item) => item.roleGroup === "Product Engineer")) {
+    row.levelLabel = "PE2";
+    row.levelRank = 2;
+  }
+  assert.deepEqual(
+    createDecisionRoomViewModel(ranked).evidence.evidenceRows.map((row) => row.level),
+    ["PE2", "PE2"],
   );
   assert.ok(model.evidence.supportingObservations.every((item) => /만원/.test(item)));
   assert.deepEqual(
@@ -168,6 +178,10 @@ test("screen components render model-owned evidence and centralized result feedb
   );
   const evidence = readFileSync(
     new URL("../../src/features/confirmed-pay-differences/ConfirmedPayDifferencesScreen.tsx", import.meta.url),
+    "utf8",
+  );
+  const evidenceTable = readFileSync(
+    new URL("../../src/features/confirmed-pay-differences/EvidenceTable.tsx", import.meta.url),
     "utf8",
   );
   const distribution = readFileSync(
@@ -260,6 +274,9 @@ test("screen components render model-owned evidence and centralized result feedb
   ));
   assert.match(evidence, /lowerPaidTenure/);
   assert.match(evidence, /higherPaidException/);
+  assert.match(evidenceTable, />레벨</);
+  assert.match(evidenceTable, /hasLevel/);
+  assert.match(evidenceTable, /row\.level/);
   assert.doesNotMatch(evidence, />64개월 근속<|>14개월 근속/);
   assert.match(rule, /condition\.observedContext/);
   assert.match(rule, /condition\.approvalStatus/);

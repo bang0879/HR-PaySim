@@ -26,7 +26,7 @@ export const FOUNDER_COPY = {
   "preparation.consent.support":
     "아래에는 열 이름만 표시됩니다. 해당 열의 값은 미리 보거나 세션에 사용하지 않습니다.",
   "preparation.consent.action": "표시된 열을 제외하고 확인",
-  "preparation.consent.file.action": "표시된 열을 제외할 파일 다시 선택",
+  "preparation.consent.file.action": "표시된 열을 제외하고 계속",
   "preparation.blocked.kicker": "자료 형식을 확인해 주세요",
   "preparation.blocked.heading": "아래 항목을 수정한 뒤 파일을 다시 불러오거나 표를 붙여넣어 주세요.",
   "preparation.blocked.preview_support":

@@ -11,6 +11,7 @@ import {
   formatRelevantExperience,
   formatRoleObservationsHeading,
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
+import { resolveOrderedLevelPolicy } from "../../lib/hr-paysim/detectors/careerComparablePairs.ts";
 import type { DecisionRecord } from "../../lib/hr-paysim/decisions/types.ts";
 import { createEmployeeLabels } from "../../lib/hr-paysim/presentation/createEmployeeLabels.ts";
 import { findObservedPrecedentCandidates } from "../../lib/hr-paysim/repeat/selectObservedPrecedent.ts";
@@ -95,6 +96,7 @@ export function createProductEngineerDecisionRoomViewModel(
   const rows = state.rows
     .filter((row) => row.roleGroup === selectedTheme.roleGroup)
     .sort((a, b) => a.baseSalaryKRW - b.baseSalaryKRW || compareText(a.rowId, b.rowId));
+  const showLevelEvidence = resolveOrderedLevelPolicy(rows) === "complete";
   const labels = createEmployeeLabels(
     rows,
     selectedTheme.headlinePair.underpaidRowId,
@@ -211,6 +213,7 @@ export function createProductEngineerDecisionRoomViewModel(
       evidenceRows: [lowerPaid, higherPaid].map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         role: row.roleGroup,
+        level: showLevelEvidence ? row.levelLabel : undefined,
         relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
         relevantExperienceMonths: row.relevantExperienceMonths,
         tenure: formatTenure(row.tenureMonths),
@@ -497,6 +500,7 @@ function createRemainingSubjectViewModel(
   const review = state.reviews[selectedTheme.id];
   const decision = state.decisions.find((item) => item.themeIds.includes(selectedTheme.id));
   const isGtm = selectedTheme.roleGroup === "GTM";
+  const showLevelEvidence = isGtm || resolveOrderedLevelPolicy(rows) === "complete";
   const evidenceConclusion = isGtm
     ? formatGtmEvidenceTitle({
         employeeCount,
@@ -648,6 +652,7 @@ function createRemainingSubjectViewModel(
       evidenceRows: [lowerPaid, higherPaid].map((row) => ({
         employeeLabel: labels.get(row.rowId)!,
         role: row.roleGroup,
+        level: showLevelEvidence ? row.levelLabel : undefined,
         relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
         relevantExperienceMonths: row.relevantExperienceMonths,
         tenure: formatTenure(row.tenureMonths),

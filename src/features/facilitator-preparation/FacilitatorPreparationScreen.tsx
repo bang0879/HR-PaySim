@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FOUNDER_COPY,
   PREPARATION_ISSUE_COPY,
@@ -15,6 +15,7 @@ import type {
 } from "../../lib/hr-paysim/preparation/types.ts";
 import templateUrl from "./assets/HR-PaySim-Product-Engineer-input-template.xlsx?url";
 import { readProductEngineerWorkbook } from "./readProductEngineerWorkbook.ts";
+import { createWorkbookReadCoordinator } from "./workbookReadCoordinator.ts";
 import "./facilitatorPreparation.css";
 
 export interface FacilitatorPreparationScreenProps {
@@ -45,30 +46,52 @@ type FileInputChangeEvent = { currentTarget: HTMLInputElement };
 export function FacilitatorPreparationScreen({
   onStart,
 }: FacilitatorPreparationScreenProps) {
-  const fileInputRef = useRef(null as HTMLInputElement | null);
+  const [fileReadCoordinator] = useState(createWorkbookReadCoordinator);
+  const activeFileReadRef = useRef(0);
+  const [isFileReading, setIsFileReading] = useState(false);
   const [rawPaste, setRawPaste] = useState("");
   const [confirmPiiColumnStripping, setConfirmPiiColumnStripping] = useState(false);
-  const [confirmedFileHeaders, setConfirmedFileHeaders] = useState<string[]>([]);
   const [inputSource, setInputSource] = useState<InputSource>(null);
   const [result, setResult] = useState(createEmptyPreparationResult());
+
+  useEffect(() => () => fileReadCoordinator.invalidate(), [fileReadCoordinator]);
 
   async function importWorkbook(event: FileInputChangeEvent) {
     const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
-    const confirmedHeaders = confirmedFileHeaders;
-    setConfirmedFileHeaders([]);
+    const readId = fileReadCoordinator.beginRead();
+    activeFileReadRef.current = readId;
+    setIsFileReading(true);
     setInputSource("file");
     try {
       const next = await readProductEngineerWorkbook(file, {
-        confirmedProhibitedHeaders: confirmedHeaders,
+        confirmProhibitedHeaders: (headers) => fileReadCoordinator.requestConsent(
+          readId,
+          headers,
+          showFileColumnConsent,
+        ),
       });
+      if (!fileReadCoordinator.isActive(readId)) return;
       setResult(next);
       setRawPaste("");
       setConfirmPiiColumnStripping(false);
     } finally {
       input.value = "";
+      if (fileReadCoordinator.isActive(readId)) {
+        fileReadCoordinator.finishRead(readId);
+        activeFileReadRef.current = 0;
+        setIsFileReading(false);
+      }
     }
+  }
+
+  function showFileColumnConsent(headers: readonly string[]) {
+    setResult({
+      ...createEmptyPreparationResult(),
+      status: "needs_column_consent",
+      prohibitedColumnHeaders: [...headers],
+    });
   }
 
   function inspectPaste() {
@@ -79,17 +102,18 @@ export function FacilitatorPreparationScreen({
   }
 
   function changePaste(value: string) {
+    fileReadCoordinator.invalidate();
+    activeFileReadRef.current = 0;
+    setIsFileReading(false);
     setRawPaste(value);
     setInputSource("paste");
     setConfirmPiiColumnStripping(false);
-    setConfirmedFileHeaders([]);
     setResult(createEmptyPreparationResult());
   }
 
   function approveColumnStripping() {
     if (inputSource === "file") {
-      setConfirmedFileHeaders([...result.prohibitedColumnHeaders]);
-      fileInputRef.current?.click();
+      fileReadCoordinator.resolveConsent(activeFileReadRef.current, true);
       return;
     }
     setConfirmPiiColumnStripping(true);
@@ -172,11 +196,11 @@ export function FacilitatorPreparationScreen({
               <label className="fp-primary fp-file-action">
                 {FOUNDER_COPY["preparation.file.action"]}
                 <input
-                  ref={fileInputRef}
                   className="fp-visually-hidden"
                   type="file"
                   accept=".xlsx"
                   onChange={importWorkbook}
+                  disabled={isFileReading}
                 />
               </label>
             </div>

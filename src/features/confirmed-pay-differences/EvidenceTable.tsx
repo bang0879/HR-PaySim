@@ -5,18 +5,28 @@ type EvidenceRows = ReturnType<
 >["evidence"]["evidenceRows"];
 
 export function EvidenceTable({ rows }: { rows: EvidenceRows }) {
+  const hasLevel = rows.every((row) => row.level !== undefined);
   return (
     <section className="dr-panel dr-evidence-table" aria-labelledby="comparison-evidence-title">
       <div className="dr-panel-heading">
         <div>
           <p className="dr-section-kicker">비교에 사용한 자료</p>
-          <h2 id="comparison-evidence-title">판단에 사용한 다섯 가지 항목만 확인합니다.</h2>
+          <h2 id="comparison-evidence-title">
+            {hasLevel
+              ? "비교에 사용한 여섯 가지 항목을 함께 확인합니다."
+              : "판단에 사용한 다섯 가지 항목만 확인합니다."}
+          </h2>
         </div>
       </div>
-      <div className="dr-table" role="table" aria-label="직원 A와 직원 B 비교 자료">
+      <div
+        className={`dr-table${hasLevel ? " has-level" : ""}`}
+        role="table"
+        aria-label="직원 A와 직원 B 비교 자료"
+      >
         <div className="dr-table-row dr-table-head" role="row">
           <span role="columnheader">구분</span>
           <span role="columnheader">역할</span>
+          {hasLevel ? <span role="columnheader">레벨</span> : null}
           <span role="columnheader">관련 경력</span>
           <span role="columnheader">회사 근속</span>
           <span role="columnheader">기본 연봉</span>
@@ -26,6 +36,7 @@ export function EvidenceTable({ rows }: { rows: EvidenceRows }) {
           <div className="dr-table-row" role="row" key={row.employeeLabel}>
             <strong role="cell">{row.employeeLabel}</strong>
             <span role="cell">{row.role}</span>
+            {hasLevel ? <span role="cell">{row.level}</span> : null}
             <span role="cell">{row.relevantExperience}</span>
             <span role="cell">{row.tenure}</span>
             <span role="cell">{row.salary}</span>

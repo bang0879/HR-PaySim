@@ -751,6 +751,10 @@
   display: grid;
   grid-template-columns: 90px 1.05fr 1fr 1fr 1fr 1.3fr;
 }
+.dr-table.has-level .dr-table-row {
+  min-width: 1020px;
+  grid-template-columns: 90px 1.05fr 0.8fr 1fr 1fr 1fr 1.3fr;
+}
 .dr-table-row > * {
   min-width: 0;
   padding: 13px 14px;

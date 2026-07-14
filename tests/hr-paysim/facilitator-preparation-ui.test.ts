@@ -51,6 +51,10 @@ test("the preparation screen leads with one guided Excel workflow", () => {
   assert.match(preparation, /\.xlsx · 최대 5 MB/);
   assert.match(preparation, /accept="\.xlsx"/);
   assert.match(preparation, /readProductEngineerWorkbook/);
+  assert.match(preparation, /createWorkbookReadCoordinator/);
+  assert.match(preparation, /requestConsent/);
+  assert.match(preparation, /disabled={isFileReading}/);
+  assert.doesNotMatch(preparation, /confirmedFileHeaders|setConfirmedFileHeaders|fileConsentResolverRef/);
   assert.match(preparation, /finally\s*\{[\s\S]*input\.value\s*=\s*""/);
   assert.match(preparation, /<details/);
   assert.match(preparation, /FOUNDER_COPY\["preparation\.paste\.heading"\]/);
