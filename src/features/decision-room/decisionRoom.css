@@ -469,14 +469,7 @@
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
-.dr-direction-guide-line {
-  stroke: var(--dr-blue);
-  stroke-width: 2;
-  stroke-dasharray: 7 6;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  opacity: 0.72;
-}
+
 .dr-salary-person {
   position: absolute;
   width: 0;
@@ -532,7 +525,7 @@
 }
 .dr-salary-person-label strong { font-size: 11px; }
 .dr-salary-person-label small { color: #667085; font-size: 10px; }
-.dr-tenure-axis-horizontal {
+.dr-career-axis-horizontal {
   display: flex;
   justify-content: space-between;
   margin: 8px 44px 0;
@@ -540,7 +533,7 @@
   font-size: 10px;
   font-weight: 800;
 }
-.dr-tenure-axis-label {
+.dr-career-axis-label {
   display: block;
   margin-top: 8px;
   color: #344054;
@@ -571,18 +564,24 @@
   border-color: #cfd7e3;
   box-shadow: 0 4px 12px rgba(23, 32, 51, 0.06);
 }
-.dr-trend-legend .is-guide {
-  color: #44546a;
-  border-color: #cfe0ff;
-  background: var(--dr-blue-soft);
-}
+
 .dr-trend-legend i {
   width: 28px;
   border-top: 3px solid var(--dr-ink);
 }
-.dr-trend-legend i.is-dashed {
-  border-top: 2px dashed var(--dr-blue);
-  opacity: 0.72;
+.dr-trend-legend i.is-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--dr-muted);
+  box-shadow: 0 0 0 2px var(--dr-muted);
+}
+.dr-trend-legend i.is-dot.is-highlighted {
+  width: 12px;
+  height: 12px;
+  background: var(--dr-blue);
+  box-shadow: 0 0 0 2px var(--dr-ink);
 }
 .dr-trend-summary,
 .dr-trend-non-claim {
@@ -604,7 +603,7 @@
   background: var(--dr-blue-soft);
 }
 .dr-plot-empty,
-.dr-missing-tenure {
+.dr-missing-career {
   margin-top: 18px;
   padding: 14px 16px;
   border-left: 3px solid #9dbbf4;
@@ -612,7 +611,7 @@
   color: #526071;
   font-size: 12px;
 }
-.dr-missing-tenure ul { margin: 8px 0 0; padding-left: 18px; }
+.dr-missing-career ul { margin: 8px 0 0; padding-left: 18px; }
 .dr-distribution-legend {
   display: flex;
   justify-content: flex-end;
@@ -748,9 +747,9 @@
   border-radius: 12px;
 }
 .dr-table-row {
-  min-width: 760px;
+  min-width: 880px;
   display: grid;
-  grid-template-columns: 90px 1.1fr 1fr 1fr 1.3fr;
+  grid-template-columns: 90px 1.05fr 1fr 1fr 1fr 1.3fr;
 }
 .dr-table-row > * {
   min-width: 0;
@@ -1035,7 +1034,7 @@
   .dr-scatter-layout { grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
   .dr-salary-axis-vertical > div { min-height: 260px; }
   .dr-salary-plot { margin-inline: 18px; height: 260px; }
-  .dr-tenure-axis-horizontal { margin-inline: 18px; font-size: 8px; }
+  .dr-career-axis-horizontal { margin-inline: 18px; font-size: 8px; }
   .dr-salary-person-label {
     min-width: 48px;
     padding: 4px 6px;

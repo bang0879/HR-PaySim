@@ -50,7 +50,7 @@ export function ConfirmedPayDifferencesScreen({
         </div>
       </header>
 
-      {model.visualization.kind === "tenure" ? (
+      {model.visualization.kind === "career" ? (
         <SalaryDistribution
           distribution={model.visualization.distribution}
           distributionKicker={model.visualization.kicker}
@@ -78,6 +78,7 @@ export function ConfirmedPayDifferencesScreen({
           <article>
             <span>{model.highlightedPair.lowerPaidLabel}</span>
             <strong>{model.highlightedPair.lowerPaidSalary}</strong>
+            <small>{model.highlightedPair.lowerPaidRelevantExperience}</small>
             <small>{model.highlightedPair.lowerPaidTenure}</small>
             <small>{model.highlightedPair.lowerPaidException}</small>
           </article>
@@ -88,6 +89,7 @@ export function ConfirmedPayDifferencesScreen({
           <article className="is-higher">
             <span>{model.highlightedPair.higherPaidLabel}</span>
             <strong>{model.highlightedPair.higherPaidSalary}</strong>
+            <small>{model.highlightedPair.higherPaidRelevantExperience}</small>
             <small>{model.highlightedPair.higherPaidTenure}</small>
             <small>{model.highlightedPair.higherPaidException}</small>
           </article>

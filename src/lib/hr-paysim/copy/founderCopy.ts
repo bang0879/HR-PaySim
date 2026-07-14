@@ -79,15 +79,15 @@ export const FOUNDER_COPY = {
   "screen.evidence.gtm.supporting":
     "AE2 직원 2명의 기본 연봉은 6,600만~6,900만원이고, AE1 직원 2명은 6,100만~7,000만원입니다. 현재 자료에서는 직급 순서와 기본 연봉 순서가 일부 비교에서 다릅니다.",
   "screen.evidence.platform.supporting":
-    "근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원이고, 근속 17~19개월인 직원 2명은 9,800만~1억200만원입니다. 현재 기록만으로는 두 구간의 차이를 일관되게 설명할 기준을 확인하기 어렵습니다.",
+    "관련 경력 10~11년·회사 근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원이고, 관련 경력 7.5~8년·회사 근속 17~19개월인 직원 2명은 9,800만~1억200만원입니다. 현재 자료만으로는 두 구간의 차이를 일관되게 설명할 회사 기준이나 기록을 확인하기 어렵습니다.",
   "screen.evidence.gtm.observations_heading":
     "GTM 전체에서 직급 순서와 기본 연봉 순서가 같은지 확인했습니다.",
   "screen.evidence.gtm.observation":
     "AE2 직원 2명 중 직원 A와 직원 D의 기본 연봉은 가장 높은 AE1 직원 B보다 각각 400만원, 100만원 낮습니다.",
   "screen.evidence.platform.observation.long":
-    "근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원입니다.",
+    "관련 경력 10~11년·회사 근속 60~69개월인 직원 2명의 기본 연봉은 8,400만~8,600만원입니다.",
   "screen.evidence.platform.observation.short":
-    "근속 17~19개월인 직원 2명의 기본 연봉은 9,800만~1억200만원입니다.",
+    "관련 경력 7.5~8년·회사 근속 17~19개월인 직원 2명의 기본 연봉은 9,800만~1억200만원입니다.",
   "screen.evidence.remaining.evidence_question":
     "선택한 설명을 같은 기준으로 확인할 수 있는 기록이나 업무 자료가 있습니까?",
   "screen.rule.gtm.variant_heading":
@@ -116,20 +116,17 @@ export const FOUNDER_COPY = {
   "screen.introduction.scope_label": "금번 진단에서 확인할 내용",
 
   "screen.evidence.product_engineer.supporting":
-    "직원 6명의 기본 연봉과 근속 개월을 함께 비교했습니다.",
+    "직원 6명의 기본 연봉을 관련 경력과 함께 비교했습니다.",
   "screen.evidence.review_focus_label": "지금 확인해 봐야 할 기준",
   "screen.evidence.product_engineer.action_prompt":
     "이 차이가 생긴 가장 가까운 이유를 하나 선택하고, 그 설명을 확인할 기록이 있는지 이어서 답해 주세요.",
   "screen.evidence.product_engineer.explanation_question":
     "이 차이가 생긴 가장 가까운 이유를 하나 선택해 주세요.",
-  "screen.evidence.trend.guide_label":
-    "근속 개월과 기본 연봉이 함께 증가하는 방향",
-  "screen.evidence.trend.guide_non_claim":
-    "파란 점선은 시장 평균이나 권장 연봉, 회사의 연봉 기준이 아닙니다. 근속 개월과 기본 연봉이 함께 증가하는 방향을 읽기 위한 시각적 안내입니다.",
   "screen.evidence.trend.unavailable":
-    "현재 표시된 직원만으로는 근속 개월과 기본 연봉의 관찰 추세를 계산하기 어렵습니다.",
+    "현재 입력한 직원만으로는 관련 경력과 기본 연봉의 관찰 추세를 계산하기 어렵습니다.",
 
-  "non_claim.higher_salary": "연봉이 높은 직원의 보상이 잘못됐다는 뜻은 아닙니다.",
+  "non_claim.higher_salary":
+    "이 비교는 두 직원의 적정 연봉을 계산하거나 연봉이 높은 직원의 보상이 잘못됐다고 판단한 결과가 아닙니다. 현재 자료에서 비교 가능한 조건을 확인한 뒤, 차이를 설명하는 회사 기준이나 기록이 있는지 묻는 근거입니다.",
   "non_claim.observed_repeat":
     "현재 확인된 사례가 한 번 더 반복된다고 가정한 결과이며, 회사의 확정된 정책이 아닙니다.",
   "non_claim.bounded_rule":
@@ -207,7 +204,7 @@ export function formatRoleDistributionKicker(input: {
 }): string {
   validateLabel(input.roleGroup);
   validateCount(input.employeeCount);
-  return `${input.roleGroup} ${input.employeeCount}명의 기본 연봉과 근속 개월`;
+  return `${input.roleGroup} ${input.employeeCount}명의 기본 연봉과 관련 경력`;
 }
 
 export function formatRoleDistributionHeading(input: {
@@ -237,12 +234,14 @@ export function formatCurrentInputObservation(roleGroup: string): string {
   return `현재 입력한 ${roleGroup} 자료에서 확인된 기본 연봉 차이입니다.`;
 }
 
-export function formatTenureEvidenceTitle(input: {
+export function formatCareerEvidenceTitle(input: {
   roleGroup: string;
   employeeCount: number;
   lowerPaidLabel: string;
+  lowerPaidRelevantExperienceMonths: number;
   lowerPaidTenureMonths: number;
   higherPaidLabel: string;
+  higherPaidRelevantExperienceMonths: number;
   higherPaidTenureMonths: number;
   headlineGapKRW: number;
 }): string {
@@ -250,10 +249,12 @@ export function formatTenureEvidenceTitle(input: {
   validateCount(input.employeeCount);
   validateLabel(input.lowerPaidLabel);
   validateLabel(input.higherPaidLabel);
+  validateExperience(input.lowerPaidRelevantExperienceMonths);
+  validateExperience(input.higherPaidRelevantExperienceMonths);
   validateTenure(input.lowerPaidTenureMonths);
   validateTenure(input.higherPaidTenureMonths);
   const amount = formatHeadlineGap(input.headlineGapKRW);
-  return `${input.roleGroup} ${input.employeeCount}명 중 근속 ${input.lowerPaidTenureMonths}개월인 ${input.lowerPaidLabel}와 근속 ${input.higherPaidTenureMonths}개월인 ${input.higherPaidLabel}의 기본 연봉은 ${amount}만원 차이 납니다.`;
+  return `${input.roleGroup} ${input.employeeCount}명 중 ${formatRelevantExperience(input.lowerPaidRelevantExperienceMonths)}·회사 근속 ${input.lowerPaidTenureMonths}개월인 ${input.lowerPaidLabel}와 ${formatRelevantExperience(input.higherPaidRelevantExperienceMonths)}·회사 근속 ${input.higherPaidTenureMonths}개월인 ${input.higherPaidLabel}의 기본 연봉은 ${amount}만원 차이 납니다.`;
 }
 
 export function formatGtmEvidenceTitle(input: {
@@ -276,18 +277,17 @@ export function formatGtmEvidenceTitle(input: {
 export function formatProductEngineerEvidenceTitle(input: {
   employeeCount: number;
   lowerPaidLabel: string;
+  lowerPaidRelevantExperienceMonths: number;
   lowerPaidTenureMonths: number;
   higherPaidLabel: string;
+  higherPaidRelevantExperienceMonths: number;
   higherPaidTenureMonths: number;
   headlineGapKRW: number;
 }): string {
-  validateCount(input.employeeCount);
-  validateLabel(input.lowerPaidLabel);
-  validateLabel(input.higherPaidLabel);
-  validateTenure(input.lowerPaidTenureMonths);
-  validateTenure(input.higherPaidTenureMonths);
-  const amount = formatHeadlineGap(input.headlineGapKRW);
-  return `Product Engineer ${input.employeeCount}명 중 근속 ${input.lowerPaidTenureMonths}개월인 ${input.lowerPaidLabel}와 근속 ${input.higherPaidTenureMonths}개월인 ${input.higherPaidLabel}의 연봉은 ${amount}만원 차이납니다.`;
+  return formatCareerEvidenceTitle({
+    roleGroup: "Product Engineer",
+    ...input,
+  });
 }
 
 export function formatProductEngineerEvidenceSupporting(input: {
@@ -298,12 +298,12 @@ export function formatProductEngineerEvidenceSupporting(input: {
   validateCount(input.employeeCount);
   validateLabel(input.lowerPaidLabel);
   validateLabel(input.higherPaidLabel);
-  return `직원 ${input.employeeCount}명의 기본 연봉과 근속 개월을 함께 비교했습니다. 현재 자료에 기록된 역할·근속 기간·채용 예외 기록만으로는 ${input.lowerPaidLabel}와 ${input.higherPaidLabel}의 차이를 일관되게 설명할 기준을 확인하기 어렵습니다.`;
+  return `직원 ${input.employeeCount}명의 기본 연봉을 관련 경력과 함께 비교하고, 회사 근속과 채용 예외 기록을 보조 근거로 확인했습니다. 현재 자료만으로는 ${input.lowerPaidLabel}와 ${input.higherPaidLabel}의 차이를 일관되게 설명할 회사 기준이나 기록을 확인하기 어렵습니다.`;
 }
 
 export function formatObservedTrendLabel(employeeCount: number): string {
   assertPositiveCount(employeeCount, "OBSERVED_TREND_EMPLOYEE_COUNT_INVALID");
-  return `현재 ${employeeCount}명의 관찰 추세`;
+  return `현재 자료의 관찰 추세 · 직원 ${employeeCount}명`;
 }
 
 export function formatObservedTrendSummary({
@@ -315,11 +315,11 @@ export function formatObservedTrendSummary({
 }): string {
   assertPositiveCount(employeeCount, "OBSERVED_TREND_EMPLOYEE_COUNT_INVALID");
   const directionCopy = direction === "increasing"
-    ? "근속 개월이 늘어나는 쪽에서 기본 연봉도 높아지는 방향입니다."
+    ? "관련 경력이 늘어나는 쪽에서 기본 연봉도 높아지는 방향입니다."
     : direction === "decreasing"
-      ? "근속 개월이 늘어나는 쪽에서 기본 연봉이 낮아지는 방향입니다."
-      : "근속 개월에 따라 기본 연봉이 높아지거나 낮아지는 뚜렷한 방향이 없습니다.";
-  return `현재 ${employeeCount}명의 점을 한 줄로 요약하면, ${directionCopy} 이 자료만으로 그 원인이나 적정 연봉을 판단할 수는 없습니다.`;
+      ? "관련 경력이 늘어나는 쪽에서 기본 연봉이 낮아지는 방향입니다."
+      : "관련 경력에 따라 기본 연봉이 높아지거나 낮아지는 뚜렷한 방향이 없습니다.";
+  return `현재 입력한 직원 ${employeeCount}명의 점을 한 줄로 요약하면, ${directionCopy} 이 자료만으로 원인이나 적정 연봉을 판단할 수는 없습니다.`;
 }
 
 function formatHeadlineGap(headlineGapKRW: number): string {
@@ -335,6 +335,17 @@ function validateCount(value: number): void {
 
 function assertPositiveCount(value: number, errorCode: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(errorCode);
+}
+
+export function formatRelevantExperience(value: number | undefined): string {
+  if (value === undefined) return "관련 경력 확인 필요";
+  validateExperience(value);
+  const years = value / 12;
+  return `관련 경력 ${years.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}년`;
+}
+
+function validateExperience(value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error("INVALID_RELEVANT_EXPERIENCE");
 }
 
 function validateTenure(value: number): void {

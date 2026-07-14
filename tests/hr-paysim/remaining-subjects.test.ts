@@ -40,16 +40,16 @@ test("projects all three selected subjects and the bounded Designer clean state"
   assert.match(model.cleanState.statement, /모든 보상 기준이 완전하다는 뜻은 아닙니다/);
 });
 
-test("projects Platform comparison as tenure evidence", () => {
+test("projects Platform comparison as career evidence", () => {
   const { state } = selectRole("Platform Engineer");
   const model = createModel(state);
 
   assert.equal(model.activeRoleGroup, "Platform Engineer");
-  assert.equal(model.evidence.visualization.kind, "tenure");
+  assert.equal(model.evidence.visualization.kind, "career");
   assert.equal(model.evidence.highlightedPair.difference, "1,800만원");
   assert.match(
     model.evidence.conclusion,
-    /근속 60개월인 직원 A.*근속 17개월인 직원 B.*1,800만원/,
+    /관련 경력 10년·회사 근속 60개월인 직원 A.*관련 경력 8년·회사 근속 17개월인 직원 B.*1,800만원/,
   );
   assert.ok(model.evidence.supportingObservations.length <= 2);
 });
@@ -108,7 +108,7 @@ test("Screen 2 enables all selected subjects and renders evidence by kind", () =
   );
 
   assert.match(screen, /<SubjectSelector/);
-  assert.match(screen, /visualization\.kind === "tenure"/);
+  assert.match(screen, /visualization\.kind === "career"/);
   assert.match(screen, /<LevelOrderDistribution/);
   assert.doesNotMatch(screen, /button type="button" disabled/);
   assert.match(selector, /aria-pressed/);

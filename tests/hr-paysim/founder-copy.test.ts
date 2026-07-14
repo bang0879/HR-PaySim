@@ -38,7 +38,7 @@ test("locks the four founder headings and action-specific buttons", () => {
 test("locks the Product Engineer supporting copy, prompt, and title formatter", () => {
   assert.equal(
     FOUNDER_COPY["screen.evidence.product_engineer.supporting"],
-    "직원 6명의 기본 연봉과 근속 개월을 함께 비교했습니다.",
+    "직원 6명의 기본 연봉을 관련 경력과 함께 비교했습니다.",
   );
   assert.equal(
     FOUNDER_COPY["screen.evidence.product_engineer.action_prompt"],
@@ -48,25 +48,29 @@ test("locks the Product Engineer supporting copy, prompt, and title formatter", 
     formatProductEngineerEvidenceTitle({
       employeeCount: 6,
       lowerPaidLabel: "직원 A",
+      lowerPaidRelevantExperienceMonths: 120,
       lowerPaidTenureMonths: 64,
       higherPaidLabel: "직원 B",
+      higherPaidRelevantExperienceMonths: 84,
       higherPaidTenureMonths: 14,
       headlineGapKRW: 27_000_000,
     }),
-    "Product Engineer 6명 중 근속 64개월인 직원 A와 근속 14개월인 직원 B의 연봉은 2,700만원 차이납니다.",
+    "Product Engineer 6명 중 관련 경력 10년·회사 근속 64개월인 직원 A와 관련 경력 7년·회사 근속 14개월인 직원 B의 기본 연봉은 2,700만원 차이 납니다.",
   );
   assert.throws(
     () => formatProductEngineerEvidenceTitle({
       employeeCount: 6,
       lowerPaidLabel: "직원 A",
+      lowerPaidRelevantExperienceMonths: 120,
       lowerPaidTenureMonths: 64,
       higherPaidLabel: "직원 B",
+      higherPaidRelevantExperienceMonths: 84,
       higherPaidTenureMonths: 14,
       headlineGapKRW: -1,
     }),
     /INVALID_PRODUCT_ENGINEER_HEADLINE_GAP/,
   );
-  assert.match(FOUNDER_COPY["non_claim.higher_salary"], /높은 직원.*잘못됐다는 뜻은 아닙니다/);
+  assert.match(FOUNDER_COPY["non_claim.higher_salary"], /적정 연봉을 계산하거나.*높은 직원.*잘못됐다고 판단한 결과가 아닙니다/);
   assert.equal(
     FOUNDER_COPY["non_claim.observed_repeat"],
     "현재 확인된 사례가 한 번 더 반복된다고 가정한 결과이며, 회사의 확정된 정책이 아닙니다.",
@@ -82,36 +86,27 @@ test("locks the Product Engineer supporting copy, prompt, and title formatter", 
   assert.match(resolveFounderCopy("state.copy_failed") ?? "", /복사.*다시/);
 });
 
-test("keeps the observed trend and neutral guide in the founder copy SSOT", () => {
-  assert.equal(formatObservedTrendLabel(6), "현재 6명의 관찰 추세");
+test("keeps the career-based observed trend and removes the fixed guide", () => {
+  assert.equal(formatObservedTrendLabel(6), "현재 자료의 관찰 추세 · 직원 6명");
   assert.equal(
     formatObservedTrendSummary({ employeeCount: 6, direction: "decreasing" }),
-    "현재 6명의 점을 한 줄로 요약하면, 근속 개월이 늘어나는 쪽에서 기본 연봉이 낮아지는 방향입니다. 이 자료만으로 그 원인이나 적정 연봉을 판단할 수는 없습니다.",
+    "현재 입력한 직원 6명의 점을 한 줄로 요약하면, 관련 경력이 늘어나는 쪽에서 기본 연봉이 낮아지는 방향입니다. 이 자료만으로 원인이나 적정 연봉을 판단할 수는 없습니다.",
   );
   assert.equal(
     formatObservedTrendSummary({ employeeCount: 3, direction: "increasing" }),
-    "현재 3명의 점을 한 줄로 요약하면, 근속 개월이 늘어나는 쪽에서 기본 연봉도 높아지는 방향입니다. 이 자료만으로 그 원인이나 적정 연봉을 판단할 수는 없습니다.",
+    "현재 입력한 직원 3명의 점을 한 줄로 요약하면, 관련 경력이 늘어나는 쪽에서 기본 연봉도 높아지는 방향입니다. 이 자료만으로 원인이나 적정 연봉을 판단할 수는 없습니다.",
   );
   assert.equal(
     formatObservedTrendSummary({ employeeCount: 4, direction: "flat" }),
-    "현재 4명의 점을 한 줄로 요약하면, 근속 개월에 따라 기본 연봉이 높아지거나 낮아지는 뚜렷한 방향이 없습니다. 이 자료만으로 그 원인이나 적정 연봉을 판단할 수는 없습니다.",
-  );
-  assert.equal(
-    FOUNDER_COPY["screen.evidence.trend.guide_label"],
-    "근속 개월과 기본 연봉이 함께 증가하는 방향",
-  );
-  assert.equal(
-    FOUNDER_COPY["screen.evidence.trend.guide_non_claim"],
-    "파란 점선은 시장 평균이나 권장 연봉, 회사의 연봉 기준이 아닙니다. 근속 개월과 기본 연봉이 함께 증가하는 방향을 읽기 위한 시각적 안내입니다.",
+    "현재 입력한 직원 4명의 점을 한 줄로 요약하면, 관련 경력에 따라 기본 연봉이 높아지거나 낮아지는 뚜렷한 방향이 없습니다. 이 자료만으로 원인이나 적정 연봉을 판단할 수는 없습니다.",
   );
   assert.equal(
     FOUNDER_COPY["screen.evidence.trend.unavailable"],
-    "현재 표시된 직원만으로는 근속 개월과 기본 연봉의 관찰 추세를 계산하기 어렵습니다.",
+    "현재 입력한 직원만으로는 관련 경력과 기본 연봉의 관찰 추세를 계산하기 어렵습니다.",
   );
-  assert.doesNotMatch(
-    FOUNDER_COPY["screen.evidence.trend.guide_label"],
-    /정상|통상|시장|기대|권장|적정|회사 기준/,
-  );
+  const copy = FOUNDER_COPY as Record<string, string>;
+  assert.equal(copy["screen.evidence.trend.guide_label"], undefined);
+  assert.equal(copy["screen.evidence.trend.guide_non_claim"], undefined);
   assert.throws(() => formatObservedTrendLabel(0), /OBSERVED_TREND_EMPLOYEE_COUNT_INVALID/);
 });
 
