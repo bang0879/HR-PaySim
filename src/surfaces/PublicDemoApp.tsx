@@ -7,7 +7,7 @@ import { createSyntheticDemoSession } from "../lib/hr-paysim/contracts/demoContr
 export function SurfaceApp() {
   if (
     resolveSurfaceRoute("PUBLIC_DEMO", window.location.pathname)
-    !== "decision_room_preview"
+    !== "demo"
   ) {
     return <UnavailableSurface />;
   }

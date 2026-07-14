@@ -10,7 +10,7 @@ export function UnavailableSurface() {
         </p>
         <h1>{FOUNDER_COPY["route.unavailable.heading"]}</h1>
         <p>{FOUNDER_COPY["route.unavailable.support"]}</p>
-        <a href="/hr-paysim/decision-room-preview">
+        <a href="/hr-paysim/demo">
           {FOUNDER_COPY["route.unavailable.action"]}
         </a>
       </section>

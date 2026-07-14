@@ -13,7 +13,7 @@ if (!["public", "facilitator-local"].includes(qaSurface)) {
 }
 
 const url = process.env.HR_PAYSIM_URL
-  ?? "http://127.0.0.1:5173/hr-paysim/decision-room-preview";
+  ?? "http://127.0.0.1:5173/hr-paysim/demo";
 const origin = new URL(url).origin;
 const facilitatorHeader =
   "기본연봉(원)\t관련 경력년수\t회사 근속개월\t직함\t레벨\t문서화된 예외\t카운터오퍼 여부";
@@ -692,7 +692,13 @@ async function inspectPublicBlockedRoutes(viewport) {
   if (qaSurface !== "public") return;
   const blockedContext = await browser.newContext({ viewport });
   const blockedPage = await blockedContext.newPage();
-  for (const path of ["/hr-paysim/session/new", "/hr-paysim/session"]) {
+  for (const path of [
+    "/hr-paysim/decision-room-preview",
+    "/hr-paysim/entry",
+    "/hr-paysim/roster",
+    "/hr-paysim/session/new",
+    "/hr-paysim/session",
+  ]) {
     await blockedPage.goto(origin + path, { waitUntil: "networkidle" });
     await assertNoBlockedPaySimLinks(blockedPage, `blocked route ${path}`);
     const unavailable = await blockedPage

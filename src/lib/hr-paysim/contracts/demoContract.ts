@@ -14,7 +14,7 @@ import { buildStructuralThemes } from "../themes/buildStructuralThemes.ts";
 import { selectReviewSubjects } from "../themes/selectReviewSubjects.ts";
 
 export const DECISION_ROOM_DEMO_CONTRACT = {
-  route: "/hr-paysim/decision-room-preview",
+  route: "/hr-paysim/demo",
   syntheticOnly: true,
   sampleLabel: "샘플로 입력한 내용",
   screens: [

@@ -17,16 +17,16 @@ test("only exact facilitator-local opens the local surface", () => {
   }
 });
 
-test("public permits only the synthetic preview", () => {
+test("public permits only the canonical synthetic demo", () => {
   assert.equal(
-    resolveSurfaceRoute("PUBLIC_DEMO", "/hr-paysim/decision-room-preview"),
-    "decision_room_preview",
+    resolveSurfaceRoute("PUBLIC_DEMO", "/hr-paysim/demo"),
+    "demo",
   );
   for (const path of [
+    "/hr-paysim/decision-room-preview",
     "/hr-paysim/session/new",
     "/hr-paysim/session",
     "/hr-paysim/roster",
-    "/hr-paysim/demo",
     "/hr-paysim/entry",
     "/unknown",
   ]) {
@@ -34,10 +34,10 @@ test("public permits only the synthetic preview", () => {
   }
 });
 
-test("facilitator-local permits preview and local session routes only", () => {
+test("facilitator-local permits demo and local session routes only", () => {
   assert.equal(
-    resolveSurfaceRoute("FACILITATOR_LOCAL", "/hr-paysim/decision-room-preview"),
-    "decision_room_preview",
+    resolveSurfaceRoute("FACILITATOR_LOCAL", "/hr-paysim/demo"),
+    "demo",
   );
   assert.equal(
     resolveSurfaceRoute("FACILITATOR_LOCAL", "/hr-paysim/session/new"),
@@ -48,8 +48,8 @@ test("facilitator-local permits preview and local session routes only", () => {
     "facilitator_session",
   );
   for (const path of [
+    "/hr-paysim/decision-room-preview",
     "/hr-paysim/roster",
-    "/hr-paysim/demo",
     "/hr-paysim/entry",
     "/unknown",
   ]) {

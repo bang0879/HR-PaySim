@@ -8,16 +8,16 @@ import {
 
 test("public link detector covers direct and JSX brace literals", () => {
   const source = `
-    <a href="/hr-paysim/decision-room-preview">allowed</a>
+    <a href="/hr-paysim/demo">allowed</a>
     <a href="/hr-paysim/session/new">blocked direct</a>
-    <a href={'/hr-paysim/demo'}>blocked legacy</a>
+    <a href={'/hr-paysim/decision-room-preview'}>blocked preview</a>
     <a href={"/hr-paysim/unknown"}>blocked unknown</a>
-    <a href={enabled ? "/hr-paysim/session" : "/hr-paysim/decision-room-preview"}>conditional</a>
+    <a href={enabled ? "/hr-paysim/session" : "/hr-paysim/demo"}>conditional</a>
     <a href="https://example.com/hr-paysim/session">external</a>
   `;
   assert.deepEqual(findBlockedLiteralPaySimHrefs(source), [
     "/hr-paysim/session/new",
-    "/hr-paysim/demo",
+    "/hr-paysim/decision-room-preview",
     "/hr-paysim/unknown",
     "/hr-paysim/session",
   ]);
