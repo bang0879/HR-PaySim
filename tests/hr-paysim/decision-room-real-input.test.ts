@@ -1,17 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
+import { createFacilitatorSessionDraft } from "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts";
 import { prepareProductEngineerRoster } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
 import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 import { createEmptyDecisionRoomSession } from "../../src/lib/hr-paysim/session/decisionRoomReducer.ts";
+import type { DecisionRoomScreen } from "../../src/lib/hr-paysim/session/types.ts";
+import {
+  completeGradeMultiRoleRows,
+  noGradeMultiRoleRows,
+} from "./fixtures/multi-role-roster.ts";
 
 const actualRosterPaste = [
   KOREAN_ROSTER_HEADERS.join("\t"),
-  "73000000\t10\t61\tProduct Engineer\t\t아니오\t아니오",
-  "77000000\t9\t50\tProduct Engineer\t\t아니오\t아니오",
-  "81000000\t8\t39\tProduct Engineer\t\t아니오\t아니오",
-  "91000000\t7\t13\tSenior Product Engineer\t\t예\t아니오",
-  "88000000\t6\t20\tProduct Engineer\t\t아니오\t예",
+  "73000000\t10\t61\tProduct Engineer\t\t\t없음",
+  "77000000\t9\t50\tProduct Engineer\t\t\t없음",
+  "81000000\t8\t39\tProduct Engineer\t\t\t없음",
+  "91000000\t7\t13\tProduct Engineer\t\t\t없음",
+  "88000000\t6\t20\tProduct Engineer\t\t\t없음",
 ].join("\n");
 
 test("facilitated copy derives every roster fact from the current Product Engineer session", () => {
@@ -48,5 +54,50 @@ test("facilitated copy derives every roster fact from the current Product Engine
     "GTM",
   ]) {
     assert.equal(rendered.includes(syntheticOnly), false, syntheticOnly);
+  }
+});
+
+test("facilitated multi-role subjects stay role-local across all four screens", () => {
+  const designerRows = noGradeMultiRoleRows.map((row) => ({
+    ...row,
+    rowId: `designer-${row.rowId}`,
+    roleGroup: "Product Designer",
+  }));
+  const draftResult = createFacilitatorSessionDraft([
+    ...completeGradeMultiRoleRows,
+    ...designerRows,
+  ]);
+  assert.equal(draftResult.supported, true);
+  if (!draftResult.supported) return;
+
+  const screens: DecisionRoomScreen[] = [
+    "introduction",
+    "confirmed_pay_differences",
+    "company_rule",
+    "session_result",
+  ];
+  const forbiddenFallbacks = ["Product Engineer", "Platform Engineer", "GTM"];
+
+  for (const activeTheme of draftResult.draft.selection.selected) {
+    for (const screen of screens) {
+      const model = createDecisionRoomViewModel({
+        ...createEmptyDecisionRoomSession("facilitated"),
+        ...draftResult.draft,
+        activeThemeId: activeTheme.id,
+        screen,
+      });
+      const conclusion = model.evidence.conclusion;
+
+      assert.equal(conclusion.includes(activeTheme.roleGroup), true, `${screen}: ${activeTheme.roleGroup}`);
+      assert.equal(conclusion.includes("직원 A"), true, `${screen}: 직원 A`);
+      assert.equal(conclusion.includes("직원 B"), true, `${screen}: 직원 B`);
+      for (const fallback of forbiddenFallbacks) {
+        assert.equal(conclusion.includes(fallback), false, `${screen}: ${fallback}`);
+      }
+
+      if (activeTheme.archetype === "level_integrity") {
+        assert.equal(model.evidence.visualization.kind, "level_order");
+      }
+    }
   }
 });

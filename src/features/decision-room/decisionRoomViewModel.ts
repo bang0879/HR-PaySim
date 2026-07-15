@@ -3,6 +3,7 @@ import {
   formatCareerEvidenceTitle,
   formatCurrentInputObservation,
   formatGtmEvidenceTitle,
+  formatLevelEvidenceTitle,
   formatPendingRuleContext,
   formatProductEngineerEvidenceSupporting,
   formatProductEngineerEvidenceTitle,
@@ -17,6 +18,7 @@ import { createEmployeeLabels } from "../../lib/hr-paysim/presentation/createEmp
 import { findObservedPrecedentCandidates } from "../../lib/hr-paysim/repeat/selectObservedPrecedent.ts";
 import type { NormalizedRosterRow } from "../../lib/hr-paysim/domain.ts";
 import type { EvidenceStatus, ExplanationBasis } from "../../lib/hr-paysim/review/types.ts";
+import type { StructuralTheme } from "../../lib/hr-paysim/themes/types.ts";
 import type {
   DecisionRoomScreen,
   DecisionRoomSessionState,
@@ -390,9 +392,9 @@ export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
       }
     : undefined;
 
-  const base = activeTheme.roleGroup === "Product Engineer"
-    ? createProductEngineerDecisionRoomViewModel(state)
-    : createRemainingSubjectViewModel(state, activeTheme);
+  const base = state.mode === "demo"
+    ? createNamedDemoSubjectViewModel(state, activeTheme)
+    : createFacilitatedSubjectViewModel(state, activeTheme);
 
   return {
     ...base,
@@ -423,22 +425,23 @@ export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
     },
     evidence: {
       ...base.evidence,
-      visualization: activeTheme.roleGroup === "Product Engineer"
-        ? {
+      visualization: "visualization" in base.evidence
+        ? base.evidence.visualization
+        : {
             kind: "career" as const,
             distribution: base.evidence.distribution,
             kicker: base.evidence.distributionKicker,
             heading: base.evidence.distributionHeading,
-          }
-        : (base.evidence as { visualization: EvidenceVisualization }).visualization,
+          },
       subjects,
       activeRoleGroup: activeTheme.roleGroup,
       cleanState,
     },
     rule: {
       ...base.rule,
-      variant: activeTheme.roleGroup === "Product Engineer"
-        ? {
+      variant: "variant" in base.rule
+        ? base.rule.variant
+        : {
             kind: "observed_precedent" as const,
             heading: base.rule.observedRepeat.heading,
             metrics: [
@@ -448,8 +451,7 @@ export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
               { label: FOUNDER_COPY["screen.rule.metric.comparison_count"], value: base.rule.observedRepeat.comparisonCount },
             ],
             nonClaim: base.rule.observedRepeat.nonClaim,
-          }
-        : (base.rule as { variant: RuleVariant }).variant,
+          },
       subjects,
       activeRoleGroup: activeTheme.roleGroup,
     },
@@ -476,6 +478,305 @@ export function createDecisionRoomViewModel(state: DecisionRoomSessionState) {
         id: theme.roleGroup,
         roleGroup: theme.roleGroup,
       })),
+    },
+  };
+}
+
+function createNamedDemoSubjectViewModel(
+  state: DecisionRoomSessionState,
+  theme: StructuralTheme,
+) {
+  return theme.roleGroup === "Product Engineer"
+    ? createProductEngineerDecisionRoomViewModel(state)
+    : createRemainingSubjectViewModel(state, theme);
+}
+
+function createFacilitatedSubjectViewModel(
+  state: DecisionRoomSessionState,
+  theme: StructuralTheme,
+) {
+  if (!theme.headlinePair) throw new Error("ACTIVE_COMPARISON_REQUIRED");
+  const rows = state.rows
+    .filter((row) => row.roleGroup === theme.roleGroup)
+    .sort((a, b) => a.baseSalaryKRW - b.baseSalaryKRW || compareText(a.rowId, b.rowId));
+  const lowerPaid = requiredRow(rows, theme.headlinePair.underpaidRowId);
+  const higherPaid = requiredRow(rows, theme.headlinePair.comparatorRowId);
+  const labels = createEmployeeLabels(rows, lowerPaid.rowId, higherPaid.rowId);
+  const lowerPaidLabel = labels.get(lowerPaid.rowId)!;
+  const higherPaidLabel = labels.get(higherPaid.rowId)!;
+  const headlineGapKRW = theme.metrics.headlineGapKRW;
+  if (headlineGapKRW === undefined) throw new Error("ACTIVE_HEADLINE_GAP_REQUIRED");
+
+  const employeeCount = rows.length;
+  const isLevelSubject = theme.archetype === "level_integrity";
+  const review = state.reviews[theme.id];
+  const decision = state.decisions.find((item) => item.themeIds.includes(theme.id));
+  const hasReviewedEvidence = Boolean(
+    review?.explanationBasis
+    && review.explanationBasis !== "unanswered"
+    && review.evidenceStatus
+    && review.evidenceStatus !== "unanswered",
+  );
+  const repeat = hasReviewedEvidence ? state.repeats[theme.id] : undefined;
+  const pending = FOUNDER_COPY["state.review_pending"];
+  const evidenceConclusion = isLevelSubject
+    ? formatLevelEvidenceTitle({
+        roleGroup: theme.roleGroup,
+        employeeCount,
+        lowerPaidLabel,
+        lowerPaidLevel: lowerPaid.levelLabel ?? FOUNDER_COPY["screen.evidence.level_missing"],
+        higherPaidLabel,
+        higherPaidLevel: higherPaid.levelLabel ?? FOUNDER_COPY["screen.evidence.level_missing"],
+        headlineGapKRW,
+      })
+    : formatCareerEvidenceTitle({
+        roleGroup: theme.roleGroup,
+        employeeCount,
+        lowerPaidLabel,
+        lowerPaidRelevantExperienceMonths: requiredRelevantExperience(lowerPaid),
+        lowerPaidTenureMonths: requiredTenure(lowerPaid),
+        higherPaidLabel,
+        higherPaidRelevantExperienceMonths: requiredRelevantExperience(higherPaid),
+        higherPaidTenureMonths: requiredTenure(higherPaid),
+        headlineGapKRW,
+      });
+  const distribution = rows.map((row) => ({
+    employeeLabel: labels.get(row.rowId)!,
+    salary: formatManwon(row.baseSalaryKRW),
+    salaryKRW: row.baseSalaryKRW,
+    relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+    relevantExperienceMonths: row.relevantExperienceMonths,
+    tenure: formatTenure(row.tenureMonths),
+    tenureMonths: row.tenureMonths,
+    levelLabel: row.levelLabel,
+    highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
+  }));
+  const levelMetrics = [
+    {
+      label: "직원 A·B 연봉 차이",
+      amount: formatManwon(headlineGapKRW),
+    },
+    {
+      label: "직원 A·B 기준 정비 하한",
+      amount: formatManwon(theme.metrics.pairRepairFloorKRW ?? 0),
+    },
+    {
+      label: "직급 순서 전체 기준 정비 하한",
+      amount: formatManwon(theme.metrics.systemRepairFloorKRW ?? 0),
+    },
+  ];
+  const visualization: EvidenceVisualization = isLevelSubject
+    ? {
+        kind: "level_order",
+        groups: [...new Set(rows.map((row) => row.levelLabel).filter((value): value is string => Boolean(value)))]
+          .sort((a, b) => {
+            const aRank = rows.find((row) => row.levelLabel === a)?.levelRank ?? Number.MAX_SAFE_INTEGER;
+            const bRank = rows.find((row) => row.levelLabel === b)?.levelRank ?? Number.MAX_SAFE_INTEGER;
+            return aRank - bRank || compareText(a, b);
+          })
+          .map((levelLabel) => ({
+            levelLabel,
+            employees: rows
+              .filter((row) => row.levelLabel === levelLabel)
+              .map((row) => ({
+                employeeLabel: labels.get(row.rowId)!,
+                salary: formatManwon(row.baseSalaryKRW),
+                salaryKRW: row.baseSalaryKRW,
+                highlighted: row.rowId === lowerPaid.rowId || row.rowId === higherPaid.rowId,
+              })),
+          })),
+        metrics: levelMetrics,
+        nonClaim: theme.metrics.nonClaim,
+      }
+    : {
+        kind: "career",
+        distribution,
+        kicker: formatRoleDistributionKicker({
+          roleGroup: theme.roleGroup,
+          employeeCount,
+        }),
+        heading: formatRoleDistributionHeading({
+          roleGroup: theme.roleGroup,
+          employeeCount,
+        }),
+      };
+  const observedRepeat = {
+    heading: repeat
+      ? `다음 ${theme.roleGroup}의 기본 연봉이 ${formatManwon(repeat.syntheticRow.baseSalaryKRW)}이라고 가정해 기존 직원과 다시 비교했습니다.`
+      : `${theme.roleGroup}의 설명과 근거를 확인한 뒤 같은 사례를 적용한 결과를 계산합니다.`,
+    nextHireSalary: repeat ? formatManwon(repeat.syntheticRow.baseSalaryKRW) : pending,
+    affectedEmployees: repeat ? `기존 ${theme.roleGroup} ${repeat.affectedRowIds.length}명` : pending,
+    maximumDifference: repeat ? `최대 ${formatManwon(repeat.maximumGapKRW)}` : pending,
+    comparisonCount: repeat ? `현재와 다음 사례를 합쳐 ${repeat.combinedPairCount}개 비교` : pending,
+    nonClaim: FOUNDER_COPY["non_claim.observed_repeat"],
+  };
+  const ruleVariant: RuleVariant = isLevelSubject
+    ? {
+        kind: "level_order",
+        heading: `${theme.roleGroup}의 직급 순서와 기본 연봉 순서가 일치하는지 확인했습니다.`,
+        metrics: levelMetrics,
+        nonClaim: theme.metrics.nonClaim,
+      }
+    : repeat
+      ? {
+          kind: "observed_precedent",
+          heading: observedRepeat.heading,
+          metrics: [
+            { label: FOUNDER_COPY["screen.rule.metric.next_hire"], value: observedRepeat.nextHireSalary },
+            { label: FOUNDER_COPY["screen.rule.metric.lower_paid_existing"], value: observedRepeat.affectedEmployees },
+            { label: FOUNDER_COPY["screen.rule.metric.maximum_gap"], value: observedRepeat.maximumDifference },
+            { label: FOUNDER_COPY["screen.rule.metric.comparison_count"], value: observedRepeat.comparisonCount },
+          ],
+          nonClaim: observedRepeat.nonClaim,
+        }
+      : {
+          kind: "pending",
+          heading: `${theme.roleGroup}에 적용할 회사 기준은 아직 승인하지 않았습니다.`,
+          missing: ruleConditionLabels(),
+        };
+
+  return {
+    introduction: {
+      heading: FOUNDER_COPY["screen.introduction.heading"],
+      conclusion: `${theme.roleGroup}의 실제 연봉 차이를 확인하고 다음 인사 결정 전에 필요한 회사 기준을 정리합니다.`,
+      scope: `${employeeCount}명의 이름 없는 ${theme.roleGroup} 입력 자료에서 기본 연봉과 비교 근거를 살펴봅니다.`,
+      sectionLabel: FOUNDER_COPY["screen.introduction.scope_label"],
+      nonClaims: [
+        "개인의 적정 연봉이나 인상액을 추천하지 않습니다.",
+        "직원의 성과, 의도 또는 퇴사 가능성을 판단하지 않습니다.",
+      ],
+      outputs: [
+        `${theme.roleGroup} ${employeeCount}명의 실제 연봉 분포와 직원 A·B 비교를 확인합니다.`,
+        "선택한 설명을 어떤 기록으로 확인할 수 있는지 정리합니다.",
+        "같은 상황을 다시 다루기 전에 회사가 정할 기준과 담당 시점을 남깁니다.",
+      ],
+      duration: "예상 대화 시간은 45~60분입니다.",
+      nextStepSummary: `먼저 ${theme.roleGroup} ${employeeCount}명의 실제 연봉 분포와 직원 A·B 비교를 확인합니다.`,
+      primaryAction: FOUNDER_COPY["action.view_evidence"],
+    },
+    evidence: {
+      heading: FOUNDER_COPY["screen.evidence.heading"],
+      conclusion: evidenceConclusion,
+      supportingCopy: `${theme.roleGroup} ${employeeCount}명의 기본 연봉과 비교 근거를 함께 확인합니다. 현재 입력만으로 직원 A와 직원 B의 차이를 모두 설명하는 회사 기준은 확인되지 않았습니다.`,
+      actionPrompt: `${theme.roleGroup}의 직원 A와 직원 B 차이를 설명할 수 있는 이유와 확인 가능한 기록을 선택합니다.`,
+      nonClaim: theme.metrics.nonClaim,
+      distributionKicker: formatRoleDistributionKicker({
+        roleGroup: theme.roleGroup,
+        employeeCount,
+      }),
+      distributionHeading: formatRoleDistributionHeading({
+        roleGroup: theme.roleGroup,
+        employeeCount,
+      }),
+      distribution,
+      visualization,
+      highlightedPair: {
+        lowerPaidLabel,
+        higherPaidLabel,
+        lowerPaidSalary: formatManwon(lowerPaid.baseSalaryKRW),
+        higherPaidSalary: formatManwon(higherPaid.baseSalaryKRW),
+        difference: formatManwon(headlineGapKRW),
+        lowerPaidRelevantExperience: formatRelevantExperience(lowerPaid.relevantExperienceMonths),
+        higherPaidRelevantExperience: formatRelevantExperience(higherPaid.relevantExperienceMonths),
+        lowerPaidTenure: formatTenure(lowerPaid.tenureMonths),
+        higherPaidTenure: formatTenure(higherPaid.tenureMonths),
+        lowerPaidException: formatExceptionRecord(lowerPaid),
+        higherPaidException: formatExceptionRecord(higherPaid),
+      },
+      supportingObservationsHeading: formatRoleObservationsHeading({
+        roleGroup: theme.roleGroup,
+        employeeCount,
+      }),
+      supportingObservations: [
+        `${lowerPaidLabel}의 기본 연봉은 ${formatManwon(lowerPaid.baseSalaryKRW)}이고 ${higherPaidLabel}의 기본 연봉은 ${formatManwon(higherPaid.baseSalaryKRW)}입니다.`,
+        `${lowerPaidLabel}와 ${higherPaidLabel} 사이의 ${formatManwon(headlineGapKRW)} 차이가 현재 비교의 핵심입니다.`,
+      ],
+      explanationQuestion: `${theme.roleGroup}에서 직원 A와 직원 B의 연봉 차이가 생긴 이유를 어떻게 설명하시겠습니까?`,
+      explanationChoices: Object.entries(explanationLabels).map(([value, label]) => ({ value, label })),
+      selectedExplanation: review?.explanationBasis ?? "unanswered",
+      evidenceQuestion: review?.explanationBasis && review.explanationBasis !== "unanswered"
+        ? "선택한 설명을 같은 기준으로 안내할 수 있도록 확인할 기록이나 업무 자료가 있습니까?"
+        : undefined,
+      evidenceChoices: Object.entries(evidenceLabels).map(([value, label]) => ({ value, label })),
+      selectedEvidence: review?.evidenceStatus ?? "unanswered",
+      evidenceRows: [lowerPaid, higherPaid].map((row) => ({
+        employeeLabel: labels.get(row.rowId)!,
+        role: row.roleGroup,
+        level: isLevelSubject ? row.levelLabel : undefined,
+        relevantExperience: formatRelevantExperience(row.relevantExperienceMonths),
+        relevantExperienceMonths: row.relevantExperienceMonths,
+        tenure: formatTenure(row.tenureMonths),
+        tenureMonths: row.tenureMonths,
+        salary: formatManwon(row.baseSalaryKRW),
+        documentedException: formatExceptionRecord(row),
+      })),
+      primaryAction: FOUNDER_COPY["action.repeat_practice"],
+    },
+    rule: {
+      heading: FOUNDER_COPY["screen.rule.heading"],
+      conclusion: repeat
+        ? `확인된 ${theme.roleGroup} 사례를 한 번 더 적용했을 때 기존 직원과의 차이를 계산했습니다.`
+        : `${theme.roleGroup}에 적용할 설명과 근거를 확인한 뒤 회사 기준을 정해야 합니다.`,
+      selectedExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
+        ? explanationLabels[review.explanationBasis]
+        : pending,
+      selectedEvidence: review?.evidenceStatus && review.evidenceStatus !== "unanswered"
+        ? evidenceLabels[review.evidenceStatus]
+        : pending,
+      observedRepeat,
+      missingRuleConditions: ruleConditionLabels(),
+      ruleConditions: createPendingRuleConditions(theme.roleGroup),
+      boundedRuleNonClaim: "현재 사례에서 확인해야 할 질문이며, 아직 회사가 승인한 기준이나 개인별 권장 연봉이 아닙니다.",
+      decision: {
+        heading: decision ? actionLabels[decision.actionKey] : FOUNDER_COPY["state.company_action_pending"],
+        companyAction: decision ? actionLabels[decision.actionKey] : pending,
+        owner: decision ? ownerLabels[decision.ownerRole] : pending,
+        due: decision ? dueLabels[decision.dueEvent] : pending,
+      },
+      variant: ruleVariant,
+      primaryAction: FOUNDER_COPY["action.organize_decisions"],
+    },
+    result: {
+      heading: FOUNDER_COPY["screen.result.heading"],
+      conclusion: decision
+        ? `${theme.roleGroup}에서 확인한 기준과 다음 행동을 기록했습니다.`
+        : `${theme.roleGroup}의 연봉 차이는 확인했으며 설명, 근거, 다음 행동은 추가 확인이 필요합니다.`,
+      summary: evidenceConclusion,
+      approvalStatus: decision ? "확인 완료" : FOUNDER_COPY["state.additional_review_required"],
+      columns: [
+        FOUNDER_COPY["result.column.confirmed"],
+        FOUNDER_COPY["result.column.founder_explanation"],
+        FOUNDER_COPY["result.column.evidence"],
+        FOUNDER_COPY["result.column.decision"],
+        FOUNDER_COPY["result.column.owner"],
+        FOUNDER_COPY["result.column.due"],
+      ],
+      rows: [{
+        roleGroup: theme.roleGroup,
+        confirmed: evidenceConclusion,
+        founderExplanation: review?.explanationBasis && review.explanationBasis !== "unanswered"
+          ? explanationLabels[review.explanationBasis]
+          : pending,
+        evidence: review?.evidenceStatus && review.evidenceStatus !== "unanswered"
+          ? evidenceLabels[review.evidenceStatus]
+          : pending,
+        decision: decision ? actionLabels[decision.actionKey] : pending,
+        owner: decision ? ownerLabels[decision.ownerRole] : pending,
+        due: decision ? dueLabels[decision.dueEvent] : pending,
+      }],
+      nonClaims: [
+        "개인별 적정 연봉이나 인상액을 정한 결과가 아닙니다.",
+        "높은 연봉을 받은 직원의 보상이 잘못됐다고 판단한 결과가 아닙니다.",
+      ],
+      nextActions: [{
+        period: FOUNDER_COPY["state.next_check_period"],
+        action: `${theme.roleGroup}의 설명, 근거, 회사 행동을 확인합니다.`,
+      }],
+      copyAction: FOUNDER_COPY["action.copy_result"],
+      copySuccess: FOUNDER_COPY["state.copy_succeeded"],
+      copyFailure: FOUNDER_COPY["state.copy_failed"],
+      printAction: FOUNDER_COPY["action.print_result"],
+      endAction: FOUNDER_COPY["action.end_and_clear"],
     },
   };
 }
@@ -731,11 +1032,13 @@ function createPendingNextActions(state: DecisionRoomSessionState) {
       && review.evidenceStatus && review.evidenceStatus !== "unanswered"
       && decision;
     if (complete) return [];
-    const action = theme.roleGroup === "Product Engineer"
-      ? FOUNDER_COPY["action.next.product"]
-      : theme.roleGroup === "Platform Engineer"
-        ? FOUNDER_COPY["action.next.platform"]
-        : FOUNDER_COPY["action.next.gtm"];
+    const action = state.mode === "facilitated"
+      ? `${theme.roleGroup}의 설명, 근거, 회사 행동을 확인합니다.`
+      : theme.roleGroup === "Product Engineer"
+        ? FOUNDER_COPY["action.next.product"]
+        : theme.roleGroup === "Platform Engineer"
+          ? FOUNDER_COPY["action.next.platform"]
+          : FOUNDER_COPY["action.next.gtm"];
     return [{ period: FOUNDER_COPY["state.next_check_period"], action }];
   });
 }

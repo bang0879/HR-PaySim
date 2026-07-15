@@ -289,6 +289,25 @@ export function formatCareerEvidenceTitle(input: {
   return `${input.roleGroup} ${input.employeeCount}명 중 ${formatRelevantExperience(input.lowerPaidRelevantExperienceMonths)}·회사 근속 ${input.lowerPaidTenureMonths}개월인 ${input.lowerPaidLabel}와 ${formatRelevantExperience(input.higherPaidRelevantExperienceMonths)}·회사 근속 ${input.higherPaidTenureMonths}개월인 ${input.higherPaidLabel}의 기본 연봉은 ${amount}만원 차이 납니다.`;
 }
 
+export function formatLevelEvidenceTitle(input: {
+  roleGroup: string;
+  employeeCount: number;
+  lowerPaidLabel: string;
+  lowerPaidLevel: string;
+  higherPaidLabel: string;
+  higherPaidLevel: string;
+  headlineGapKRW: number;
+}): string {
+  validateLabel(input.roleGroup);
+  validateCount(input.employeeCount);
+  validateLabel(input.lowerPaidLabel);
+  validateLabel(input.lowerPaidLevel);
+  validateLabel(input.higherPaidLabel);
+  validateLabel(input.higherPaidLevel);
+  const amount = formatHeadlineGap(input.headlineGapKRW);
+  return `${input.roleGroup} ${input.employeeCount}명 중 ${input.lowerPaidLevel}의 ${input.lowerPaidLabel} 기본 연봉은 ${input.higherPaidLevel}의 ${input.higherPaidLabel}보다 ${amount}만원 낮습니다.`;
+}
+
 export function formatGtmEvidenceTitle(input: {
   employeeCount: number;
   lowerPaidLabel: string;
