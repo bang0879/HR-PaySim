@@ -10,7 +10,7 @@ export function SurfaceApp() {
     "FACILITATOR_LOCAL",
     window.location.pathname,
   );
-  if (route === "decision_room_preview") {
+  if (route === "demo") {
     return (
       <PaySimSessionProvider initialState={createSyntheticDemoSession()}>
         <DecisionRoomApp />

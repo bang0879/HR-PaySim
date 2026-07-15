@@ -179,10 +179,11 @@ test("the provider initializer rejects malformed state and preserves a canonical
   assert.notEqual(initialized.report, demo.report);
 });
 
-test("all Task 8 entry modules contain no persistence, URL-state, or network calls", () => {
+test("all canonical entry modules contain no persistence, URL-state, or network calls", () => {
   const files = [
-    "src/App.tsx",
-    "src/routes/hr-paysim/appRoute.ts",
+    "src/surfaces/PublicDemoApp.tsx",
+    "src/surfaces/FacilitatorLocalApp.tsx",
+    "src/lib/hr-paysim/access/routePolicy.ts",
     "src/app/PaySimSessionProvider.tsx",
     "src/lib/hr-paysim/contracts/demoContract.ts",
     "src/lib/hr-paysim/session/types.ts",

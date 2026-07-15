@@ -9,7 +9,6 @@ import {
   createEmptyDecisionRoomSession,
   decisionRoomReducer,
 } from "../../src/lib/hr-paysim/session/decisionRoomReducer.ts";
-import { resolveHrPaySimSurface } from "../../src/routes/hr-paysim/appRoute.ts";
 
 test("demo contract fixes four screens, three clicks, and a visible synthetic label", () => {
   assert.deepEqual(DECISION_ROOM_DEMO_CONTRACT.screens, [
@@ -21,7 +20,7 @@ test("demo contract fixes four screens, three clicks, and a visible synthetic la
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.clicksToResult, 3);
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.syntheticOnly, true);
   assert.equal(DECISION_ROOM_DEMO_CONTRACT.sampleLabel, "샘플로 입력한 내용");
-  assert.equal(DECISION_ROOM_DEMO_CONTRACT.route, "/hr-paysim/decision-room-preview");
+  assert.equal(DECISION_ROOM_DEMO_CONTRACT.route, "/hr-paysim/demo");
 });
 
 test("synthetic demo prefills only the Product Engineer reviewed path", () => {
@@ -129,16 +128,6 @@ test("START_SESSION replaces prior state without retaining derived demo data", (
   });
 
   assert.deepEqual(started, createEmptyDecisionRoomSession("facilitated"));
-});
-
-test("preview route is added without replacing old prototype, roster, or demo surfaces", () => {
-  assert.equal(
-    resolveHrPaySimSurface("/hr-paysim/decision-room-preview"),
-    "decision_room_preview",
-  );
-  assert.equal(resolveHrPaySimSurface("/hr-paysim/entry"), "prototype");
-  assert.equal(resolveHrPaySimSurface("/hr-paysim/roster"), "roster");
-  assert.equal(resolveHrPaySimSurface("/hr-paysim/demo"), "demo");
 });
 
 test("new decision-room session modules contain no browser-storage or JSON persistence helpers", () => {

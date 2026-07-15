@@ -1,4 +1,4 @@
-const publicPreviewPath = "/hr-paysim/decision-room-preview";
+const publicDemoPath = "/hr-paysim/demo";
 const publicDemoOrigin = "https://public-demo.invalid";
 
 export function findBlockedPaySimHrefs(hrefs, baseOrigin = publicDemoOrigin) {
@@ -7,7 +7,7 @@ export function findBlockedPaySimHrefs(hrefs, baseOrigin = publicDemoOrigin) {
       const destination = new URL(href, baseOrigin);
       return destination.origin === new URL(baseOrigin).origin
         && destination.pathname.startsWith("/hr-paysim/")
-        && destination.pathname !== publicPreviewPath;
+        && destination.pathname !== publicDemoPath;
     } catch {
       return true;
     }
