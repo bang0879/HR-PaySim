@@ -18,7 +18,7 @@ import type {
   PreparationPreviewRow,
   FacilitatorSessionDraft,
 } from "../../lib/hr-paysim/preparation/types.ts";
-import templateUrl from "./assets/HR-PaySim-Product-Engineer-input-template.xlsx?url";
+import templateUrl from "./assets/HR-PaySim-company-roster-template.xlsx?url";
 import { readFacilitatorWorkbook } from "./readFacilitatorWorkbook.ts";
 import { createWorkbookReadCoordinator } from "./workbookReadCoordinator.ts";
 import "./facilitatorPreparation.css";
