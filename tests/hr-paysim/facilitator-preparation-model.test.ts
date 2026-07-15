@@ -5,16 +5,16 @@ import {
   prepareProductEngineerRoster,
 } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
 import { createProductEngineerSessionDraft } from "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts";
-import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
+import { ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/rosterTemplateContract.ts";
 
-const header = KOREAN_ROSTER_HEADERS.join("\t");
+const header = ROSTER_HEADERS.join("\t");
 const productRows = [
-  "68000000\t10\t56\tProduct Engineer\t\t아니오\t아니오",
-  "72000000\t9\t52\tProduct Engineer\t\t아니오\t아니오",
-  "76000000\t8\t47\tProduct Engineer\t\t아니오\t아니오",
-  "95000000\t7\t15\tSenior Product Engineer\t\t예\t아니오",
-  "92000000\t6.7\t21\tProduct Engineer\t\t아니오\t예",
-  "88000000\t6.3\t28\tProduct Engineer\t\t아니오\t아니오",
+  "68000000\t10\t56\tProduct Engineer\t\t\t없음",
+  "72000000\t9\t52\tProduct Engineer\t\t\t없음",
+  "76000000\t8\t47\tProduct Engineer\t\t\t없음",
+  "95000000\t7\t15\tProduct Engineer\t\t\t채용 예외",
+  "92000000\t6.7\t21\tProduct Engineer\t\t\t카운터오퍼",
+  "88000000\t6.3\t28\tProduct Engineer\t\t\t없음",
 ];
 
 const cleanPaste = [header, ...productRows].join("\n");
@@ -24,7 +24,7 @@ test("empty input returns a non-startable empty result", () => {
 });
 
 test("prohibited columns require current-paste consent before rows are parsed", () => {
-  const piiHeader = ["이름", "이메일", ...KOREAN_ROSTER_HEADERS].join("\t");
+  const piiHeader = ["이름", "이메일", ...ROSTER_HEADERS].join("\t");
   const piiRows = productRows.map((row, index) =>
     ["직원 " + (index + 1), "employee" + (index + 1) + "@example.com", row].join("\t")
   );
@@ -57,7 +57,7 @@ test("one row-level PII value blocks every row and requests raw clearing", () =>
   assert.equal(JSON.stringify(result).includes("file_row_002"), false);
 });
 
-test("the guided path generates internal IDs and fixes the role", () => {
+test("the guided path generates internal IDs and preserves the explicit normalized role", () => {
   const result = prepareProductEngineerRoster(cleanPaste);
 
   assert.equal(result.status, "ready_for_confirmation");
@@ -96,6 +96,10 @@ test("clean Product Engineer input reaches normalized confirmation without raw t
   assert.equal(result.previewRows.find((row) => row.salaryKRW === 68_000_000)?.employeeLabel, "직원 A");
   assert.equal(result.previewRows.find((row) => row.salaryKRW === 95_000_000)?.employeeLabel, "직원 B");
   assert.equal(result.previewRows[0]?.relevantExperienceMonths, 120);
+  assert.equal(
+    result.previewRows.find((row) => row.salaryKRW === 95_000_000)?.compensationExceptionReason,
+    "hiring_exception",
+  );
   assert.equal(result.shouldClearRaw, true);
   assert.equal(JSON.stringify(result).includes(cleanPaste), false);
 });

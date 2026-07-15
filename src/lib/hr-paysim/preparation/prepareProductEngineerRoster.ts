@@ -5,6 +5,7 @@ import {
   adaptKoreanRosterTable,
   type KoreanRosterAdapterOptions,
 } from "./koreanRosterAdapter.ts";
+import type { CompensationExceptionReason } from "./rosterTemplateContract.ts";
 import type {
   PreparationPreviewRow,
   ProductEngineerPreparationResult,
@@ -65,8 +66,12 @@ export function prepareProductEngineerKoreanTable(
       status: "blocked",
       prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
       issues: [{ code: "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON" }],
-      previewRows: adapted.records.map(({ row }, index) =>
-        toPreviewRow(row, "직원 " + String.fromCharCode(65 + index)),
+      previewRows: adapted.records.map(({ row, compensationExceptionReason }, index) =>
+        toPreviewRow(
+          row,
+          "직원 " + String.fromCharCode(65 + index),
+          compensationExceptionReason,
+        ),
       ),
       rows: [],
       shouldClearRaw: true,
@@ -84,8 +89,8 @@ export function prepareProductEngineerKoreanTable(
     status: "ready_for_confirmation",
     prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
     issues: [],
-    previewRows: adapted.records.map(({ row }) =>
-      toPreviewRow(row, labels.get(row.rowId)!),
+    previewRows: adapted.records.map(({ row, compensationExceptionReason }) =>
+      toPreviewRow(row, labels.get(row.rowId)!, compensationExceptionReason),
     ),
     rows: draftResult.draft.rows,
     draft: draftResult.draft,
@@ -103,18 +108,19 @@ function parseKoreanPaste(rawText: string): unknown[][] {
 function toPreviewRow(
   row: NormalizedRosterRow,
   employeeLabel: string,
+  compensationExceptionReason: CompensationExceptionReason,
 ): PreparationPreviewRow {
   return {
     employeeLabel,
-    roleGroup: "Product Engineer",
+    roleGroup: row.roleGroup,
     salaryKRW: row.baseSalaryKRW,
     ...(row.relevantExperienceMonths === undefined
       ? {}
       : { relevantExperienceMonths: row.relevantExperienceMonths }),
     ...(row.tenureMonths === undefined ? {} : { tenureMonths: row.tenureMonths }),
-    ...(row.title === undefined ? {} : { title: row.title }),
     ...(row.levelLabel === undefined ? {} : { levelLabel: row.levelLabel }),
-    documentedException: row.exceptionFlag === true || row.counterOfferFlag === true,
+    ...(row.levelRank === undefined ? {} : { levelRank: row.levelRank }),
+    compensationExceptionReason,
   };
 }
 

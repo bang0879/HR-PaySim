@@ -5,6 +5,7 @@ import type {
   KoreanRosterAdapterIssueCode,
   KoreanRosterField,
 } from "./koreanRosterAdapter.ts";
+import type { CompensationExceptionReason } from "./rosterTemplateContract.ts";
 
 export type PreparationStatus =
   | "empty"
@@ -30,13 +31,13 @@ export interface SafePreparationIssue {
 
 export interface PreparationPreviewRow {
   employeeLabel: string;
-  roleGroup: "Product Engineer";
+  roleGroup: string;
   salaryKRW: number;
   relevantExperienceMonths?: number;
   tenureMonths?: number;
-  title?: string;
   levelLabel?: string;
-  documentedException: boolean;
+  levelRank?: number;
+  compensationExceptionReason: CompensationExceptionReason;
 }
 
 export interface ProductEngineerSessionDraft {
