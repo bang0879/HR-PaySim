@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
 import { createFacilitatorSessionDraft } from "../../src/lib/hr-paysim/preparation/createFacilitatorSessionDraft.ts";
@@ -13,50 +14,80 @@ import {
 
 const actualRosterPaste = [
   KOREAN_ROSTER_HEADERS.join("\t"),
-  "73000000\t10\t61\tProduct Engineer\t\t\t없음",
-  "77000000\t9\t50\tProduct Engineer\t\t\t없음",
-  "81000000\t8\t39\tProduct Engineer\t\t\t없음",
-  "91000000\t7\t13\tProduct Engineer\t\t\t없음",
-  "88000000\t6\t20\tProduct Engineer\t\t\t없음",
+  "60000000\t10\t60\tBackend Engineer\tL1\t1\t없음",
+  "75000000\t7\t12\tBackend Engineer\tL2\t2\t카운터오퍼",
+  "85000000\t5\t10\tBackend Engineer\tL1\t1\t채용 예외",
+  "70000000\t8\t50\tBackend Engineer\tL2\t2\t없음",
+  "58000000\t10\t54\tData Analyst\tD1\t1\t없음",
+  "72000000\t7\t10\tData Analyst\tD2\t2\t기타 문서화된 사유",
+  "80000000\t5\t8\tData Analyst\tD1\t1\t채용 예외",
+  "66000000\t8\t42\tData Analyst\tD2\t2\t없음",
+  "50000000\t3\t12\tCustomer Success\t\t\t없음",
+  "55000000\t4\t24\tCustomer Success\t\t\t기타 문서화된 사유",
 ].join("\n");
 
-test("facilitated copy derives every roster fact from the current Product Engineer session", () => {
+const qaSource = readFileSync(
+  new URL("../../scripts/qa-decision-room.mjs", import.meta.url),
+  "utf8",
+);
+
+const levelOrderSource = readFileSync(
+  new URL("../../src/features/confirmed-pay-differences/LevelOrderDistribution.tsx", import.meta.url),
+  "utf8",
+);
+
+test("level-order evidence derives visible role and grade labels from the active subject", () => {
+  assert.match(levelOrderSource, /roleGroup: string/);
+  assert.match(levelOrderSource, /model\.groups/);
+  assert.doesNotMatch(levelOrderSource, /GTM 직급별|AE1과 AE2/);
+});
+test("facilitated copy derives facts from a complete-grade multi-role roster", () => {
   const prepared = prepareFacilitatorRoster(actualRosterPaste);
   assert.equal(prepared.status, "ready_for_confirmation");
   assert.ok(prepared.draft);
+  assert.deepEqual(
+    prepared.previewRows.map(({ employeeLabel, roleGroup, compensationExceptionReason }) => ({
+      employeeLabel,
+      roleGroup,
+      compensationExceptionReason,
+    })),
+    [
+      { employeeLabel: "직원 1", roleGroup: "Backend Engineer", compensationExceptionReason: "none" },
+      { employeeLabel: "직원 2", roleGroup: "Backend Engineer", compensationExceptionReason: "counteroffer" },
+      { employeeLabel: "직원 3", roleGroup: "Backend Engineer", compensationExceptionReason: "hiring_exception" },
+      { employeeLabel: "직원 4", roleGroup: "Backend Engineer", compensationExceptionReason: "none" },
+      { employeeLabel: "직원 1", roleGroup: "Data Analyst", compensationExceptionReason: "none" },
+      { employeeLabel: "직원 2", roleGroup: "Data Analyst", compensationExceptionReason: "other_documented" },
+      { employeeLabel: "직원 3", roleGroup: "Data Analyst", compensationExceptionReason: "hiring_exception" },
+      { employeeLabel: "직원 4", roleGroup: "Data Analyst", compensationExceptionReason: "none" },
+      { employeeLabel: "직원 1", roleGroup: "Customer Success", compensationExceptionReason: "none" },
+      { employeeLabel: "직원 2", roleGroup: "Customer Success", compensationExceptionReason: "other_documented" },
+    ],
+  );
+  assert.deepEqual(
+    [...new Set(prepared.draft.selection.selected.map(({ roleGroup }) => roleGroup))],
+    ["Backend Engineer", "Data Analyst"],
+  );
 
   const model = createDecisionRoomViewModel({
     ...createEmptyDecisionRoomSession("facilitated"),
     ...prepared.draft,
   });
   const rendered = JSON.stringify(model);
-
-  for (const expected of [
-    "Product Engineer 5명",
-    "7,300만원",
-    "9,100만원",
-    "1,800만원",
-    "관련 경력 10년",
-    "관련 경력 7년",
-    "회사 근속 61개월",
-    "회사 근속 13개월",
-  ]) {
-    assert.equal(rendered.includes(expected), true, expected);
-  }
-
-  for (const syntheticOnly of [
-    "Product Engineer 6명",
-    "6,800만원",
-    "9,500만원",
-    "2,700만원",
-    "700만원이 추가됐지만",
-    "Platform Engineer",
-    "GTM",
-  ]) {
-    assert.equal(rendered.includes(syntheticOnly), false, syntheticOnly);
-  }
+  assert.match(rendered, /Backend Engineer/);
+  assert.match(rendered, /직원 A/);
+  assert.match(rendered, /직원 B/);
+  assert.doesNotMatch(rendered, /Product Engineer|Platform Engineer|GTM|Customer Success/);
 });
 
+test("browser QA uses the generic workbook and a non-Product multi-role roster", () => {
+  assert.match(qaSource, /HR-PaySim-company-roster-template\.xlsx/);
+  assert.match(qaSource, /Backend Engineer/);
+  assert.match(qaSource, /Customer Success/);
+  assert.match(qaSource, /L1\\t1\\t없음/);
+  assert.match(qaSource, /카운터오퍼|채용 예외/);
+  assert.doesNotMatch(qaSource, /HR-PaySim-Product-Engineer-input-template/);
+});
 test("facilitated multi-role subjects stay role-local across all four screens", () => {
   const designerRows = noGradeMultiRoleRows.map((row) => ({
     ...row,

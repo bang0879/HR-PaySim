@@ -88,6 +88,8 @@ test("one provider shell owns start, unload warning, direct-load fallback, and e
 
 test("browser QA owns facilitator privacy and lifecycle evidence", () => {
   for (const measurement of [
+    "facilitatorConfirmation",
+    "facilitatorSubjectLabels",
     "columnConsentRequired",
     "rowPiiBlocksAll",
     "preparationHierarchy",

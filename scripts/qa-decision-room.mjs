@@ -16,13 +16,18 @@ const url = process.env.HR_PAYSIM_URL
   ?? "http://127.0.0.1:5173/hr-paysim/demo";
 const origin = new URL(url).origin;
 const facilitatorHeader =
-  "기본연봉(원)\t관련 경력년수\t회사 근속개월\t직함\t레벨\t문서화된 예외\t카운터오퍼 여부";
+  "기본연봉(원)\t관련 경력년수\t회사 근속개월\t직무\t직급\t직급 순서\t처우 예외적용 사유";
 const facilitatorRows = [
-  "73000000\t10\t61\tProduct Engineer\t\t아니오\t아니오",
-  "77000000\t9\t50\tProduct Engineer\t\t아니오\t아니오",
-  "81000000\t8\t39\tProduct Engineer\t\t아니오\t아니오",
-  "91000000\t7\t13\tSenior Product Engineer\t\t예\t아니오",
-  "88000000\t7.5\t20\tProduct Engineer\t\t아니오\t예",
+  "60000000\t10\t60\tBackend Engineer\tL1\t1\t없음",
+  "75000000\t7\t12\tBackend Engineer\tL2\t2\t카운터오퍼",
+  "85000000\t5\t10\tBackend Engineer\tL1\t1\t채용 예외",
+  "70000000\t8\t50\tBackend Engineer\tL2\t2\t없음",
+  "58000000\t10\t54\tData Analyst\tD1\t1\t없음",
+  "72000000\t7\t10\tData Analyst\tD2\t2\t기타 문서화된 사유",
+  "80000000\t5\t8\tData Analyst\tD1\t1\t채용 예외",
+  "66000000\t8\t42\tData Analyst\tD2\t2\t없음",
+  "50000000\t3\t12\tCustomer Success\t\t\t없음",
+  "55000000\t4\t24\tCustomer Success\t\t\t기타 문서화된 사유",
 ];
 const supportedFacilitatorPaste = [facilitatorHeader, ...facilitatorRows].join("\n");
 const piiColumnPaste = [
@@ -34,17 +39,17 @@ const piiColumnPaste = [
 const rowPiiPaste = [
   facilitatorHeader,
   ...facilitatorRows.map((row, index) =>
-    index === 1 ? row.replace("Product Engineer", "person@example.com") : row
+    index === 1 ? row.replace("Backend Engineer", "person@example.com") : row
   ),
 ].join("\n");
 const invalidCareerPaste = [
   facilitatorHeader,
   ...facilitatorRows.map((row, index) =>
-    index === 1 ? row.replace("77000000\t9\t50", "77000000\t경력 9년\t50") : row
+    index === 1 ? row.replace("75000000\t7\t12", "75000000\t경력 7년\t12") : row
   ),
 ].join("\n");
 const blankTemplateBuffer = readFileSync(
-  new URL("../src/features/facilitator-preparation/assets/HR-PaySim-Product-Engineer-input-template.xlsx", import.meta.url),
+  new URL("../src/features/facilitator-preparation/assets/HR-PaySim-company-roster-template.xlsx", import.meta.url),
 );
 const sensitiveRequestTokens = collectSensitiveTokens(
   facilitatorHeader,
@@ -126,6 +131,8 @@ const result = {
   screenshots: {},
   errors: [],
   facilitatorByViewport: {},
+  facilitatorConfirmation: {},
+  facilitatorSubjectLabels: {},
   columnConsentRequired: {},
   rowPiiBlocksAll: {},
   preparationHierarchy: {},
@@ -463,11 +470,13 @@ async function runFacilitatorQa(viewport) {
     });
   });
   facilitatorPage.on("console", (message) => {
+    recordSensitiveEmission("console", { viewport: viewport.name, type: message.type() }, message.text());
     if (["error", "warning"].includes(message.type())) {
       consoleIssues.push("facilitator/" + viewport.name + "/" + message.type() + ": " + message.text());
     }
   });
   facilitatorPage.on("pageerror", (error) => {
+    recordSensitiveEmission("pageerror", { viewport: viewport.name }, error.message);
     consoleIssues.push("facilitator/" + viewport.name + "/pageerror: " + error.message);
   });
 
@@ -498,10 +507,13 @@ async function runFacilitatorQa(viewport) {
   const preparationHierarchy = preparationOrder.every((position) => position >= 0)
     && preparationOrder.every((position, index) => index === 0 || position > preparationOrder[index - 1])
     && pasteClosed
+    && downloadHref?.includes("HR-PaySim-company-roster-template")
     && downloadHref?.includes(".xlsx")
     && fileAccept === ".xlsx"
     && preparationCopy.includes("관련 경력년수")
     && preparationCopy.includes("형식만 보여주는 합성 자료")
+    && preparationCopy.includes("Backend Engineer")
+    && preparationCopy.includes("카운터오퍼")
     && !/row_id|role_group|base_salary_krw/.test(preparationCopy);
   result.preparationHierarchy[viewport.name] = preparationHierarchy;
   if (!preparationHierarchy) {
@@ -568,6 +580,21 @@ async function runFacilitatorQa(viewport) {
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
   await inspect(supportedFacilitatorPaste);
   await facilitatorPage.locator('[data-preparation-confirmation="true"]').waitFor();
+  const confirmationText = await facilitatorPage.locator('[data-preparation-confirmation="true"]').innerText();
+  const confirmationContract = [
+    "Backend Engineer",
+    "Data Analyst",
+    "Customer Success",
+    "L1 · 순서 1",
+    "D2 · 순서 2",
+    "카운터오퍼",
+    "채용 예외",
+    "기타 문서화된 사유",
+  ].every((expected) => confirmationText.includes(expected))
+    && !confirmationText.includes("private-roster.xlsx")
+    && !confirmationText.includes("file_row_")
+    && !confirmationText.includes(supportedFacilitatorPaste);
+  result.facilitatorConfirmation[viewport.name] = confirmationContract;
   const supportedRawCleared = (await facilitatorPage.locator("textarea").inputValue()) === "";
   const startCount = await facilitatorPage.locator('[data-start-facilitated-session="true"]').count();
   const preparationOverflow = await facilitatorPage.evaluate(() =>
@@ -585,9 +612,10 @@ async function runFacilitatorQa(viewport) {
         return { tag: element.tagName, className: element.className, right: rect.right, width: rect.width };
       }))
     : [];
-  if (!supportedRawCleared || startCount !== 1 || preparationOverflow) {
+  if (!supportedRawCleared || !confirmationContract || startCount !== 1 || preparationOverflow) {
     throw new Error(viewport.name + " supported confirmation failed: " + JSON.stringify({
       supportedRawCleared,
+      confirmationContract,
       startCount,
       preparationOverflow,
       overflowDetails,
@@ -597,7 +625,7 @@ async function runFacilitatorQa(viewport) {
 
   await facilitatorPage.locator('[data-start-facilitated-session="true"]').click();
   await facilitatorPage.locator('[data-decision-room="true"]').waitFor();
-  const rosterDataInUrl = /73000000|private-roster|file_row|Product%20Engineer/.test(facilitatorPage.url());
+  const rosterDataInUrl = /60000000|58000000|private-roster|file_row|Backend%20Engineer|Data%20Analyst/.test(facilitatorPage.url());
   result.sessionUrlContainsRosterData[viewport.name] = rosterDataInUrl;
   if (new URL(facilitatorPage.url()).pathname !== "/hr-paysim/session" || rosterDataInUrl) {
     throw new Error(viewport.name + " session URL leaked roster data");
@@ -612,9 +640,39 @@ async function runFacilitatorQa(viewport) {
   await facilitatorPage.keyboard.press("Enter");
   await facilitatorPage.locator('[data-screen="confirmed_pay_differences"]').waitFor();
   const evidenceText = await facilitatorPage.locator('[data-screen="confirmed_pay_differences"]').innerText();
-  if (!evidenceText.includes("Product Engineer 5\uBA85")
-    || evidenceText.includes("Product Engineer 6\uBA85")
-    || !evidenceText.includes("1,800\uB9CC\uC6D0")) {
+  const subjectButtons = facilitatorPage.locator(".dr-subject-row button");
+  const subjectRoles = await subjectButtons.locator("span").allInnerTexts();
+  if (subjectRoles.length !== 2
+    || !subjectRoles.includes("Backend Engineer")
+    || !subjectRoles.includes("Data Analyst")
+    || subjectRoles.includes("Customer Success")) {
+    throw new Error(viewport.name + " selected facilitator subjects are incorrect: " + JSON.stringify(subjectRoles));
+  }
+  const subjectLocalLabels = {};
+  for (const [roleGroup, expectedGrades, expectedGap] of [
+    ["Backend Engineer", ["L1", "L2"], "1,500만원"],
+    ["Data Analyst", ["D1", "D2"], "1,400만원"],
+  ]) {
+    await subjectButtons.filter({ hasText: roleGroup }).click();
+    const conclusionText = await facilitatorPage.locator(
+      '[data-screen="confirmed_pay_differences"] [data-conclusion-heading="true"]',
+    ).innerText();
+    const levelText = await facilitatorPage.locator(".dr-level-order").innerText();
+    const local = conclusionText.includes(`${roleGroup} 4명`)
+      && conclusionText.includes("직원 A")
+      && conclusionText.includes("직원 B")
+      && conclusionText.includes(expectedGap)
+      && expectedGrades.every((grade) => levelText.includes(grade))
+      && levelText.includes(`${roleGroup} 직급별 기본 연봉`)
+      && !/Product Engineer|Platform Engineer|GTM/.test(conclusionText + levelText);
+    subjectLocalLabels[roleGroup] = local;
+    if (!local) {
+      throw new Error(viewport.name + " subject-local labels failed for " + roleGroup);
+    }
+  }
+  result.facilitatorSubjectLabels[viewport.name] = subjectLocalLabels;
+  await subjectButtons.filter({ hasText: "Backend Engineer" }).click();
+  if (!evidenceText.includes("Backend Engineer") || /Product Engineer 5명/.test(evidenceText)) {
     throw new Error(viewport.name + " real-input facts are missing");
   }
   const focusMoved = await facilitatorPage.evaluate(() =>
@@ -647,6 +705,8 @@ async function runFacilitatorQa(viewport) {
   await facilitatorPage.locator('[data-facilitator-preparation="true"]').waitFor();
   const explicitEndClearsRows =
     await facilitatorPage.locator('[data-decision-room="true"]').count() === 0
+    && await facilitatorPage.locator('[data-preparation-confirmation="true"]').count() === 0
+    && (await facilitatorPage.locator("textarea").inputValue()) === ""
     && new URL(facilitatorPage.url()).pathname === "/hr-paysim/session/new";
   result.explicitEndClearsRows[viewport.name] = explicitEndClearsRows;
   if (!explicitEndClearsRows) throw new Error(viewport.name + " explicit end did not clear rows");
@@ -669,6 +729,8 @@ async function runFacilitatorQa(viewport) {
 
   result.facilitatorByViewport[viewport.name] = {
     columnConsentRequired,
+    confirmationContract,
+    subjectLocalLabels: result.facilitatorSubjectLabels[viewport.name],
     rowPiiBlocksAll,
     preparationHierarchy,
     fileInputReset,

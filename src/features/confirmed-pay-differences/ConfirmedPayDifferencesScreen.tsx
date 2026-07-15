@@ -57,7 +57,7 @@ export function ConfirmedPayDifferencesScreen({
           distributionHeading={model.visualization.heading}
         />
       ) : (
-        <LevelOrderDistribution model={model.visualization} />
+        <LevelOrderDistribution model={model.visualization} roleGroup={model.activeRoleGroup} />
       )}
 
       {model.cleanState ? (
