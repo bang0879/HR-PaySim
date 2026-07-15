@@ -40,12 +40,14 @@ export interface PreparationPreviewRow {
   compensationExceptionReason: CompensationExceptionReason;
 }
 
-export interface ProductEngineerSessionDraft {
+export interface FacilitatorSessionDraft {
   rows: NormalizedRosterRow[];
   themes: StructuralTheme[];
   selection: ReviewSubjectSelection;
   activeThemeId: string;
 }
+
+export type ProductEngineerSessionDraft = FacilitatorSessionDraft;
 
 export interface ProductEngineerPreparationResult {
   status: PreparationStatus;
@@ -53,6 +55,6 @@ export interface ProductEngineerPreparationResult {
   issues: SafePreparationIssue[];
   previewRows: PreparationPreviewRow[];
   rows: NormalizedRosterRow[];
-  draft?: ProductEngineerSessionDraft;
+  draft?: FacilitatorSessionDraft;
   shouldClearRaw: boolean;
 }

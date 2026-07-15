@@ -8,6 +8,10 @@ import type {
 import { sampleRosterRows } from "../../src/lib/hr-paysim/rosterFixtures.ts";
 import { detectStructuralFindings } from "../../src/lib/hr-paysim/structuralFindings.ts";
 import { buildStructuralThemes } from "../../src/lib/hr-paysim/themes/buildStructuralThemes.ts";
+import {
+  completeGradeMultiRoleRows,
+  noGradeMultiRoleRows,
+} from "./fixtures/multi-role-roster.ts";
 
 test("subsumes the seven sample findings into three founder-reviewable themes", () => {
   const findings = detectStructuralFindings(sampleRosterRows);
@@ -55,6 +59,48 @@ test("subsumes the seven sample findings into three founder-reviewable themes", 
 
   assert.equal(themes.some((theme) => theme.roleGroup === "Designer"), false);
   assert.equal(countDuplicateHeadlinePairs(themes), 0);
+});
+
+test("complete and no-grade evidence keep the locked visible theme differences", () => {
+  const summarize = (rows: typeof completeGradeMultiRoleRows) =>
+    buildStructuralThemes(rows, detectStructuralFindings(rows)).map((theme) => ({
+      archetype: theme.archetype,
+      pairs: theme.comparisonPairs.map((pair) => [
+        pair.underpaidRowId,
+        pair.comparatorRowId,
+        pair.salaryGapKRW,
+      ]),
+    }));
+
+  assert.deepEqual(summarize(completeGradeMultiRoleRows), [
+    {
+      archetype: "isolated_relationship",
+      pairs: [
+        ["be-a", "be-c", 25_000_000],
+        ["be-d", "be-c", 15_000_000],
+        ["be-b", "be-c", 10_000_000],
+      ],
+    },
+    {
+      archetype: "level_integrity",
+      pairs: [
+        ["be-d", "be-c", 15_000_000],
+        ["be-b", "be-c", 10_000_000],
+      ],
+    },
+  ]);
+  assert.deepEqual(summarize(noGradeMultiRoleRows), [
+    {
+      archetype: "cohort_precedent",
+      pairs: [
+        ["be-a", "be-c", 25_000_000],
+        ["be-a", "be-b", 15_000_000],
+        ["be-d", "be-c", 15_000_000],
+        ["be-a", "be-d", 10_000_000],
+        ["be-b", "be-c", 10_000_000],
+      ],
+    },
+  ]);
 });
 
 test("is deterministic when finding input order is reversed", () => {

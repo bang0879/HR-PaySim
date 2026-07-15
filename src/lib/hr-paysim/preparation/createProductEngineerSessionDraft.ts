@@ -1,57 +1,79 @@
 import type { NormalizedRosterRow } from "../domain.ts";
 import { detectStructuralFindings } from "../structuralFindings.ts";
 import { buildStructuralThemes } from "../themes/buildStructuralThemes.ts";
-import { selectReviewSubjects } from "../themes/selectReviewSubjects.ts";
-import type { ProductEngineerSessionDraft } from "./types.ts";
+import { selectFacilitatorReviewSubjects } from "../themes/selectReviewSubjects.ts";
+import type { StructuralTheme } from "../themes/types.ts";
+import type { FacilitatorSessionDraft } from "./types.ts";
 
-export type ProductEngineerSessionDraftResult =
-  | { supported: true; draft: ProductEngineerSessionDraft }
-  | {
-    supported: false;
-    reason: "NO_HEADLINE_PAIR"
-      | "NO_HEADLINE_GAP"
-      | "MISSING_HEADLINE_RELEVANT_EXPERIENCE"
-      | "MISSING_HEADLINE_TENURE";
-  };
+type UnsupportedDraftReason =
+  | "NO_HEADLINE_PAIR"
+  | "NO_HEADLINE_GAP"
+  | "MISSING_HEADLINE_RELEVANT_EXPERIENCE"
+  | "MISSING_HEADLINE_TENURE";
 
-export function createProductEngineerSessionDraft(
+export type FacilitatorSessionDraftResult =
+  | { supported: true; draft: FacilitatorSessionDraft }
+  | { supported: false; reason: UnsupportedDraftReason };
+
+export type ProductEngineerSessionDraftResult = FacilitatorSessionDraftResult;
+
+export function createFacilitatorSessionDraft(
   inputRows: NormalizedRosterRow[],
-): ProductEngineerSessionDraftResult {
+): FacilitatorSessionDraftResult {
   const rows = inputRows.map((row) => ({ ...row }));
   const themes = buildStructuralThemes(rows, detectStructuralFindings(rows));
-  const allSelection = selectReviewSubjects(themes);
-  const productTheme = allSelection.selected.find((theme) => theme.roleGroup === "Product Engineer");
+  const selection = selectFacilitatorReviewSubjects(themes);
 
-  if (!productTheme?.headlinePair) return { supported: false, reason: "NO_HEADLINE_PAIR" };
-  if (typeof productTheme.metrics.headlineGapKRW !== "number") {
-    return { supported: false, reason: "NO_HEADLINE_GAP" };
+  if (selection.selected.length === 0) {
+    return { supported: false, reason: "NO_HEADLINE_PAIR" };
   }
 
-  const lowerPaid = rows.find((row) => row.rowId === productTheme.headlinePair?.underpaidRowId);
-  const higherPaid = rows.find((row) => row.rowId === productTheme.headlinePair?.comparatorRowId);
-  if (
-    lowerPaid?.relevantExperienceMonths === undefined
-    || higherPaid?.relevantExperienceMonths === undefined
-  ) {
-    return { supported: false, reason: "MISSING_HEADLINE_RELEVANT_EXPERIENCE" };
-  }
-  if (lowerPaid?.tenureMonths === undefined || higherPaid?.tenureMonths === undefined) {
-    return { supported: false, reason: "MISSING_HEADLINE_TENURE" };
+  for (const theme of selection.selected) {
+    const unsupportedReason = validateSelectedTheme(rows, theme);
+    if (unsupportedReason) return { supported: false, reason: unsupportedReason };
   }
 
-  const selection = {
-    selected: [productTheme],
-    unselected: themes.filter((theme) => theme.id !== productTheme.id),
-    recommendedIds: [productTheme.id],
-    wasOverridden: allSelection.wasOverridden,
-  };
   return {
     supported: true,
     draft: {
       rows,
       themes,
       selection,
-      activeThemeId: productTheme.id,
+      activeThemeId: selection.selected[0]!.id,
     },
   };
+}
+
+export function createProductEngineerSessionDraft(
+  inputRows: NormalizedRosterRow[],
+): ProductEngineerSessionDraftResult {
+  return createFacilitatorSessionDraft(inputRows);
+}
+
+function validateSelectedTheme(
+  rows: NormalizedRosterRow[],
+  theme: StructuralTheme,
+): UnsupportedDraftReason | undefined {
+  if (!theme.headlinePair) return "NO_HEADLINE_PAIR";
+  if (typeof theme.metrics.headlineGapKRW !== "number") {
+    return "NO_HEADLINE_GAP";
+  }
+
+  const lowerPaid = rows.find((row) =>
+    row.rowId === theme.headlinePair?.underpaidRowId
+  );
+  const higherPaid = rows.find((row) =>
+    row.rowId === theme.headlinePair?.comparatorRowId
+  );
+  if (
+    lowerPaid?.relevantExperienceMonths === undefined
+    || higherPaid?.relevantExperienceMonths === undefined
+  ) {
+    return "MISSING_HEADLINE_RELEVANT_EXPERIENCE";
+  }
+  if (lowerPaid?.tenureMonths === undefined || higherPaid?.tenureMonths === undefined) {
+    return "MISSING_HEADLINE_TENURE";
+  }
+
+  return undefined;
 }

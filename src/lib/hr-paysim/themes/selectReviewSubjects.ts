@@ -13,6 +13,24 @@ export function recommendReviewSubjectOrder(themes: StructuralTheme[]): Structur
   return [...themes].sort(compareReviewSubjects);
 }
 
+export function selectFacilitatorReviewSubjects(
+  themes: StructuralTheme[],
+): ReviewSubjectSelection {
+  const ordered = recommendReviewSubjectOrder(themes);
+  const representatives = ordered.filter((theme, index) =>
+    ordered.findIndex((candidate) => candidate.roleGroup === theme.roleGroup) === index
+  );
+  const selected = representatives.slice(0, MAX_REVIEW_SUBJECTS);
+  const selectedIds = new Set(selected.map((theme) => theme.id));
+
+  return {
+    selected,
+    unselected: ordered.filter((theme) => !selectedIds.has(theme.id)),
+    recommendedIds: selected.map((theme) => theme.id),
+    wasOverridden: false,
+  };
+}
+
 export function selectReviewSubjects(
   themes: StructuralTheme[],
   overrideIds?: string[],

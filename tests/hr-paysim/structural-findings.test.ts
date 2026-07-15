@@ -3,6 +3,10 @@ import test from "node:test";
 import { sampleRosterRows } from "../../src/lib/hr-paysim/rosterFixtures.ts";
 import { detectStructuralFindings } from "../../src/lib/hr-paysim/structuralFindings.ts";
 import type { StructuralFinding, StructuralFindingType } from "../../src/lib/hr-paysim/domain.ts";
+import {
+  completeGradeMultiRoleRows,
+  noGradeMultiRoleRows,
+} from "./fixtures/multi-role-roster.ts";
 
 function findByRoleAndType(
   findings: StructuralFinding[],
@@ -119,6 +123,56 @@ test("detectStructuralFindings uses ordinal restoration for GTM level fiction", 
       ["row_014", "row_013", 1000000],
     ],
   );
+});
+
+test("complete grade evidence activates and suppresses the locked finding pairs", () => {
+  const summarize = (rows: typeof completeGradeMultiRoleRows) =>
+    detectStructuralFindings(rows).map((finding) => ({
+      type: finding.type,
+      pairs: finding.comparisonPairs.map((pair) => [
+        pair.underpaidRowId,
+        pair.comparatorRowId,
+        pair.salaryGapKRW,
+      ]),
+    }));
+
+  assert.deepEqual(summarize(completeGradeMultiRoleRows), [
+    {
+      type: "pay_inversion",
+      pairs: [
+        ["be-a", "be-c", 25_000_000],
+        ["be-d", "be-c", 15_000_000],
+        ["be-b", "be-c", 10_000_000],
+      ],
+    },
+    {
+      type: "level_fiction_band_overlap",
+      pairs: [
+        ["be-b", "be-c", 10_000_000],
+        ["be-d", "be-c", 15_000_000],
+      ],
+    },
+  ]);
+  assert.deepEqual(summarize(noGradeMultiRoleRows), [
+    {
+      type: "pay_inversion",
+      pairs: [
+        ["be-a", "be-c", 25_000_000],
+        ["be-a", "be-b", 15_000_000],
+        ["be-d", "be-c", 15_000_000],
+        ["be-a", "be-d", 10_000_000],
+        ["be-b", "be-c", 10_000_000],
+      ],
+    },
+    {
+      type: "loyalty_tax",
+      pairs: [
+        ["be-a", "be-c", 25_000_000],
+        ["be-a", "be-b", 15_000_000],
+        ["be-d", "be-c", 15_000_000],
+      ],
+    },
+  ]);
 });
 
 test("detectStructuralFindings leaves the Designer sample group clean below materiality", () => {

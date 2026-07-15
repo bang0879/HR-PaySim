@@ -1,6 +1,6 @@
 import type { NormalizedRosterRow } from "../domain.ts";
 import { createEmployeeLabels } from "../presentation/createEmployeeLabels.ts";
-import { createProductEngineerSessionDraft } from "./createProductEngineerSessionDraft.ts";
+import { createFacilitatorSessionDraft } from "./createProductEngineerSessionDraft.ts";
 import {
   adaptKoreanRosterTable,
   type KoreanRosterAdapterOptions,
@@ -23,15 +23,22 @@ export function createEmptyPreparationResult(): ProductEngineerPreparationResult
   };
 }
 
-export function prepareProductEngineerRoster(
+export function prepareFacilitatorRoster(
   rawText: string,
   options: KoreanRosterAdapterOptions = {},
 ): ProductEngineerPreparationResult {
   if (rawText.trim().length === 0) return createEmptyPreparationResult();
-  return prepareProductEngineerKoreanTable(parseKoreanPaste(rawText), options);
+  return prepareFacilitatorKoreanTable(parseKoreanPaste(rawText), options);
 }
 
-export function prepareProductEngineerKoreanTable(
+export function prepareProductEngineerRoster(
+  rawText: string,
+  options: KoreanRosterAdapterOptions = {},
+): ProductEngineerPreparationResult {
+  return prepareFacilitatorRoster(rawText, options);
+}
+
+export function prepareFacilitatorKoreanTable(
   table: readonly (readonly unknown[])[],
   options: KoreanRosterAdapterOptions = {},
 ): ProductEngineerPreparationResult {
@@ -60,7 +67,7 @@ export function prepareProductEngineerKoreanTable(
   }
 
   const rows = adapted.rows.map((row) => ({ ...row }));
-  const draftResult = createProductEngineerSessionDraft(rows);
+  const draftResult = createFacilitatorSessionDraft(rows);
   if (!draftResult.supported) {
     return {
       status: "blocked",
@@ -78,11 +85,11 @@ export function prepareProductEngineerKoreanTable(
     };
   }
 
-  const productTheme = draftResult.draft.selection.selected[0]!;
+  const activeTheme = draftResult.draft.selection.selected[0]!;
   const labels = createEmployeeLabels(
     draftResult.draft.rows,
-    productTheme.headlinePair!.underpaidRowId,
-    productTheme.headlinePair!.comparatorRowId,
+    activeTheme.headlinePair!.underpaidRowId,
+    activeTheme.headlinePair!.comparatorRowId,
   );
 
   return {
@@ -96,6 +103,13 @@ export function prepareProductEngineerKoreanTable(
     draft: draftResult.draft,
     shouldClearRaw: true,
   };
+}
+
+export function prepareProductEngineerKoreanTable(
+  table: readonly (readonly unknown[])[],
+  options: KoreanRosterAdapterOptions = {},
+): ProductEngineerPreparationResult {
+  return prepareFacilitatorKoreanTable(table, options);
 }
 
 function parseKoreanPaste(rawText: string): unknown[][] {

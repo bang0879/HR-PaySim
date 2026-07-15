@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as preparationModule from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
+import * as draftModule from "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts";
 import {
   createEmptyPreparationResult,
   prepareProductEngineerRoster,
@@ -18,6 +20,16 @@ const productRows = [
 ];
 
 const cleanPaste = [header, ...productRows].join("\n");
+const multiRolePaste = [
+  header,
+  "60000000\t10\t60\tBackend Engineer\t\t\t없음",
+  "75000000\t7\t12\tBackend Engineer\t\t\t없음",
+  "85000000\t5\t10\tBackend Engineer\t\t\t없음",
+  "70000000\t8\t50\tBackend Engineer\t\t\t없음",
+  "50000000\t4\t20\tOperations\t\t\t없음",
+  "51000000\t3\t10\tOperations\t\t\t없음",
+].join("\n");
+
 
 test("empty input returns a non-startable empty result", () => {
   assert.deepEqual(prepareProductEngineerRoster(""), createEmptyPreparationResult());
@@ -102,6 +114,38 @@ test("clean Product Engineer input reaches normalized confirmation without raw t
   );
   assert.equal(result.shouldClearRaw, true);
   assert.equal(JSON.stringify(result).includes(cleanPaste), false);
+});
+
+test("prepares a role-agnostic session when no Product Engineer job exists", () => {
+  const prepareFacilitatorRoster = Reflect.get(
+    preparationModule,
+    "prepareFacilitatorRoster",
+  ) as typeof prepareProductEngineerRoster | undefined;
+  const createFacilitatorSessionDraft = Reflect.get(
+    draftModule,
+    "createFacilitatorSessionDraft",
+  ) as typeof createProductEngineerSessionDraft | undefined;
+
+  assert.equal(typeof prepareFacilitatorRoster, "function");
+  assert.equal(typeof createFacilitatorSessionDraft, "function");
+  if (!prepareFacilitatorRoster || !createFacilitatorSessionDraft) return;
+
+  const prepared = prepareFacilitatorRoster(multiRolePaste);
+  assert.equal(prepared.status, "ready_for_confirmation");
+  assert.ok(prepared.draft);
+  assert.equal(
+    prepared.draft?.selection.selected.some((theme) => theme.roleGroup === "Product Engineer"),
+    false,
+  );
+  assert.equal(prepared.draft?.activeThemeId, prepared.draft?.selection.selected[0]?.id);
+  assert.equal(prepared.rows.some((row) => row.roleGroup === "Operations"), true);
+  assert.equal(
+    prepared.draft?.selection.selected.some((theme) => theme.roleGroup === "Operations"),
+    false,
+  );
+
+  const direct = createFacilitatorSessionDraft(prepared.rows);
+  assert.equal(direct.supported, true);
 });
 
 test("supported Product Engineer rows create one owned session draft", () => {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { StructuralTheme } from "../../src/lib/hr-paysim/themes/types.ts";
+import * as selectionModule from "../../src/lib/hr-paysim/themes/selectReviewSubjects.ts";
 import { buildStructuralThemes } from "../../src/lib/hr-paysim/themes/buildStructuralThemes.ts";
 import { sampleRosterRows } from "../../src/lib/hr-paysim/rosterFixtures.ts";
 import { detectStructuralFindings } from "../../src/lib/hr-paysim/structuralFindings.ts";
@@ -52,6 +53,27 @@ test("orders by the frozen tuple and caps recommendations at three", () => {
   assert.deepEqual(selection.recommendedIds, recommended.slice(0, 3).map((item) => item.id));
   assert.deepEqual(selection.selected, recommended.slice(0, 3));
   assert.deepEqual(selection.unselected, recommended.slice(3));
+});
+
+test("facilitator selection chooses one representative from each of the top three roles", () => {
+  const themes = [
+    theme("a-strong", "A", "sufficient", "systematic", 0.9, 4),
+    theme("a-second", "A", "sufficient", "systematic", 0.8, 3),
+    theme("b", "B", "sufficient", "systematic", 0.7, 2),
+    theme("c", "C", "sufficient", "systematic", 0.6, 2),
+    theme("d", "D", "sufficient", "systematic", 0.5, 2),
+  ];
+  const selector = Reflect.get(
+    selectionModule,
+    "selectFacilitatorReviewSubjects",
+  ) as ((items: StructuralTheme[]) => ReturnType<typeof selectReviewSubjects>) | undefined;
+
+  assert.equal(typeof selector, "function");
+  if (!selector) return;
+  const selection = selector(themes);
+  assert.deepEqual(selection.selected.map((item) => item.id), ["a-strong", "b", "c"]);
+  assert.deepEqual(selection.unselected.map((item) => item.id), ["a-second", "d"]);
+  assert.equal(new Set(selection.selected.map((item) => item.roleGroup)).size, 3);
 });
 
 test("uses deterministic code-unit order for role groups and theme IDs", () => {
