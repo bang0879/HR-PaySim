@@ -14,7 +14,7 @@ if (manifest.surface !== "FACILITATOR_LOCAL") {
 
 const requiredPrivacyOwners = [
   "src/features/facilitator-preparation/FacilitatorPreparationScreen.tsx",
-  "src/features/facilitator-preparation/readProductEngineerWorkbook.ts",
+  "src/features/facilitator-preparation/readFacilitatorWorkbook.ts",
   "src/lib/hr-paysim/preparation/koreanRosterAdapter.ts",
 ];
 const missingOwners = requiredPrivacyOwners.filter(

@@ -436,7 +436,7 @@
 
 .fp-table-wrap table {
   width: 100%;
-  min-width: 780px;
+  min-width: 1040px;
   border-collapse: collapse;
 }
 
@@ -472,12 +472,24 @@
   font-weight: 850;
 }
 
+.fp-table-wrap thead th {
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.fp-table-wrap .fp-role-heading th {
+  color: #244675;
+  background: #edf4ff;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
 .fp-example-table {
   margin-top: 13px;
 }
 
 .fp-example-table table {
-  min-width: 920px;
+  min-width: 1180px;
 }
 
 .fp-example-table td {

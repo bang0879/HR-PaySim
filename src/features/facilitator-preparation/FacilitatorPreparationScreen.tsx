@@ -1,25 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   FOUNDER_COPY,
   PREPARATION_ISSUE_COPY,
 } from "../../lib/hr-paysim/copy/founderCopy.ts";
 import {
   createEmptyPreparationResult,
-  prepareProductEngineerRoster,
-} from "../../lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
+  prepareFacilitatorRoster,
+} from "../../lib/hr-paysim/preparation/prepareFacilitatorRoster.ts";
 import type { KoreanRosterField } from "../../lib/hr-paysim/preparation/koreanRosterAdapter.ts";
+import {
+  COMPENSATION_EXCEPTION_LABELS,
+  ROSTER_EXAMPLE_ROWS,
+  ROSTER_HEADERS,
+} from "../../lib/hr-paysim/preparation/rosterTemplateContract.ts";
 import type {
   PreparationIssueCode,
   PreparationPreviewRow,
-  ProductEngineerSessionDraft,
+  FacilitatorSessionDraft,
 } from "../../lib/hr-paysim/preparation/types.ts";
 import templateUrl from "./assets/HR-PaySim-Product-Engineer-input-template.xlsx?url";
-import { readProductEngineerWorkbook } from "./readProductEngineerWorkbook.ts";
+import { readFacilitatorWorkbook } from "./readFacilitatorWorkbook.ts";
 import { createWorkbookReadCoordinator } from "./workbookReadCoordinator.ts";
 import "./facilitatorPreparation.css";
 
 export interface FacilitatorPreparationScreenProps {
-  onStart: (draft: ProductEngineerSessionDraft) => void;
+  onStart: (draft: FacilitatorSessionDraft) => void;
 }
 
 const issueLabels: Record<PreparationIssueCode, string> = PREPARATION_ISSUE_COPY;
@@ -27,18 +32,11 @@ const fieldLabels: Record<KoreanRosterField, string> = {
   salary: "기본연봉(원)",
   relevant_experience: "관련 경력년수",
   company_tenure: "회사 근속개월",
-  title: "직함",
-  level: "레벨",
-  documented_exception: "문서화된 예외",
-  counteroffer: "카운터오퍼 여부",
+  job: "직무",
+  grade: "직급",
+  grade_rank: "직급 순서",
+  compensation_exception_reason: "처우 예외적용 사유",
 };
-
-const exampleRows = [
-  ["68,000,000", "8", "36", "Product Engineer", "", "아니오", "아니오"],
-  ["74,000,000", "7.5", "24", "Senior Product Engineer", "L2", "아니오", "예"],
-  ["82,000,000", "10", "18", "Product Engineer", "L3", "예", "아니오"],
-  ["79,000,000", "6", "12", "Product Engineer", "", "아니오", "아니오"],
-] as const;
 
 type InputSource = "file" | "paste" | null;
 type FileInputChangeEvent = { currentTarget: HTMLInputElement };
@@ -65,7 +63,7 @@ export function FacilitatorPreparationScreen({
     setIsFileReading(true);
     setInputSource("file");
     try {
-      const next = await readProductEngineerWorkbook(file, {
+      const next = await readFacilitatorWorkbook(file, {
         confirmProhibitedHeaders: (headers) => fileReadCoordinator.requestConsent(
           readId,
           headers,
@@ -96,7 +94,7 @@ export function FacilitatorPreparationScreen({
 
   function inspectPaste() {
     setInputSource("paste");
-    const next = prepareProductEngineerRoster(rawPaste, { confirmPiiColumnStripping });
+    const next = prepareFacilitatorRoster(rawPaste, { confirmPiiColumnStripping });
     setResult(next);
     if (next.shouldClearRaw || next.status === "ready_for_confirmation") setRawPaste("");
   }
@@ -117,7 +115,7 @@ export function FacilitatorPreparationScreen({
       return;
     }
     setConfirmPiiColumnStripping(true);
-    const next = prepareProductEngineerRoster(rawPaste, { confirmPiiColumnStripping: true });
+    const next = prepareFacilitatorRoster(rawPaste, { confirmPiiColumnStripping: true });
     setResult(next);
     if (next.shouldClearRaw || next.status === "ready_for_confirmation") setRawPaste("");
   }
@@ -148,14 +146,14 @@ export function FacilitatorPreparationScreen({
               <div><dt>기본연봉(원)</dt><dd>현재 연간 기본연봉을 원 단위로 입력</dd></div>
               <div><dt>관련 경력년수</dt><dd>현재·이전 회사의 관련 업무 경력</dd></div>
               <div><dt>회사 근속개월</dt><dd>현재 회사에서 근무한 완료 개월 수</dd></div>
+              <div><dt>직무</dt><dd>같은 비교 집단으로 확인할 실제 직무명</dd></div>
             </dl>
           </section>
           <section aria-labelledby="fp-optional-fields">
-            <h3 id="fp-optional-fields">선택 항목</h3>
+            <h3 id="fp-optional-fields">직급 정보와 처우 사유</h3>
             <dl>
-              <div><dt>직함 · 레벨</dt><dd>설명과 확인을 위한 익명 맥락</dd></div>
-              <div><dt>문서화된 예외</dt><dd>빈칸, 예, 아니오</dd></div>
-              <div><dt>카운터오퍼 여부</dt><dd>빈칸, 예, 아니오</dd></div>
+              <div><dt>직급 · 직급 순서</dt><dd>둘 다 비우거나 직무 안에서 빠짐없이 함께 입력</dd></div>
+              <div><dt>처우 예외적용 사유</dt><dd>없음, 채용 예외, 카운터오퍼, 기타 문서화된 사유 중 선택</dd></div>
             </dl>
           </section>
         </div>
@@ -165,7 +163,7 @@ export function FacilitatorPreparationScreen({
             <h3 id="fp-example-title">작성 예시</h3>
             <p>형식만 보여주는 합성 자료이며 연봉 기준이나 시장 자료가 아닙니다.</p>
           </div>
-          <KoreanRosterTable rows={exampleRows} />
+          <KoreanRosterTable rows={ROSTER_EXAMPLE_ROWS} />
         </div>
       </section>
 
@@ -182,7 +180,7 @@ export function FacilitatorPreparationScreen({
             <span className="fp-step-number">1</span>
             <div>
               <h3>빈 Excel 양식을 내려받아 작성합니다.</h3>
-              <p>열 이름을 바꾸지 말고 Product Engineer 직원 자료를 최소 4행 입력해 주세요.</p>
+              <p>열 이름을 바꾸지 말고, 비교할 직무 한 곳은 직원 자료를 최소 4행 입력해 주세요.</p>
               <a className="fp-secondary-action" href={templateUrl} download>
                 {FOUNDER_COPY["preparation.download.action"]}
               </a>
@@ -217,7 +215,7 @@ export function FacilitatorPreparationScreen({
                 rows={8}
                 value={rawPaste}
                 onChange={(event) => changePaste(event.target.value)}
-                placeholder="기본연봉(원)부터 카운터오퍼 여부까지 열 이름을 포함해 붙여넣어 주세요."
+                placeholder="기본연봉(원)부터 처우 예외적용 사유까지 일곱 열 이름을 포함해 붙여넣어 주세요."
                 spellCheck={false}
               />
             </label>
@@ -304,13 +302,19 @@ export function FacilitatorPreparationScreen({
   );
 }
 
-function KoreanRosterTable({ rows }: { rows: readonly (readonly string[])[] }) {
+function KoreanRosterTable({
+  rows,
+}: {
+  rows: readonly (readonly unknown[])[];
+}) {
   return (
     <div className="fp-table-wrap fp-example-table">
       <table>
-        <thead><tr>{Object.values(fieldLabels).map((label) => <th key={label}>{label}</th>)}</tr></thead>
+        <thead><tr>{ROSTER_HEADERS.map((label) => <th key={label}>{label}</th>)}</tr></thead>
         <tbody>{rows.map((row, rowIndex) => (
-          <tr key={rowIndex}>{row.map((value, columnIndex) => <td key={columnIndex}>{value || "—"}</td>)}</tr>
+          <tr key={rowIndex}>{row.map((value, columnIndex) => (
+            <td key={columnIndex}>{formatExampleCell(value, columnIndex)}</td>
+          ))}</tr>
         ))}</tbody>
       </table>
     </div>
@@ -324,30 +328,58 @@ function PreparationPreview({ rows }: { rows: PreparationPreviewRow[] }) {
         <thead>
           <tr>
             <th>세션 라벨</th>
-            <th>역할</th>
+            <th>직무</th>
             <th>기본 연봉</th>
             <th>관련 경력</th>
             <th>회사 근속</th>
-            <th>직함·레벨</th>
-            <th>문서화된 예외</th>
+            <th>직급 · 순서</th>
+            <th>처우 예외적용 사유</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((item) => (
-            <tr key={item.employeeLabel}>
-              <th scope="row">{item.employeeLabel}</th>
-              <td>{item.roleGroup}</td>
-              <td>{formatManwon(item.salaryKRW)}</td>
-              <td>{item.relevantExperienceMonths === undefined ? "확인 필요" : formatExperienceYears(item.relevantExperienceMonths)}</td>
-              <td>{item.tenureMonths === undefined ? "확인 필요" : item.tenureMonths + "개월"}</td>
-              <td>{[item.title, item.levelLabel].filter(Boolean).join(" · ") || "없음"}</td>
-              <td>{item.documentedException ? "있음" : "없음"}</td>
-            </tr>
+          {groupPreparationRows(rows).map(({ roleGroup, roleRows }) => (
+            <Fragment key={roleGroup}>
+              <tr className="fp-role-heading">
+                <th colSpan={7} scope="rowgroup">{roleGroup}</th>
+              </tr>
+              {roleRows.map((item) => (
+                <tr key={`${item.roleGroup}:${item.employeeLabel}`}>
+                  <th scope="row">{item.employeeLabel}</th>
+                  <td>{item.roleGroup}</td>
+                  <td>{formatManwon(item.salaryKRW)}</td>
+                  <td>{item.relevantExperienceMonths === undefined ? "확인 필요" : formatExperienceYears(item.relevantExperienceMonths)}</td>
+                  <td>{item.tenureMonths === undefined ? "확인 필요" : item.tenureMonths + "개월"}</td>
+                  <td>{formatGrade(item)}</td>
+                  <td>{COMPENSATION_EXCEPTION_LABELS[item.compensationExceptionReason]}</td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function groupPreparationRows(rows: PreparationPreviewRow[]) {
+  const groups = new Map<string, PreparationPreviewRow[]>();
+  for (const row of rows) {
+    const roleRows = groups.get(row.roleGroup) ?? [];
+    roleRows.push(row);
+    groups.set(row.roleGroup, roleRows);
+  }
+  return [...groups].map(([roleGroup, roleRows]) => ({ roleGroup, roleRows }));
+}
+
+function formatGrade(row: PreparationPreviewRow): string {
+  if (row.levelLabel === undefined || row.levelRank === undefined) return "없음";
+  return `${row.levelLabel} · 순서 ${row.levelRank}`;
+}
+
+function formatExampleCell(value: unknown, columnIndex: number): string {
+  if (value === undefined || value === null || value === "") return "—";
+  if (columnIndex === 0 && typeof value === "number") return value.toLocaleString("ko-KR");
+  return String(value);
 }
 
 function formatExperienceYears(months: number): string {

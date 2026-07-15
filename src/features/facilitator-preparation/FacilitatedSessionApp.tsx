@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePaySimSession } from "../../app/PaySimSessionProvider.tsx";
-import type { ProductEngineerSessionDraft } from "../../lib/hr-paysim/preparation/types.ts";
+import type { FacilitatorSessionDraft } from "../../lib/hr-paysim/preparation/types.ts";
 import { DecisionRoomApp } from "../decision-room/DecisionRoomApp.tsx";
 import { FacilitatorPreparationScreen } from "./FacilitatorPreparationScreen.tsx";
 
@@ -27,7 +27,7 @@ export function FacilitatedSessionApp() {
     setPathname(nextPath);
   }
 
-  function startSession(draft: ProductEngineerSessionDraft) {
+  function startSession(draft: FacilitatorSessionDraft) {
     const ownedDraft = structuredClone(draft);
     dispatch({
       type: "START_SESSION",

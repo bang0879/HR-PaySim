@@ -1,18 +1,18 @@
 import type { NormalizedRosterRow } from "../domain.ts";
-import { createEmployeeLabels } from "../presentation/createEmployeeLabels.ts";
-import { createFacilitatorSessionDraft } from "./createProductEngineerSessionDraft.ts";
+import { createPreparationLabels } from "../presentation/createPreparationLabels.ts";
+import { createFacilitatorSessionDraft } from "./createFacilitatorSessionDraft.ts";
 import {
   adaptKoreanRosterTable,
   type KoreanRosterAdapterOptions,
 } from "./koreanRosterAdapter.ts";
 import type { CompensationExceptionReason } from "./rosterTemplateContract.ts";
 import type {
+  FacilitatorPreparationResult,
   PreparationPreviewRow,
-  ProductEngineerPreparationResult,
   SafePreparationIssue,
 } from "./types.ts";
 
-export function createEmptyPreparationResult(): ProductEngineerPreparationResult {
+export function createEmptyPreparationResult(): FacilitatorPreparationResult {
   return {
     status: "empty",
     prohibitedColumnHeaders: [],
@@ -26,22 +26,15 @@ export function createEmptyPreparationResult(): ProductEngineerPreparationResult
 export function prepareFacilitatorRoster(
   rawText: string,
   options: KoreanRosterAdapterOptions = {},
-): ProductEngineerPreparationResult {
+): FacilitatorPreparationResult {
   if (rawText.trim().length === 0) return createEmptyPreparationResult();
   return prepareFacilitatorKoreanTable(parseKoreanPaste(rawText), options);
-}
-
-export function prepareProductEngineerRoster(
-  rawText: string,
-  options: KoreanRosterAdapterOptions = {},
-): ProductEngineerPreparationResult {
-  return prepareFacilitatorRoster(rawText, options);
 }
 
 export function prepareFacilitatorKoreanTable(
   table: readonly (readonly unknown[])[],
   options: KoreanRosterAdapterOptions = {},
-): ProductEngineerPreparationResult {
+): FacilitatorPreparationResult {
   if (table.length === 0 || table.every((row) => row.every(isBlankCell))) {
     return createEmptyPreparationResult();
   }
@@ -67,49 +60,31 @@ export function prepareFacilitatorKoreanTable(
   }
 
   const rows = adapted.rows.map((row) => ({ ...row }));
+  const labels = createPreparationLabels(rows);
+  const previewRows = adapted.records.map(({ row, compensationExceptionReason }) =>
+    toPreviewRow(row, labels.get(row.rowId)!, compensationExceptionReason)
+  );
   const draftResult = createFacilitatorSessionDraft(rows);
   if (!draftResult.supported) {
     return {
       status: "blocked",
       prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
-      issues: [{ code: "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON" }],
-      previewRows: adapted.records.map(({ row, compensationExceptionReason }, index) =>
-        toPreviewRow(
-          row,
-          "직원 " + String.fromCharCode(65 + index),
-          compensationExceptionReason,
-        ),
-      ),
+      issues: [{ code: "NO_SUPPORTED_REVIEW_SUBJECT" }],
+      previewRows,
       rows: [],
       shouldClearRaw: true,
     };
   }
 
-  const activeTheme = draftResult.draft.selection.selected[0]!;
-  const labels = createEmployeeLabels(
-    draftResult.draft.rows,
-    activeTheme.headlinePair!.underpaidRowId,
-    activeTheme.headlinePair!.comparatorRowId,
-  );
-
   return {
     status: "ready_for_confirmation",
     prohibitedColumnHeaders: [...adapted.prohibitedColumnHeaders],
     issues: [],
-    previewRows: adapted.records.map(({ row, compensationExceptionReason }) =>
-      toPreviewRow(row, labels.get(row.rowId)!, compensationExceptionReason),
-    ),
+    previewRows,
     rows: draftResult.draft.rows,
     draft: draftResult.draft,
     shouldClearRaw: true,
   };
-}
-
-export function prepareProductEngineerKoreanTable(
-  table: readonly (readonly unknown[])[],
-  options: KoreanRosterAdapterOptions = {},
-): ProductEngineerPreparationResult {
-  return prepareFacilitatorKoreanTable(table, options);
 }
 
 function parseKoreanPaste(rawText: string): unknown[][] {

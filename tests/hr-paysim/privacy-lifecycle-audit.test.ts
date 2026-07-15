@@ -6,9 +6,9 @@ const owners = [
   "../../src/features/facilitator-preparation/FacilitatorPreparationScreen.tsx",
   "../../src/features/facilitator-preparation/FacilitatedSessionApp.tsx",
   "../../src/app/PaySimSessionProvider.tsx",
-  "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts",
-  "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts",
-  "../../src/features/facilitator-preparation/readProductEngineerWorkbook.ts",
+  "../../src/lib/hr-paysim/preparation/prepareFacilitatorRoster.ts",
+  "../../src/lib/hr-paysim/preparation/createFacilitatorSessionDraft.ts",
+  "../../src/features/facilitator-preparation/readFacilitatorWorkbook.ts",
   "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts",
 ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
@@ -36,6 +36,6 @@ test("facilitator privacy verifier scans the built local module graph", () => {
   );
   assert.match(verifier, /dist\/facilitator-local\/paysim-module-manifest\.json/);
   assert.match(verifier, /findForbiddenPrivacyApis/);
-  assert.match(verifier, /readProductEngineerWorkbook\.ts/);
+  assert.match(verifier, /readFacilitatorWorkbook\.ts/);
   assert.match(verifier, /koreanRosterAdapter\.ts/);
 });

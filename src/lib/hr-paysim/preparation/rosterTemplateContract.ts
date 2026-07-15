@@ -25,8 +25,8 @@ export const COMPENSATION_EXCEPTION_LABELS: Record<
 };
 
 export const ROSTER_EXAMPLE_ROWS = [
-  [68_000_000, 8, 36, "Product Engineer", "L1", 1, "없음"],
-  [74_000_000, 7.5, 24, "Product Engineer", "L2", 2, "카운터오퍼"],
-  [82_000_000, 10, 18, "Product Engineer", "L3", 3, "채용 예외"],
-  [79_000_000, 6, 12, "Product Engineer", "L2", 2, "없음"],
+  [68_000_000, 8, 36, "Backend Engineer", "L1", 1, "없음"],
+  [74_000_000, 7.5, 24, "Backend Engineer", "L2", 2, "카운터오퍼"],
+  [82_000_000, 10, 18, "Backend Engineer", "L3", 3, "채용 예외"],
+  [79_000_000, 6, 12, "Backend Engineer", "L2", 2, "없음"],
 ] as const;

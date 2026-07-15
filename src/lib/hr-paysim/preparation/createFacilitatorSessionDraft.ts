@@ -15,8 +15,6 @@ export type FacilitatorSessionDraftResult =
   | { supported: true; draft: FacilitatorSessionDraft }
   | { supported: false; reason: UnsupportedDraftReason };
 
-export type ProductEngineerSessionDraftResult = FacilitatorSessionDraftResult;
-
 export function createFacilitatorSessionDraft(
   inputRows: NormalizedRosterRow[],
 ): FacilitatorSessionDraftResult {
@@ -42,12 +40,6 @@ export function createFacilitatorSessionDraft(
       activeThemeId: selection.selected[0]!.id,
     },
   };
-}
-
-export function createProductEngineerSessionDraft(
-  inputRows: NormalizedRosterRow[],
-): ProductEngineerSessionDraftResult {
-  return createFacilitatorSessionDraft(inputRows);
 }
 
 function validateSelectedTheme(

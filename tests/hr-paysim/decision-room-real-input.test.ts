@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createDecisionRoomViewModel } from "../../src/features/decision-room/decisionRoomViewModel.ts";
-import { createFacilitatorSessionDraft } from "../../src/lib/hr-paysim/preparation/createProductEngineerSessionDraft.ts";
-import { prepareProductEngineerRoster } from "../../src/lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
+import { createFacilitatorSessionDraft } from "../../src/lib/hr-paysim/preparation/createFacilitatorSessionDraft.ts";
+import { prepareFacilitatorRoster } from "../../src/lib/hr-paysim/preparation/prepareFacilitatorRoster.ts";
 import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 import { createEmptyDecisionRoomSession } from "../../src/lib/hr-paysim/session/decisionRoomReducer.ts";
 import type { DecisionRoomScreen } from "../../src/lib/hr-paysim/session/types.ts";
@@ -21,7 +21,7 @@ const actualRosterPaste = [
 ].join("\n");
 
 test("facilitated copy derives every roster fact from the current Product Engineer session", () => {
-  const prepared = prepareProductEngineerRoster(actualRosterPaste);
+  const prepared = prepareFacilitatorRoster(actualRosterPaste);
   assert.equal(prepared.status, "ready_for_confirmation");
   assert.ok(prepared.draft);
 

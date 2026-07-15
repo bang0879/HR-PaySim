@@ -3,9 +3,9 @@ import readXlsxFile, { type Sheet } from "read-excel-file/browser";
 
 import {
   createEmptyPreparationResult,
-  prepareProductEngineerKoreanTable,
-} from "../../lib/hr-paysim/preparation/prepareProductEngineerRoster.ts";
-import type { ProductEngineerPreparationResult } from "../../lib/hr-paysim/preparation/types.ts";
+  prepareFacilitatorKoreanTable,
+} from "../../lib/hr-paysim/preparation/prepareFacilitatorRoster.ts";
+import type { FacilitatorPreparationResult } from "../../lib/hr-paysim/preparation/types.ts";
 
 export const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024;
 const MAX_WORKSHEET_XML_BYTES = 20 * 1024 * 1024;
@@ -19,23 +19,21 @@ export function selectWorkbookSheet(
   sheets: readonly WorkbookSheet[],
 ): WorkbookSheet {
   const nonEmptySheets = sheets.filter(({ data }) => hasContent(data));
-  const preferred = nonEmptySheets.find(({ sheet, data }) =>
-    sheet === "입력 양식" && hasDataRows(data)
-  );
+  const preferred = nonEmptySheets.find(({ sheet }) => sheet === "입력 양식");
   if (preferred) return preferred;
   if (nonEmptySheets.length === 0) throw new Error("EMPTY_WORKBOOK");
   if (nonEmptySheets.length > 1) throw new Error("AMBIGUOUS_WORKBOOK");
   return nonEmptySheets[0]!;
 }
 
-export async function readProductEngineerWorkbook(
+export async function readFacilitatorWorkbook(
   file: File,
   options: {
     readWorkbook?: WorkbookReader;
     confirmProhibitedHeaders?: (headers: readonly string[]) => Promise<boolean>;
     inspectWorkbookFormulas?: (file: File) => Promise<boolean>;
   } = {},
-): Promise<ProductEngineerPreparationResult> {
+): Promise<FacilitatorPreparationResult> {
   if (!file.name.toLowerCase().endsWith(".xlsx")) {
     return workbookBlocked("UNSUPPORTED_FILE_TYPE");
   }
@@ -51,13 +49,13 @@ export async function readProductEngineerWorkbook(
     }
     const sheets = await (options.readWorkbook ?? readXlsxFile)(file);
     const selected = selectWorkbookSheet(sheets);
-    const inspected = prepareProductEngineerKoreanTable(selected.data);
+    const inspected = prepareFacilitatorKoreanTable(selected.data);
     if (
       inspected.status === "needs_column_consent"
       && options.confirmProhibitedHeaders
       && await options.confirmProhibitedHeaders([...inspected.prohibitedColumnHeaders])
     ) {
-      return prepareProductEngineerKoreanTable(selected.data, {
+      return prepareFacilitatorKoreanTable(selected.data, {
         confirmPiiColumnStripping: true,
       });
     }
@@ -112,7 +110,7 @@ function workbookBlocked(
     | "EMPTY_WORKBOOK"
     | "AMBIGUOUS_WORKBOOK"
     | "UNREADABLE_WORKBOOK",
-): ProductEngineerPreparationResult {
+): FacilitatorPreparationResult {
   return {
     ...createEmptyPreparationResult(),
     status: "blocked",
@@ -123,10 +121,6 @@ function workbookBlocked(
 
 function hasContent(data: readonly (readonly unknown[])[]): boolean {
   return data.some((row) => row.some((cell) => !isBlank(cell)));
-}
-
-function hasDataRows(data: readonly (readonly unknown[])[]): boolean {
-  return data.slice(1).some((row) => row.some((cell) => !isBlank(cell)));
 }
 
 function isBlank(value: unknown): boolean {

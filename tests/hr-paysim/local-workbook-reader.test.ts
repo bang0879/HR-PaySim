@@ -4,24 +4,29 @@ import { strToU8, zipSync } from "fflate";
 
 import {
   MAX_WORKBOOK_BYTES,
-  readProductEngineerWorkbook,
+  readFacilitatorWorkbook,
   selectWorkbookSheet,
   workbookContainsFormula,
-} from "../../src/features/facilitator-preparation/readProductEngineerWorkbook.ts";
+} from "../../src/features/facilitator-preparation/readFacilitatorWorkbook.ts";
 import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 
 const rows = [
   [...KOREAN_ROSTER_HEADERS],
-  [68_000_000, 10, 64, "Product Engineer", "", "아니오", "아니오"],
-  [72_000_000, 9, 56, "", "", "아니오", "아니오"],
-  [76_000_000, 8, 48, "", "", "아니오", "아니오"],
-  [95_000_000, 7, 14, "Senior Product Engineer", "", "예", "아니오"],
+  [68_000_000, 10, 64, "Backend Engineer", "", "", "없음"],
+  [72_000_000, 9, 56, "Backend Engineer", "", "", "없음"],
+  [76_000_000, 8, 48, "Backend Engineer", "", "", "카운터오퍼"],
+  [95_000_000, 7, 14, "Backend Engineer", "", "", "채용 예외"],
 ];
 
 test("prefers 입력 양식 and otherwise accepts exactly one non-empty sheet", () => {
   assert.equal(selectWorkbookSheet([
-    { sheet: "기타", data: [["메모"]] },
+    { sheet: "작성 예시", data: [["합성 예시"], [...KOREAN_ROSTER_HEADERS], ...rows.slice(1)] },
     { sheet: "입력 양식", data: rows },
+  ]).sheet, "입력 양식");
+
+  assert.equal(selectWorkbookSheet([
+    { sheet: "작성 예시", data: [["합성 예시"], [...KOREAN_ROSTER_HEADERS], ...rows.slice(1)] },
+    { sheet: "입력 양식", data: [[...KOREAN_ROSTER_HEADERS]] },
   ]).sheet, "입력 양식");
 
   assert.equal(selectWorkbookSheet([
@@ -45,13 +50,13 @@ test("rejects unsupported type and size without invoking the workbook reader", a
     return [{ sheet: "입력 양식", data: rows }];
   };
 
-  const wrongType = await readProductEngineerWorkbook(
+  const wrongType = await readFacilitatorWorkbook(
     fakeFile("roster.xls", 100),
     { readWorkbook },
   );
   assert.deepEqual(wrongType.issues, [{ code: "UNSUPPORTED_FILE_TYPE" }]);
 
-  const tooLarge = await readProductEngineerWorkbook(
+  const tooLarge = await readFacilitatorWorkbook(
     fakeFile("roster.xlsx", MAX_WORKBOOK_BYTES + 1),
     { readWorkbook },
   );
@@ -60,7 +65,7 @@ test("rejects unsupported type and size without invoking the workbook reader", a
 });
 
 test("normalizes a selected workbook without returning filename, sheet, or raw rows", async () => {
-  const result = await readProductEngineerWorkbook(
+  const result = await readFacilitatorWorkbook(
     fakeFile("private-roster.xlsx", 100),
     { readWorkbook: async () => [
       { sheet: "메모", data: [["이 값은 선택되지 않습니다"]] },
@@ -79,7 +84,7 @@ test("normalizes a selected workbook without returning filename, sheet, or raw r
 test("file-column consent applies only inside the current read invocation", async () => {
   const withName = rows.map((row, index) => index === 0 ? [...row, "이름"] : [...row, `직원 ${index}`]);
   let reviewedHeaders: readonly string[] = [];
-  const confirmed = await readProductEngineerWorkbook(
+  const confirmed = await readFacilitatorWorkbook(
     fakeFile("roster.xlsx", 100),
     {
       readWorkbook: async () => [{ sheet: "입력 양식", data: withName }],
@@ -92,7 +97,7 @@ test("file-column consent applies only inside the current read invocation", asyn
   assert.deepEqual(reviewedHeaders, ["이름"]);
   assert.equal(confirmed.status, "ready_for_confirmation");
 
-  const notConfirmed = await readProductEngineerWorkbook(
+  const notConfirmed = await readFacilitatorWorkbook(
     fakeFile("other-roster.xlsx", 100),
     {
       readWorkbook: async () => [{ sheet: "입력 양식", data: withName }],
@@ -115,7 +120,7 @@ test("blocks real SpreadsheetML formula cells before cached values reach the ada
   assert.equal(await workbookContainsFormula(file), true);
 
   let reads = 0;
-  const blocked = await readProductEngineerWorkbook(file, {
+  const blocked = await readFacilitatorWorkbook(file, {
     readWorkbook: async () => {
       reads += 1;
       return [{ sheet: "입력 양식", data: rows }];
@@ -164,7 +169,7 @@ test("rejects excessive aggregate worksheet inflation and worksheet counts", asy
   );
 });
 test("maps sheet selection and parser failures to safe workbook issue codes", async () => {
-  const ambiguous = await readProductEngineerWorkbook(
+  const ambiguous = await readFacilitatorWorkbook(
     fakeFile("roster.xlsx", 100),
     { readWorkbook: async () => [
       { sheet: "A", data: rows },
@@ -173,7 +178,7 @@ test("maps sheet selection and parser failures to safe workbook issue codes", as
   );
   assert.deepEqual(ambiguous.issues, [{ code: "AMBIGUOUS_WORKBOOK" }]);
 
-  const unreadable = await readProductEngineerWorkbook(
+  const unreadable = await readFacilitatorWorkbook(
     fakeFile("roster.xlsx", 100),
     { readWorkbook: async () => {
       throw new Error("secret parser detail");

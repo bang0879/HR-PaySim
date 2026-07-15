@@ -78,7 +78,7 @@ test("privacy API detector covers the full first-party source map", () => {
 
 test("the workbook reader and parser stay behind the facilitator-local boundary", () => {
   const reader = readFileSync(
-    new URL("../../src/features/facilitator-preparation/readProductEngineerWorkbook.ts", import.meta.url),
+    new URL("../../src/features/facilitator-preparation/readFacilitatorWorkbook.ts", import.meta.url),
     "utf8",
   );
   const publicEntry = readFileSync(
@@ -86,5 +86,5 @@ test("the workbook reader and parser stay behind the facilitator-local boundary"
     "utf8",
   );
   assert.match(reader, /read-excel-file\/browser/);
-  assert.doesNotMatch(publicEntry, /readProductEngineerWorkbook|read-excel-file|\.xlsx/);
+  assert.doesNotMatch(publicEntry, /readFacilitatorWorkbook|read-excel-file|\.xlsx/);
 });

@@ -20,8 +20,7 @@ export type PreparationIssueCode =
   | "EMPTY_WORKBOOK"
   | "AMBIGUOUS_WORKBOOK"
   | "UNREADABLE_WORKBOOK"
-  | "UNSUPPORTED_ROLE"
-  | "UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON";
+  | "NO_SUPPORTED_REVIEW_SUBJECT";
 
 export interface SafePreparationIssue {
   sourceLineNumber?: number;
@@ -47,9 +46,7 @@ export interface FacilitatorSessionDraft {
   activeThemeId: string;
 }
 
-export type ProductEngineerSessionDraft = FacilitatorSessionDraft;
-
-export interface ProductEngineerPreparationResult {
+export interface FacilitatorPreparationResult {
   status: PreparationStatus;
   prohibitedColumnHeaders: string[];
   issues: SafePreparationIssue[];

@@ -8,11 +8,11 @@ export const FOUNDER_COPY = {
   "preparation.privacy":
     "선택하거나 붙여넣은 자료는 이 브라우저에서만 확인합니다. 파일은 전송하거나 저장하지 않으며, 세션을 종료하면 확인한 내용도 지워집니다.",
   "preparation.guide.kicker": "준비할 자료",
-  "preparation.guide.heading": "Product Engineer 직원 자료를 준비해 주세요.",
+  "preparation.guide.heading": "여러 직무의 익명 직원 자료를 준비해 주세요.",
   "preparation.guide.lead":
-    "직원 최소 4명의 기본연봉, 관련 경력년수, 회사 근속개월이 필요합니다. 이름과 사번은 입력하지 않습니다.",
+    "비교할 직무 한 곳 이상에서 직원 최소 4명의 기본연봉, 관련 경력년수, 회사 근속개월이 필요합니다. 이름과 사번은 입력하지 않습니다.",
   "preparation.guide.career_definition":
-    "관련 경력년수는 현재와 이전 회사에서 Product Engineer 업무와 직접 관련된 경력을 합한 기간입니다. 회사명, 재직기간, 학력, 나이는 필요하지 않습니다.",
+    "관련 경력년수는 현재와 이전 회사에서 입력한 직무와 직접 관련된 경력을 합한 기간입니다. 회사명, 재직기간, 학력, 나이는 필요하지 않습니다.",
   "preparation.download.action": "1. Excel 입력 양식 내려받기",
   "preparation.file.action": "2. 작성한 Excel 파일 불러오기",
   "preparation.paste.kicker": "표 붙여넣기",
@@ -42,19 +42,19 @@ export const FOUNDER_COPY = {
   "preparation.issue.missing_header": "입력 양식의 필수 열이 없습니다.",
   "preparation.issue.duplicate_header": "같은 열 이름이 두 번 이상 있습니다.",
   "preparation.issue.invalid_field_value": "허용된 형식이나 범위를 확인해 주세요.",
-  "preparation.issue.too_few_rows": "Product Engineer 직원 자료를 최소 4행 준비해 주세요.",
+  "preparation.issue.too_few_rows": "직무별 비교를 위해 같은 직무의 직원 자료를 최소 4행 준비해 주세요.",
+  "preparation.issue.partial_grade_mapping": "같은 직무에서는 직급과 직급 순서를 모두 입력하거나 모두 비워 주세요.",
+  "preparation.issue.contradictory_grade_mapping": "같은 직무의 동일 직급에는 하나의 직급 순서만 사용해 주세요.",
   "preparation.issue.unsupported_file_type":
     "제공된 .xlsx 입력 양식을 사용하거나 아래 표 붙여넣기를 이용해 주세요.",
   "preparation.issue.file_too_large": "Excel 파일은 5 MB 이하로 준비해 주세요.",
-  "preparation.issue.empty_workbook": "입력 양식에 Product Engineer 직원 자료를 최소 4행 입력해 주세요.",
+  "preparation.issue.empty_workbook": "입력 양식에 비교할 직무의 직원 자료를 최소 4행 입력해 주세요.",
   "preparation.issue.ambiguous_workbook":
     "여러 시트 중 사용할 표를 정할 수 없습니다. 입력 양식 시트에 필요한 표만 옮겨 주세요.",
   "preparation.issue.unreadable_workbook":
     "파일을 읽을 수 없습니다. 암호나 매크로가 없는 .xlsx 입력 양식을 사용해 주세요.",
-  "preparation.issue.unsupported_role":
-    "이번 준비 화면은 Product Engineer 자료만 사용할 수 있습니다.",
-  "preparation.issue.unsupported_product_engineer_comparison":
-    "현재 자료에서는 Product Engineer 연봉 차이를 확인할 수 있는 비교가 없습니다.",
+  "preparation.issue.no_supported_review_subject":
+    "현재 자료에서는 진행자와 함께 검토할 수 있는 직무별 연봉 비교가 없습니다.",
 
   "screen.introduction.conclusion":
     "이번 세션에서는 같은 역할 안에서 확인된 연봉 차이를 비교하고, 다음 채용과 인사평가 전에 회사가 정할 기준을 정리합니다.",
@@ -218,14 +218,16 @@ export const PREPARATION_ISSUE_COPY = {
   DUPLICATE_HEADER: FOUNDER_COPY["preparation.issue.duplicate_header"],
   INVALID_FIELD_VALUE: FOUNDER_COPY["preparation.issue.invalid_field_value"],
   TOO_FEW_ROWS: FOUNDER_COPY["preparation.issue.too_few_rows"],
+  PARTIAL_GRADE_MAPPING: FOUNDER_COPY["preparation.issue.partial_grade_mapping"],
+  CONTRADICTORY_GRADE_MAPPING:
+    FOUNDER_COPY["preparation.issue.contradictory_grade_mapping"],
   UNSUPPORTED_FILE_TYPE: FOUNDER_COPY["preparation.issue.unsupported_file_type"],
   FILE_TOO_LARGE: FOUNDER_COPY["preparation.issue.file_too_large"],
   EMPTY_WORKBOOK: FOUNDER_COPY["preparation.issue.empty_workbook"],
   AMBIGUOUS_WORKBOOK: FOUNDER_COPY["preparation.issue.ambiguous_workbook"],
   UNREADABLE_WORKBOOK: FOUNDER_COPY["preparation.issue.unreadable_workbook"],
-  UNSUPPORTED_ROLE: FOUNDER_COPY["preparation.issue.unsupported_role"],
-  UNSUPPORTED_PRODUCT_ENGINEER_COMPARISON:
-    FOUNDER_COPY["preparation.issue.unsupported_product_engineer_comparison"],
+  NO_SUPPORTED_REVIEW_SUBJECT:
+    FOUNDER_COPY["preparation.issue.no_supported_review_subject"],
 } as const;
 
 export type FounderCopyKey = keyof typeof FOUNDER_COPY;

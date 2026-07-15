@@ -9,7 +9,7 @@ test("preparation copy states the guided local Excel workflow and privacy bounda
   const copy = FOUNDER_COPY as Record<string, string>;
 
   assert.equal(copy["preparation.heading"], "이번 세션에 사용할 익명 자료를 먼저 확인합니다.");
-  assert.equal(copy["preparation.guide.heading"], "Product Engineer 직원 자료를 준비해 주세요.");
+  assert.equal(copy["preparation.guide.heading"], "여러 직무의 익명 직원 자료를 준비해 주세요.");
   assert.equal(copy["preparation.download.action"], "1. Excel 입력 양식 내려받기");
   assert.equal(copy["preparation.file.action"], "2. 작성한 Excel 파일 불러오기");
   assert.equal(copy["preparation.paste.heading"], "파일을 사용하지 않고 표 붙여넣기");
