@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import {
   collectSensitiveTokens,
   findBlockedPaySimHrefs,
@@ -51,14 +52,103 @@ const invalidCareerPaste = [
 const blankTemplateBuffer = readFileSync(
   new URL("../src/features/facilitator-preparation/assets/HR-PaySim-company-roster-template.xlsx", import.meta.url),
 );
+const formulaWorkbookFilename = "formula-roster.xlsx";
+const formulaTexts = [
+  "QA_FORMULA_SALARY_SNAPSHOT",
+  "QA_FORMULA_GRADE_SNAPSHOT",
+];
+const formulaRosterRows = [
+  [60_000_000, 10, 60, "Backend Engineer", "L1", 1, "없음"],
+  [75_000_000, 7, 12, "Backend Engineer", "L2", 2, "카운터오퍼"],
+  [85_000_000, 5, 10, "Backend Engineer", "L1", 1, "채용 예외"],
+  [70_000_000, 8, 50, "Backend Engineer", "L2", 2, "없음"],
+];
+const formulaRosterBuffer = buildFormulaRosterWorkbook(blankTemplateBuffer);
+const formulaRawRowTokens = formulaRosterRows.map((row) => row.join("\t"));
 const sensitiveRequestTokens = collectSensitiveTokens(
   facilitatorHeader,
   ...facilitatorRows,
   piiColumnPaste,
   rowPiiPaste,
   invalidCareerPaste,
+  formulaWorkbookFilename,
+  ...formulaTexts,
+  ...formulaRawRowTokens,
   "private-roster.xlsx\ttiming_context\tdocumented",
-);const viewports = [
+);
+
+function buildFormulaRosterWorkbook(templateBuffer) {
+  const archive = unzipSync(new Uint8Array(templateBuffer));
+  const workbookXml = strFromU8(archive["xl/workbook.xml"]);
+  const relationshipsXml = strFromU8(archive["xl/_rels/workbook.xml.rels"]);
+  const sheetTag = [...workbookXml.matchAll(/<sheet\b[^>]*\/?\s*>/g)]
+    .map((match) => match[0])
+    .find((tag) => readXmlAttributes(tag).name === "입력 양식");
+  if (!sheetTag) throw new Error("QA_INPUT_SHEET_MISSING");
+  const relationshipId = readXmlAttributes(sheetTag)["r:id"];
+  const relationshipTag = [...relationshipsXml.matchAll(/<Relationship\b[^>]*\/?\s*>/g)]
+    .map((match) => match[0])
+    .find((tag) => readXmlAttributes(tag).Id === relationshipId);
+  if (!relationshipTag) throw new Error("QA_INPUT_SHEET_RELATIONSHIP_MISSING");
+  const target = readXmlAttributes(relationshipTag).Target;
+  if (!target) throw new Error("QA_INPUT_SHEET_TARGET_MISSING");
+  const worksheetPath = new URL(target, "https://ooxml.local/xl/workbook.xml")
+    .pathname.slice(1);
+  const worksheetEntry = archive[worksheetPath];
+  if (!worksheetEntry) throw new Error("QA_INPUT_WORKSHEET_MISSING");
+
+  let worksheetXml = strFromU8(worksheetEntry);
+  formulaRosterRows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const rowXml = buildFormulaRosterRow(rowNumber, row);
+    const existingRow = new RegExp(
+      `<row\\b(?=[^>]*\\br="${rowNumber}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/row>)`,
+    );
+    worksheetXml = existingRow.test(worksheetXml)
+      ? worksheetXml.replace(existingRow, rowXml)
+      : worksheetXml.replace("</sheetData>", `${rowXml}</sheetData>`);
+  });
+  archive[worksheetPath] = strToU8(worksheetXml);
+  return zipSync(archive, { level: 0 });
+}
+
+function buildFormulaRosterRow(rowNumber, values) {
+  const [salary, experience, tenure, role, grade, gradeRank, reason] = values;
+  const formulaCells = [
+    numericFormulaCell(`A${rowNumber}`, formulaTexts[0], salary),
+    numericCell(`B${rowNumber}`, experience),
+    numericCell(`C${rowNumber}`, tenure),
+    inlineStringCell(`D${rowNumber}`, role),
+    inlineStringCell(`E${rowNumber}`, grade),
+    numericFormulaCell(`F${rowNumber}`, formulaTexts[1], gradeRank),
+    inlineStringCell(`G${rowNumber}`, reason),
+  ];
+  return `<row r="${rowNumber}">${formulaCells.join("")}</row>`;
+}
+
+function numericCell(reference, value) {
+  return `<c r="${reference}"><v>${value}</v></c>`;
+}
+
+function numericFormulaCell(reference, formula, value) {
+  return `<c r="${reference}"><f>${formula}</f><v>${value}</v></c>`;
+}
+
+function inlineStringCell(reference, value) {
+  return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+}
+
+function readXmlAttributes(tag) {
+  return Object.fromEntries(
+    [...tag.matchAll(/([\w:.-]+)="([^"]*)"/g)].map((match) => [match[1], match[2]]),
+  );
+}
+
+function escapeXml(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+const viewports = [
   { name: "desktop-1280", width: 1280, height: 720 },
   { name: "desktop-1440", width: 1440, height: 900 },
   { name: "mobile-390", width: 390, height: 844 },
@@ -143,6 +233,7 @@ const result = {
   sessionUrlContainsRosterData: {},
   directSessionFailsClosed: {},
   explicitEndClearsRows: {},
+  formulaSnapshotNotice: {},
 };
 
 async function assertNoBlockedPaySimLinks(targetPage, label) {
@@ -540,6 +631,34 @@ async function runFacilitatorQa(viewport) {
   }
 
   await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
+  const formulaFileInput = facilitatorPage.locator('input[type="file"]');
+  await formulaFileInput.setInputFiles({
+    name: formulaWorkbookFilename,
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: formulaRosterBuffer,
+  });
+  await facilitatorPage.locator('[data-preparation-confirmation="true"]').waitFor();
+  const formulaSnapshotNoticeVisible = await facilitatorPage
+    .locator('[data-formula-snapshot-notice="true"]')
+    .isVisible();
+  const formulaPageText = await facilitatorPage.locator("body").innerText();
+  const formulaUrl = facilitatorPage.url();
+  const formulaStorage = await facilitatorPage.evaluate(() => ({
+    localStorageKeys: localStorage.length,
+    sessionStorageKeys: sessionStorage.length,
+  }));
+  const formulaSnapshotNotice = formulaSnapshotNoticeVisible
+    && (await formulaFileInput.inputValue()) === ""
+    && ![formulaWorkbookFilename, ...formulaTexts, ...formulaRawRowTokens]
+      .some((token) => formulaPageText.includes(token) || formulaUrl.includes(token))
+    && formulaStorage.localStorageKeys === 0
+    && formulaStorage.sessionStorageKeys === 0;
+  result.formulaSnapshotNotice[viewport.name] = formulaSnapshotNotice;
+  if (!formulaSnapshotNotice) {
+    throw new Error(`${viewport.name} saved formula result notice or privacy boundary failed`);
+  }
+
+  await facilitatorPage.goto(preparationUrl, { waitUntil: "networkidle" });
   await inspect(piiColumnPaste);
   const consentVisible = await facilitatorPage.locator('[data-column-consent-required="true"]').isVisible();
   const consentText = await facilitatorPage.locator('[data-column-consent-required="true"]').innerText();
@@ -740,6 +859,7 @@ async function runFacilitatorQa(viewport) {
     sessionUrlContainsRosterData: rosterDataInUrl,
     directSessionFailsClosed,
     explicitEndClearsRows,
+    formulaSnapshotNotice,
   };
   await Promise.all(requestInspectionTasks);
   if (result.externalRosterEmissions.length > 0) {

@@ -70,6 +70,12 @@ test("the preparation screen leads with one guided Excel workflow", () => {
   assert.doesNotMatch(preparation, /row_id|role_group|base_salary_krw/);
   assert.doesNotMatch(preparation, /file\.name|selected\.sheet/);
 });
+test("saved formula values are disclosed only in confirmation", () => {
+  assert.match(preparation, /result\.usedFormulaSnapshot/);
+  assert.match(preparation, /data-formula-snapshot-notice="true"/);
+  assert.match(preparation, /FOUNDER_COPY\["preparation\.formula_snapshot\.notice"\]/);
+});
+
 test("one provider shell owns start, unload warning, direct-load fallback, and explicit end", () => {
   assert.match(shell, /type: "START_SESSION"/);
   assert.match(shell, /mode: "facilitated"/);
@@ -100,6 +106,7 @@ test("browser QA owns facilitator privacy and lifecycle evidence", () => {
     "sessionUrlContainsRosterData",
     "directSessionFailsClosed",
     "explicitEndClearsRows",
+    "formulaSnapshotNotice",
   ]) {
     assert.match(qaSource, new RegExp(measurement));
   }

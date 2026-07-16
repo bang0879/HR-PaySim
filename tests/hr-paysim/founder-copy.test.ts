@@ -6,6 +6,7 @@ import {
 } from "../../scripts/check-forbidden-copy.ts";
 import {
   FOUNDER_COPY,
+  PREPARATION_ISSUE_COPY,
   formatFounderAmount,
   formatObservedTrendLabel,
   formatObservedTrendSummary,
@@ -14,6 +15,19 @@ import {
 } from "../../src/lib/hr-paysim/copy/founderCopy.ts";
 import { FORBIDDEN_FOUNDER_TERMS } from "../../src/lib/hr-paysim/copy/forbiddenFounderTerms.ts";
 import { INTERPRETATION_CLAIM_REGISTRY } from "../../src/lib/hr-paysim/interpretation/claimRegistry.ts";
+
+test("formula snapshot copy distinguishes saved values from unreadable files", () => {
+  assert.equal(
+    FOUNDER_COPY["preparation.formula_snapshot.notice"],
+    "수식이 포함된 셀은 엑셀에 마지막으로 저장된 값으로 읽었습니다. 현재 값이 맞는지 확인한 뒤 세션을 시작해 주세요.",
+  );
+  assert.equal(
+    PREPARATION_ISSUE_COPY.FORMULA_RESULT_UNAVAILABLE,
+    "저장된 결과가 없는 수식 셀이 있습니다. 엑셀에서 다시 계산해 저장하거나 값만 붙여넣어 주세요.",
+  );
+  assert.doesNotMatch(PREPARATION_ISSUE_COPY.UNREADABLE_WORKBOOK, /수식/);
+  assert.doesNotMatch(PREPARATION_ISSUE_COPY.UNREADABLE_WORKBOOK, /매크로/);
+});
 
 test("locks the four founder headings and action-specific buttons", () => {
   assert.equal(FOUNDER_COPY["screen.introduction.heading"], "금번 진단 안내");

@@ -283,6 +283,11 @@ export function FacilitatorPreparationScreen({
               </div>
               <span>{result.previewRows.length}명</span>
             </div>
+            {result.usedFormulaSnapshot ? (
+              <p className="fp-formula-notice" data-formula-snapshot-notice="true">
+                {FOUNDER_COPY["preparation.formula_snapshot.notice"]}
+              </p>
+            ) : null}
             <PreparationPreview rows={result.previewRows} />
             <div className="fp-start-bar">
               <p>{FOUNDER_COPY["preparation.ready.support"]}</p>

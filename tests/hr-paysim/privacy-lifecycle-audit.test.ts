@@ -10,12 +10,17 @@ const owners = [
   "../../src/lib/hr-paysim/preparation/createFacilitatorSessionDraft.ts",
   "../../src/features/facilitator-preparation/readFacilitatorWorkbook.ts",
   "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts",
+  "../../src/features/facilitator-preparation/snapshotWorkbookFormulaValues.ts",
 ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
 test("roster and session owners contain no persistence or emission API", () => {
   assert.doesNotMatch(
     owners.join("\n"),
     /localStorage|sessionStorage|indexedDB|fetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket/,
+  );
+  assert.doesNotMatch(
+    owners.slice(5).join("\n"),
+    /console\.|FileReader|URL\.createObjectURL/,
   );
 });
 

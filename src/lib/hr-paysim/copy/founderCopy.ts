@@ -35,6 +35,10 @@ export const FOUNDER_COPY = {
   "preparation.ready.heading": "이번 세션에 사용할 익명 자료입니다.",
   "preparation.ready.support":
     "아래 항목만 세션에 사용하며 원본 이름이나 연락처는 표시하거나 저장하지 않습니다.",
+  "preparation.formula_snapshot.notice":
+    "수식이 포함된 셀은 엑셀에 마지막으로 저장된 값으로 읽었습니다. 현재 값이 맞는지 확인한 뒤 세션을 시작해 주세요.",
+  "preparation.issue.formula_result_unavailable":
+    "저장된 결과가 없는 수식 셀이 있습니다. 엑셀에서 다시 계산해 저장하거나 값만 붙여넣어 주세요.",
   "preparation.ready.action": "이 자료로 세션 시작",
   "preparation.issue.pii_value":
     "개인을 식별할 수 있는 값이 포함되어 있습니다. 원본을 수정한 뒤 다시 붙여넣어 주세요.",
@@ -52,7 +56,7 @@ export const FOUNDER_COPY = {
   "preparation.issue.ambiguous_workbook":
     "여러 시트 중 사용할 표를 정할 수 없습니다. 입력 양식 시트에 필요한 표만 옮겨 주세요.",
   "preparation.issue.unreadable_workbook":
-    "파일을 읽을 수 없습니다. 암호나 매크로가 없는 .xlsx 입력 양식을 사용해 주세요.",
+    "파일이 암호화되었거나 손상되어 읽을 수 없습니다. 암호를 제거하거나 새 .xlsx 입력 양식에 값을 옮겨 주세요.",
   "preparation.issue.no_supported_review_subject":
     "현재 자료에서는 진행자와 함께 검토할 수 있는 직무별 연봉 비교가 없습니다.",
 
@@ -225,6 +229,8 @@ export const PREPARATION_ISSUE_COPY = {
   FILE_TOO_LARGE: FOUNDER_COPY["preparation.issue.file_too_large"],
   EMPTY_WORKBOOK: FOUNDER_COPY["preparation.issue.empty_workbook"],
   AMBIGUOUS_WORKBOOK: FOUNDER_COPY["preparation.issue.ambiguous_workbook"],
+  FORMULA_RESULT_UNAVAILABLE:
+    FOUNDER_COPY["preparation.issue.formula_result_unavailable"],
   UNREADABLE_WORKBOOK: FOUNDER_COPY["preparation.issue.unreadable_workbook"],
   NO_SUPPORTED_REVIEW_SUBJECT:
     FOUNDER_COPY["preparation.issue.no_supported_review_subject"],
