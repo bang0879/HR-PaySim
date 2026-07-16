@@ -20,6 +20,7 @@ export function createEmptyPreparationResult(): FacilitatorPreparationResult {
     previewRows: [],
     rows: [],
     shouldClearRaw: false,
+    usedFormulaSnapshot: false,
   };
 }
 
@@ -73,6 +74,7 @@ export function prepareFacilitatorKoreanTable(
       previewRows,
       rows: [],
       shouldClearRaw: true,
+      usedFormulaSnapshot: false,
     };
   }
 
@@ -84,6 +86,7 @@ export function prepareFacilitatorKoreanTable(
     rows: draftResult.draft.rows,
     draft: draftResult.draft,
     shouldClearRaw: true,
+    usedFormulaSnapshot: false,
   };
 }
 

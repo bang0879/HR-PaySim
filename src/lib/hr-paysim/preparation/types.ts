@@ -19,6 +19,7 @@ export type PreparationIssueCode =
   | "FILE_TOO_LARGE"
   | "EMPTY_WORKBOOK"
   | "AMBIGUOUS_WORKBOOK"
+  | "FORMULA_RESULT_UNAVAILABLE"
   | "UNREADABLE_WORKBOOK"
   | "NO_SUPPORTED_REVIEW_SUBJECT";
 
@@ -54,4 +55,5 @@ export interface FacilitatorPreparationResult {
   rows: NormalizedRosterRow[];
   draft?: FacilitatorSessionDraft;
   shouldClearRaw: boolean;
+  usedFormulaSnapshot: boolean;
 }
