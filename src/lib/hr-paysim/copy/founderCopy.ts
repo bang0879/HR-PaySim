@@ -382,10 +382,10 @@ export function formatObservedTrendSummary({
 }
 
 function formatHeadlineGap(headlineGapKRW: number): string {
-  if (!Number.isSafeInteger(headlineGapKRW) || headlineGapKRW < 0 || headlineGapKRW % 10_000 !== 0) {
+  if (!Number.isSafeInteger(headlineGapKRW) || headlineGapKRW < 0) {
     throw new Error("INVALID_PRODUCT_ENGINEER_HEADLINE_GAP");
   }
-  return (headlineGapKRW / 10_000).toLocaleString("ko-KR");
+  return (headlineGapKRW / 10_000).toLocaleString("ko-KR", { maximumFractionDigits: 4 });
 }
 
 function validateCount(value: number): void {

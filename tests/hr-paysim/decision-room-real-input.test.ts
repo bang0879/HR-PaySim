@@ -80,6 +80,34 @@ test("facilitated copy derives facts from a complete-grade multi-role roster", (
   assert.doesNotMatch(rendered, /Product Engineer|Platform Engineer|GTM|Customer Success/);
 });
 
+test("decision-room view model accepts exact-won headline gaps", () => {
+  const prepared = prepareFacilitatorRoster(actualRosterPaste);
+  assert.equal(prepared.status, "ready_for_confirmation");
+  assert.ok(prepared.draft);
+  const activeTheme = prepared.draft.selection.selected[0]!;
+  const draft = {
+    ...prepared.draft,
+    selection: {
+      ...prepared.draft.selection,
+      selected: [
+        {
+          ...activeTheme,
+          metrics: {
+            ...activeTheme.metrics,
+            headlineGapKRW: 12_345_678,
+          },
+        },
+        ...prepared.draft.selection.selected.slice(1),
+      ],
+    },
+  };
+
+  assert.doesNotThrow(() => createDecisionRoomViewModel({
+    ...createEmptyDecisionRoomSession("facilitated"),
+    ...draft,
+  }));
+});
+
 test("browser QA uses the generic workbook and a non-Product multi-role roster", () => {
   assert.match(qaSource, /HR-PaySim-company-roster-template\.xlsx/);
   assert.match(qaSource, /Backend Engineer/);
