@@ -1,7 +1,7 @@
 # HR PaySim Safe Formula Snapshot Import Design
 
 **Date:** 2026-07-16  
-**Status:** Approved in conversation; written review pending  
+**Status:** Approved 2026-07-16
 **Scope:** Facilitator-local `.xlsx` roster intake only
 
 ## 1. Context and authority
