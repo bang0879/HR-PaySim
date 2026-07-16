@@ -97,7 +97,7 @@ function mapSheetNamesToParts(
   const relationships = requiredXml(archive, "xl/_rels/workbook.xml.rels");
   const targets = new Map<string, string>();
 
-  for (const match of relationships.matchAll(/<Relationship\b[^>]*\/?\s*>/g)) {
+  for (const match of relationships.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b[^>]*\/?\s*>/g)) {
     const attributes = xmlAttributes(match[0]);
     if (attributes.TargetMode === "External") continue;
     if (attributes.Id && attributes.Target) {
@@ -106,7 +106,7 @@ function mapSheetNamesToParts(
   }
 
   const sheets = new Map<string, string>();
-  for (const match of workbook.matchAll(/<sheet\b[^>]*\/?\s*>/g)) {
+  for (const match of workbook.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b[^>]*\/?\s*>/g)) {
     const attributes = xmlAttributes(match[0]);
     const sheetName = attributes.name;
     const relationshipId = attributes["r:id"];
@@ -125,16 +125,18 @@ function snapshotWorksheet(xml: string): {
   let hasFormula = false;
   let hasUnavailableFormula = false;
   const transformed = xml.replace(
-    /<c\b([^>]*)>([\s\S]*?)<\/c>/g,
-    (cell, attributes: string, contents: string) => {
+    /<((?:[A-Za-z_][\w.-]*:)?c)\b([^>]*)>([\s\S]*?)<\/\1\s*>/g,
+    (cell, tagName: string, attributes: string, contents: string) => {
       if (!FORMULA_TAG_PATTERN.test(contents)) return cell;
       hasFormula = true;
-      const cachedValue = contents.match(/<v(?:\s[^>]*)?>([\s\S]*?)<\/v>/);
+      const cachedValue = contents.match(
+        /<(?:[A-Za-z_][\w.-]*:)?v(?:\s[^>]*)?>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?v\s*>/,
+      );
       const isError = /(?:^|\s)t\s*=\s*["']e["'](?:\s|$)/.test(attributes);
       if (!cachedValue || cachedValue[1].length === 0 || isError) {
         hasUnavailableFormula = true;
       }
-      return `<c${attributes}>${contents.replace(FORMULA_ELEMENT_PATTERN, "")}</c>`;
+      return `<${tagName}${attributes}>${contents.replace(FORMULA_ELEMENT_PATTERN, "")}</${tagName}>`;
     },
   );
 

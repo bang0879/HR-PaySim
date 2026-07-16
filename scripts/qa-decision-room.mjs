@@ -81,12 +81,12 @@ function buildFormulaRosterWorkbook(templateBuffer) {
   const archive = unzipSync(new Uint8Array(templateBuffer));
   const workbookXml = strFromU8(archive["xl/workbook.xml"]);
   const relationshipsXml = strFromU8(archive["xl/_rels/workbook.xml.rels"]);
-  const sheetTag = [...workbookXml.matchAll(/<sheet\b[^>]*\/?\s*>/g)]
+  const sheetTag = [...workbookXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b[^>]*\/?\s*>/g)]
     .map((match) => match[0])
     .find((tag) => readXmlAttributes(tag).name === "입력 양식");
   if (!sheetTag) throw new Error("QA_INPUT_SHEET_MISSING");
   const relationshipId = readXmlAttributes(sheetTag)["r:id"];
-  const relationshipTag = [...relationshipsXml.matchAll(/<Relationship\b[^>]*\/?\s*>/g)]
+  const relationshipTag = [...relationshipsXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b[^>]*\/?\s*>/g)]
     .map((match) => match[0])
     .find((tag) => readXmlAttributes(tag).Id === relationshipId);
   if (!relationshipTag) throw new Error("QA_INPUT_SHEET_RELATIONSHIP_MISSING");
@@ -98,44 +98,47 @@ function buildFormulaRosterWorkbook(templateBuffer) {
   if (!worksheetEntry) throw new Error("QA_INPUT_WORKSHEET_MISSING");
 
   let worksheetXml = strFromU8(worksheetEntry);
+  const namespacePrefix = worksheetXml.match(
+    /<([A-Za-z_][\w.-]*:)?worksheet\b/,
+  )?.[1] ?? "";
   formulaRosterRows.forEach((row, index) => {
     const rowNumber = index + 2;
-    const rowXml = buildFormulaRosterRow(rowNumber, row);
+    const rowXml = buildFormulaRosterRow(rowNumber, row, namespacePrefix);
     const existingRow = new RegExp(
-      `<row\\b(?=[^>]*\\br="${rowNumber}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/row>)`,
+      `<(?:[A-Za-z_][\\w.-]*:)?row\\b(?=[^>]*\\br="${rowNumber}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/(?:[A-Za-z_][\\w.-]*:)?row>)`,
     );
     worksheetXml = existingRow.test(worksheetXml)
       ? worksheetXml.replace(existingRow, rowXml)
-      : worksheetXml.replace("</sheetData>", `${rowXml}</sheetData>`);
+      : worksheetXml.replace(`</${namespacePrefix}sheetData>`, `${rowXml}</${namespacePrefix}sheetData>`);
   });
   archive[worksheetPath] = strToU8(worksheetXml);
-  return zipSync(archive, { level: 0 });
+  return Buffer.from(zipSync(archive, { level: 0 }));
 }
 
-function buildFormulaRosterRow(rowNumber, values) {
+function buildFormulaRosterRow(rowNumber, values, prefix) {
   const [salary, experience, tenure, role, grade, gradeRank, reason] = values;
   const formulaCells = [
-    numericFormulaCell(`A${rowNumber}`, formulaTexts[0], salary),
-    numericCell(`B${rowNumber}`, experience),
-    numericCell(`C${rowNumber}`, tenure),
-    inlineStringCell(`D${rowNumber}`, role),
-    inlineStringCell(`E${rowNumber}`, grade),
-    numericFormulaCell(`F${rowNumber}`, formulaTexts[1], gradeRank),
-    inlineStringCell(`G${rowNumber}`, reason),
+    numericFormulaCell(`A${rowNumber}`, formulaTexts[0], salary, prefix),
+    numericCell(`B${rowNumber}`, experience, prefix),
+    numericCell(`C${rowNumber}`, tenure, prefix),
+    inlineStringCell(`D${rowNumber}`, role, prefix),
+    inlineStringCell(`E${rowNumber}`, grade, prefix),
+    numericFormulaCell(`F${rowNumber}`, formulaTexts[1], gradeRank, prefix),
+    inlineStringCell(`G${rowNumber}`, reason, prefix),
   ];
-  return `<row r="${rowNumber}">${formulaCells.join("")}</row>`;
+  return `<${prefix}row r="${rowNumber}">${formulaCells.join("")}</${prefix}row>`;
 }
 
-function numericCell(reference, value) {
-  return `<c r="${reference}"><v>${value}</v></c>`;
+function numericCell(reference, value, prefix) {
+  return `<${prefix}c r="${reference}"><${prefix}v>${value}</${prefix}v></${prefix}c>`;
 }
 
-function numericFormulaCell(reference, formula, value) {
-  return `<c r="${reference}"><f>${formula}</f><v>${value}</v></c>`;
+function numericFormulaCell(reference, formula, value, prefix) {
+  return `<${prefix}c r="${reference}"><${prefix}f>${formula}</${prefix}f><${prefix}v>${value}</${prefix}v></${prefix}c>`;
 }
 
-function inlineStringCell(reference, value) {
-  return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+function inlineStringCell(reference, value, prefix) {
+  return `<${prefix}c r="${reference}" t="inlineStr"><${prefix}is><${prefix}t>${escapeXml(value)}</${prefix}t></${prefix}is></${prefix}c>`;
 }
 
 function readXmlAttributes(tag) {
@@ -903,6 +906,7 @@ try {
   for (const viewport of facilitatorViewports) {
     await runFacilitatorQa(viewport);
   }
+  if (qaSurface === "public") {
   await inspectPublicBlockedRoutes(viewports[0]);
   for (const viewport of viewports) {
     await openFresh(viewport);
@@ -997,6 +1001,7 @@ try {
   result.sessionCleared = await page.locator('[data-decision-room-ended="true"]').isVisible();
   if (!result.sessionCleared) throw new Error("explicit session end did not clear the UI state");
 
+  }
   if (consoleIssues.length) throw new Error(`console issues found: ${consoleIssues.join("; ")}`);
 } catch (error) {
   result.errors.push(error instanceof Error ? error.message : String(error));

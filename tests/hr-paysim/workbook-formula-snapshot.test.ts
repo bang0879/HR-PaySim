@@ -81,6 +81,38 @@ test("returns a browser-compatible File after formula transformation", async () 
   assert.equal(snapshot.file.type, file.type);
 });
 
+test("supports namespaced workbook, sheet, cell, formula, and cached-value tags", async () => {
+  const file = binaryFile("namespaced.xlsx", zipSync({
+    "xl/workbook.xml": strToU8([
+      '<x:workbook xmlns:x="urn:sheet" xmlns:r="urn:relationship">',
+      "<x:sheets>",
+      '<x:sheet name="입력 양식" sheetId="1" r:id="rId1"/>',
+      "</x:sheets>",
+      "</x:workbook>",
+    ].join("")),
+    "xl/_rels/workbook.xml.rels": strToU8([
+      '<p:Relationships xmlns:p="urn:package">',
+      '<p:Relationship Id="rId1" Target="worksheets/sheet1.xml"/>',
+      "</p:Relationships>",
+    ].join("")),
+    "xl/worksheets/sheet1.xml": strToU8([
+      '<x:worksheet xmlns:x="urn:sheet">',
+      '<x:sheetData><x:row r="2">',
+      '<x:c r="A2" t="n"><x:f>64000000+1000000</x:f><x:v>65000000</x:v></x:c>',
+      "</x:row></x:sheetData>",
+      "</x:worksheet>",
+    ].join("")),
+  }));
+
+  const snapshot = await snapshotWorkbookFormulaValues(file);
+  const transformed = unzipSync(new Uint8Array(await snapshot.file.arrayBuffer()));
+  const worksheetXml = strFromU8(transformed["xl/worksheets/sheet1.xml"]!);
+
+  assert.equal(snapshot.sheetFormulaStatus.get("입력 양식"), "saved_values");
+  assert.doesNotMatch(worksheetXml, /<x:f\b/);
+  assert.match(worksheetXml, /<x:v>65000000<\/x:v>/);
+});
+
 test("rejects worksheet count and aggregate worksheet inflation before transformation", async () => {
   const manyWorksheets = Object.fromEntries(
     Array.from({ length: 33 }, (_, index) => [
