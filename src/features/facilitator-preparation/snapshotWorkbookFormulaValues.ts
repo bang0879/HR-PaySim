@@ -200,11 +200,8 @@ function inMemoryFile(source: File, bytes: Uint8Array): File {
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
-  return {
-    name: source.name,
-    size: bytes.byteLength,
+  return new File([copy()], source.name, {
     type: source.type,
     lastModified: source.lastModified,
-    arrayBuffer: async () => copy(),
-  } as File;
+  });
 }

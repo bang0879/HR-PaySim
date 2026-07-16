@@ -69,6 +69,18 @@ test("returns the original file when no worksheet contains formulas", async () =
   ]);
 });
 
+test("returns a browser-compatible File after formula transformation", async () => {
+  const file = workbookFile({
+    inputCells: ['<c r="A2" t="n"><f>64000000+1000000</f><v>65000000</v></c>'],
+  });
+
+  const snapshot = await snapshotWorkbookFormulaValues(file);
+
+  assert.ok(snapshot.file instanceof File);
+  assert.equal(snapshot.file.name, file.name);
+  assert.equal(snapshot.file.type, file.type);
+});
+
 test("rejects worksheet count and aggregate worksheet inflation before transformation", async () => {
   const manyWorksheets = Object.fromEntries(
     Array.from({ length: 33 }, (_, index) => [
