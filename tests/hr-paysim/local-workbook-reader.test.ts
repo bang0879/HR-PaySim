@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { strToU8, zipSync } from "fflate";
 
 import {
   MAX_WORKBOOK_BYTES,
   readFacilitatorWorkbook,
   selectWorkbookSheet,
-  workbookContainsFormula,
 } from "../../src/features/facilitator-preparation/readFacilitatorWorkbook.ts";
 import { KOREAN_ROSTER_HEADERS } from "../../src/lib/hr-paysim/preparation/koreanRosterAdapter.ts";
 
@@ -107,67 +105,6 @@ test("file-column consent applies only inside the current read invocation", asyn
   assert.equal(notConfirmed.status, "needs_column_consent");
   assert.deepEqual(notConfirmed.prohibitedColumnHeaders, ["이름"]);
 });
-test("blocks real SpreadsheetML formula cells before cached values reach the adapter", async () => {
-  const workbookBytes = zipSync({
-    "xl/worksheets/sheet1.xml": strToU8([
-      '<?xml version="1.0" encoding="UTF-8"?>',
-      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-      '<sheetData><row r="2"><c r="A2"><f>SUM(1,2)</f><v>3</v></c></row></sheetData>',
-      '</worksheet>',
-    ].join("")),
-  });
-  const file = binaryFile("formula.xlsx", workbookBytes);
-  assert.equal(await workbookContainsFormula(file), true);
-
-  let reads = 0;
-  const blocked = await readFacilitatorWorkbook(file, {
-    readWorkbook: async () => {
-      reads += 1;
-      return [{ sheet: "입력 양식", data: rows }];
-    },
-    inspectWorkbookFormulas: workbookContainsFormula,
-  });
-  assert.deepEqual(blocked.issues, [{ code: "UNREADABLE_WORKBOOK" }]);
-  assert.equal(reads, 0);
-});
-test("detects self-closing and namespaced shared formula elements", async () => {
-  for (const formulaElement of [
-    "<f/>",
-    '<x:f t="shared" si="0"/>',
-  ]) {
-    const bytes = zipSync({
-      "xl/worksheets/sheet1.xml": strToU8(
-        `<worksheet xmlns:x="urn:formula"><sheetData><c>${formulaElement}<v>3</v></c></sheetData></worksheet>`,
-      ),
-    });
-    assert.equal(await workbookContainsFormula(binaryFile("formula.xlsx", bytes)), true);
-  }
-});
-
-test("rejects excessive aggregate worksheet inflation and worksheet counts", async () => {
-  const largeWorksheet = strToU8(
-    `<worksheet>${"x".repeat(10 * 1024 * 1024 + 1)}</worksheet>`,
-  );
-  const aggregateBytes = zipSync({
-    "xl/worksheets/sheet1.xml": largeWorksheet,
-    "xl/worksheets/sheet2.xml": largeWorksheet,
-  });
-  await assert.rejects(
-    workbookContainsFormula(binaryFile("aggregate.xlsx", aggregateBytes)),
-    /WORKSHEET_XML_TOTAL_LIMIT/,
-  );
-
-  const manyWorksheets = Object.fromEntries(
-    Array.from({ length: 33 }, (_, index) => [
-      `xl/worksheets/sheet${index + 1}.xml`,
-      strToU8("<worksheet/>"),
-    ]),
-  );
-  await assert.rejects(
-    workbookContainsFormula(binaryFile("many-sheets.xlsx", zipSync(manyWorksheets))),
-    /WORKSHEET_COUNT_LIMIT/,
-  );
-});
 test("maps sheet selection and parser failures to safe workbook issue codes", async () => {
   const ambiguous = await readFacilitatorWorkbook(
     fakeFile("roster.xlsx", 100),
@@ -190,14 +127,4 @@ test("maps sheet selection and parser failures to safe workbook issue codes", as
 
 function fakeFile(name: string, size: number): File {
   return { name, size } as File;
-}
-function binaryFile(name: string, bytes: Uint8Array): File {
-  return {
-    name,
-    size: bytes.byteLength,
-    arrayBuffer: async () => bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer,
-  } as File;
 }

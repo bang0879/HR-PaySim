@@ -10,6 +10,12 @@ const MAX_WORKSHEET_XML_TOTAL_BYTES = 20 * 1024 * 1024;
 const MAX_WORKSHEET_COUNT = 32;
 const MAX_ARCHIVE_TOTAL_BYTES = 40 * 1024 * 1024;
 const WORKSHEET_PART_PATTERN = /^xl\/worksheets\/[^/]+\.xml$/;
+const RELATIONSHIP_NAMESPACE_URIS = new Set([
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+  "http://purl.oclc.org/ooxml/officeDocument/relationships",
+]);
+const WORKSHEET_RELATIONSHIP_PATTERN = /\/relationships\/worksheet$/;
+const VBA_RELATIONSHIP_PATTERN = /\/relationships\/vbaProject$/i;
 const FORMULA_ELEMENT_PATTERN = /<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?f\s*>)/g;
 const FORMULA_TAG_PATTERN = /<(?:[A-Za-z_][\w.-]*:)?f(?:\s|\/?>)/;
 
@@ -24,20 +30,23 @@ export async function snapshotWorkbookFormulaValues(
   file: File,
 ): Promise<WorkbookFormulaSnapshot> {
   const archive = unzipBoundedWorkbook(new Uint8Array(await file.arrayBuffer()));
+  assertMacroFreeWorkbook(archive);
   const sheetParts = mapSheetNamesToParts(archive);
+  const worksheetParts = validateWorksheetParts(archive, sheetParts);
   const partStatus = new Map<string, FormulaSnapshotStatus>();
 
-  for (const partName of worksheetPartNames(archive)) {
+  for (const partName of worksheetParts) {
     const transformed = snapshotWorksheet(strFromU8(archive[partName]!));
     archive[partName] = strToU8(transformed.xml);
     partStatus.set(partName, transformed.status);
   }
 
   const sheetFormulaStatus = new Map<string, FormulaSnapshotStatus>(
-    [...sheetParts].map(([sheetName, partName]) => [
-      sheetName,
-      partStatus.get(partName) ?? "none",
-    ]),
+    [...sheetParts].map(([sheetName, partName]) => {
+      const status = partStatus.get(partName);
+      if (!status) throw new Error("WORKSHEET_STATUS_MISSING");
+      return [sheetName, status];
+    }),
   );
   if (![...sheetFormulaStatus.values()].some((status) => status !== "none")) {
     return { file, sheetFormulaStatus };
@@ -86,8 +95,52 @@ function unzipBoundedWorkbook(bytes: Uint8Array): Record<string, Uint8Array> {
   return archive;
 }
 
-function worksheetPartNames(archive: Record<string, Uint8Array>): string[] {
-  return Object.keys(archive).filter((name) => WORKSHEET_PART_PATTERN.test(name));
+function assertMacroFreeWorkbook(archive: Record<string, Uint8Array>): void {
+  for (const [partName, bytes] of Object.entries(archive)) {
+    if (/(?:^|\/)vbaProject(?:Signature)?\.bin$/i.test(partName)) {
+      throw new Error("WORKBOOK_MACROS_UNSUPPORTED");
+    }
+    if (partName.toLowerCase() === "[content_types].xml") {
+      const contentTypes = strFromU8(bytes);
+      if (/macroEnabled|vnd\.ms-office\.vbaProject/i.test(contentTypes)) {
+        throw new Error("WORKBOOK_MACROS_UNSUPPORTED");
+      }
+    }
+    if (partName.toLowerCase().endsWith(".rels")) {
+      const relationships = strFromU8(bytes);
+      for (const match of relationships.matchAll(
+        /<(?:[A-Za-z_][\w.-]*:)?Relationship\b[^>]*\/?\s*>/g,
+      )) {
+        const type = xmlAttributes(match[0]).Type;
+        if (type && VBA_RELATIONSHIP_PATTERN.test(type)) {
+          throw new Error("WORKBOOK_MACROS_UNSUPPORTED");
+        }
+      }
+    }
+  }
+}
+
+function validateWorksheetParts(
+  archive: Record<string, Uint8Array>,
+  sheetParts: ReadonlyMap<string, string>,
+): string[] {
+  if (sheetParts.size > MAX_WORKSHEET_COUNT) {
+    throw new Error("WORKSHEET_COUNT_LIMIT");
+  }
+  const worksheetParts = [...new Set(sheetParts.values())];
+  let worksheetTotalBytes = 0;
+  for (const partName of worksheetParts) {
+    const bytes = archive[partName];
+    if (!bytes) throw new Error("WORKBOOK_PART_MISSING");
+    if (bytes.byteLength > MAX_WORKSHEET_XML_BYTES) {
+      throw new Error("WORKSHEET_XML_SIZE_LIMIT");
+    }
+    worksheetTotalBytes += bytes.byteLength;
+    if (worksheetTotalBytes > MAX_WORKSHEET_XML_TOTAL_BYTES) {
+      throw new Error("WORKSHEET_XML_TOTAL_LIMIT");
+    }
+  }
+  return worksheetParts;
 }
 
 function mapSheetNamesToParts(
@@ -95,13 +148,16 @@ function mapSheetNamesToParts(
 ): ReadonlyMap<string, string> {
   const workbook = requiredXml(archive, "xl/workbook.xml");
   const relationships = requiredXml(archive, "xl/_rels/workbook.xml.rels");
-  const targets = new Map<string, string>();
+  const targets = new Map<string, { target: string; type?: string }>();
 
   for (const match of relationships.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b[^>]*\/?\s*>/g)) {
     const attributes = xmlAttributes(match[0]);
     if (attributes.TargetMode === "External") continue;
     if (attributes.Id && attributes.Target) {
-      targets.set(attributes.Id, resolvePartName("xl/workbook.xml", attributes.Target));
+      targets.set(attributes.Id, {
+        target: resolvePartName("xl/workbook.xml", attributes.Target),
+        type: attributes.Type,
+      });
     }
   }
 
@@ -109,13 +165,32 @@ function mapSheetNamesToParts(
   for (const match of workbook.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b[^>]*\/?\s*>/g)) {
     const attributes = xmlAttributes(match[0]);
     const sheetName = attributes.name;
-    const relationshipId = attributes["r:id"];
-    const target = relationshipId ? targets.get(relationshipId) : undefined;
-    if (!sheetName || !target) throw new Error("WORKBOOK_RELATIONSHIP_MISSING");
-    sheets.set(decodeXml(sheetName), target);
+    const relationshipId = relationshipAttributeId(workbook, match[0], attributes);
+    const relationship = relationshipId ? targets.get(relationshipId) : undefined;
+    if (!sheetName || !relationship) throw new Error("WORKBOOK_RELATIONSHIP_MISSING");
+    if (!relationship.type || !WORKSHEET_RELATIONSHIP_PATTERN.test(relationship.type)) {
+      throw new Error("WORKBOOK_RELATIONSHIP_TYPE_INVALID");
+    }
+    sheets.set(decodeXml(sheetName), relationship.target);
   }
   if (sheets.size === 0) throw new Error("WORKBOOK_SHEETS_MISSING");
   return sheets;
+}
+
+function relationshipAttributeId(
+  workbook: string,
+  sheetTag: string,
+  attributes: Readonly<Record<string, string>>,
+): string | undefined {
+  const declarations = `${workbook.match(/<[^>]*workbook\b[^>]*>/)?.[0] ?? ""} ${sheetTag}`;
+  const namespaces = xmlAttributes(declarations);
+  for (const [attributeName, value] of Object.entries(attributes)) {
+    const match = attributeName.match(/^([^:]+):id$/);
+    if (match && RELATIONSHIP_NAMESPACE_URIS.has(namespaces[`xmlns:${match[1]}`] ?? "")) {
+      return value;
+    }
+  }
+  return undefined;
 }
 
 function snapshotWorksheet(xml: string): {

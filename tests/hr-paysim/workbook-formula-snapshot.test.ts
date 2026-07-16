@@ -84,7 +84,7 @@ test("returns a browser-compatible File after formula transformation", async () 
 test("supports namespaced workbook, sheet, cell, formula, and cached-value tags", async () => {
   const file = binaryFile("namespaced.xlsx", zipSync({
     "xl/workbook.xml": strToU8([
-      '<x:workbook xmlns:x="urn:sheet" xmlns:r="urn:relationship">',
+      '<x:workbook xmlns:x="urn:sheet" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
       "<x:sheets>",
       '<x:sheet name="입력 양식" sheetId="1" r:id="rId1"/>',
       "</x:sheets>",
@@ -92,7 +92,7 @@ test("supports namespaced workbook, sheet, cell, formula, and cached-value tags"
     ].join("")),
     "xl/_rels/workbook.xml.rels": strToU8([
       '<p:Relationships xmlns:p="urn:package">',
-      '<p:Relationship Id="rId1" Target="worksheets/sheet1.xml"/>',
+      '<p:Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
       "</p:Relationships>",
     ].join("")),
     "xl/worksheets/sheet1.xml": strToU8([
@@ -111,6 +111,115 @@ test("supports namespaced workbook, sheet, cell, formula, and cached-value tags"
   assert.equal(snapshot.sheetFormulaStatus.get("입력 양식"), "saved_values");
   assert.doesNotMatch(worksheetXml, /<x:f\b/);
   assert.match(worksheetXml, /<x:v>65000000<\/x:v>/);
+});
+
+test("transforms the exact worksheet part targeted by its relationship", async () => {
+  const file = binaryFile("custom-target.xlsx", zipSync({
+    "xl/workbook.xml": strToU8([
+      '<workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>',
+      '<sheet name="입력 양식" sheetId="1" r:id="rId1"/>',
+      "</sheets></workbook>",
+    ].join("")),
+    "xl/_rels/workbook.xml.rels": strToU8([
+      "<Relationships>",
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="custom/input.xml"/>',
+      "</Relationships>",
+    ].join("")),
+    "xl/custom/input.xml": strToU8(
+      '<worksheet><sheetData><row r="2"><c r="A2"><f>1+2</f><v>3</v></c></row></sheetData></worksheet>',
+    ),
+  }));
+
+  const snapshot = await snapshotWorkbookFormulaValues(file);
+  const transformed = unzipSync(new Uint8Array(await snapshot.file.arrayBuffer()));
+
+  assert.equal(snapshot.sheetFormulaStatus.get("입력 양식"), "saved_values");
+  assert.doesNotMatch(strFromU8(transformed["xl/custom/input.xml"]!), /<f\b/);
+});
+
+test("fails closed when a relationship-targeted worksheet part is missing", async () => {
+  const file = binaryFile("missing-target.xlsx", zipSync({
+    "xl/workbook.xml": strToU8([
+      '<workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>',
+      '<sheet name="입력 양식" sheetId="1" r:id="rId1"/>',
+      "</sheets></workbook>",
+    ].join("")),
+    "xl/_rels/workbook.xml.rels": strToU8([
+      "<Relationships>",
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="custom/missing.xml"/>',
+      "</Relationships>",
+    ].join("")),
+  }));
+
+  await assert.rejects(snapshotWorkbookFormulaValues(file), /WORKBOOK_PART_MISSING/);
+});
+
+test("fails closed when a sheet relationship omits its worksheet type", async () => {
+  const file = binaryFile("missing-type.xlsx", zipSync({
+    "xl/workbook.xml": strToU8([
+      '<workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>',
+      '<sheet name="입력 양식" sheetId="1" r:id="rId1"/>',
+      "</sheets></workbook>",
+    ].join("")),
+    "xl/_rels/workbook.xml.rels": strToU8([
+      "<Relationships>",
+      '<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>',
+      "</Relationships>",
+    ].join("")),
+    "xl/worksheets/sheet1.xml": worksheet([]),
+  }));
+
+  await assert.rejects(
+    snapshotWorkbookFormulaValues(file),
+    /WORKBOOK_RELATIONSHIP_TYPE_INVALID/,
+  );
+});
+
+test("resolves the workbook relationship id through its declared namespace prefix", async () => {
+  const file = binaryFile("alternate-prefix.xlsx", zipSync({
+    "xl/workbook.xml": strToU8([
+      '<x:workbook xmlns:x="urn:sheet" xmlns:rel="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+      "<x:sheets>",
+      '<x:sheet name="입력 양식" sheetId="1" rel:id="rId1"/>',
+      "</x:sheets></x:workbook>",
+    ].join("")),
+    "xl/_rels/workbook.xml.rels": strToU8([
+      "<Relationships>",
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
+      "</Relationships>",
+    ].join("")),
+    "xl/worksheets/sheet1.xml": worksheet([
+      '<c r="A2"><f>1+2</f><v>3</v></c>',
+    ]),
+  }));
+
+  const snapshot = await snapshotWorkbookFormulaValues(file);
+
+  assert.equal(snapshot.sheetFormulaStatus.get("입력 양식"), "saved_values");
+});
+
+test("rejects macro-enabled package markers even when the filename ends in xlsx", async () => {
+  const macroMarkers: ReadonlyArray<Readonly<Record<string, Uint8Array>>> = [
+    { "xl/vbaProject.bin": new Uint8Array([1, 2, 3]) },
+    {
+      "[Content_Types].xml": strToU8(
+        '<Types><Override PartName="/xl/workbook.xml" ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/></Types>',
+      ),
+    },
+    {
+      "xl/_rels/workbook.xml.rels": strToU8([
+        "<Relationships>",
+        '<Relationship Id="vba" Type="http://schemas.microsoft.com/office/2006/relationships/vbaProject" Target="vbaProject.bin"/>',
+        "</Relationships>",
+      ].join("")),
+    },
+  ];
+  for (const extraEntries of macroMarkers) {
+    await assert.rejects(
+      snapshotWorkbookFormulaValues(workbookFile({ extraEntries })),
+      /WORKBOOK_MACROS_UNSUPPORTED/,
+    );
+  }
 });
 
 test("rejects worksheet count and aggregate worksheet inflation before transformation", async () => {
@@ -140,9 +249,11 @@ test("rejects worksheet count and aggregate worksheet inflation before transform
 function workbookFile({
   exampleCells = [],
   inputCells = [],
+  extraEntries = {},
 }: {
   exampleCells?: readonly string[];
   inputCells?: readonly string[];
+  extraEntries?: Readonly<Record<string, Uint8Array>>;
 }): File {
   return binaryFile("roster.xlsx", zipSync({
     "xl/workbook.xml": strToU8([
@@ -155,12 +266,13 @@ function workbookFile({
     ].join("")),
     "xl/_rels/workbook.xml.rels": strToU8([
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-      '<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>',
-      '<Relationship Id="rId2" Target="worksheets/sheet2.xml"/>',
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>',
       "</Relationships>",
     ].join("")),
     "xl/worksheets/sheet1.xml": worksheet(exampleCells),
     "xl/worksheets/sheet2.xml": worksheet(inputCells),
+    ...extraEntries,
   }));
 }
 

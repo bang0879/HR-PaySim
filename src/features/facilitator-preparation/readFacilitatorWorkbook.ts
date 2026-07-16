@@ -1,4 +1,3 @@
-import { strFromU8, unzipSync } from "fflate";
 import readXlsxFile, { type Sheet } from "read-excel-file/browser";
 
 import {
@@ -12,9 +11,6 @@ import {
   type WorkbookFormulaSnapshot,
 } from "./snapshotWorkbookFormulaValues.ts";
 export const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024;
-const MAX_WORKSHEET_XML_BYTES = 20 * 1024 * 1024;
-const MAX_WORKSHEET_XML_TOTAL_BYTES = 20 * 1024 * 1024;
-const MAX_WORKSHEET_COUNT = 32;
 
 type WorkbookSheet = Pick<Sheet, "sheet" | "data">;
 type WorkbookReader = (file: File) => Promise<WorkbookSheet[]>;
@@ -36,7 +32,6 @@ export async function readFacilitatorWorkbook(
   options: {
     readWorkbook?: WorkbookReader;
     confirmProhibitedHeaders?: (headers: readonly string[]) => Promise<boolean>;
-    inspectWorkbookFormulas?: (file: File) => Promise<boolean>;
     snapshotWorkbookFormulas?: WorkbookFormulaSnapshotter;
   } = {},
 ): Promise<FacilitatorPreparationResult> {
@@ -48,10 +43,6 @@ export async function readFacilitatorWorkbook(
   }
 
   try {
-    const inspectFormulas = options.inspectWorkbookFormulas;
-    if (inspectFormulas && await inspectFormulas(file)) {
-      return workbookBlocked("UNREADABLE_WORKBOOK");
-    }
     const snapshotWorkbook = options.snapshotWorkbookFormulas
       ?? (options.readWorkbook
         ? async (sourceFile: File): Promise<WorkbookFormulaSnapshot> => ({
@@ -90,38 +81,6 @@ export async function readFacilitatorWorkbook(
     }
     return workbookBlocked("UNREADABLE_WORKBOOK");
   }
-}
-
-export async function workbookContainsFormula(file: File): Promise<boolean> {
-  let worksheetCount = 0;
-  let worksheetTotalBytes = 0;
-  let limitError: string | undefined;
-  const worksheets = unzipSync(new Uint8Array(await file.arrayBuffer()), {
-    filter: ({ name, originalSize }) => {
-      const isWorksheet = /^xl\/worksheets\/[^/]+\.xml$/.test(name);
-      if (!isWorksheet || limitError) return false;
-
-      worksheetCount += 1;
-      if (worksheetCount > MAX_WORKSHEET_COUNT) {
-        limitError = "WORKSHEET_COUNT_LIMIT";
-        return false;
-      }
-      if (originalSize > MAX_WORKSHEET_XML_BYTES) {
-        limitError = "WORKSHEET_XML_SIZE_LIMIT";
-        return false;
-      }
-      worksheetTotalBytes += originalSize;
-      if (worksheetTotalBytes > MAX_WORKSHEET_XML_TOTAL_BYTES) {
-        limitError = "WORKSHEET_XML_TOTAL_LIMIT";
-        return false;
-      }
-      return true;
-    },
-  });
-  if (limitError) throw new Error(limitError);
-  return Object.values(worksheets).some((worksheet) =>
-    /<(?:[A-Za-z_][\w.-]*:)?f(?:\s|\/?>)/.test(strFromU8(worksheet))
-  );
 }
 
 function withFormulaSnapshot(
